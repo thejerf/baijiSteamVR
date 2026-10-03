@@ -203,7 +203,6 @@ static constexpr float GFX_VR_CAMERA_ANCHOR_SMOOTHING_STEP = 0.05f;
 extern const Info<bool> GFX_VR_VIRTUAL_SCREEN;
 extern const Info<float> GFX_VR_SCREEN_DISTANCE;
 extern const Info<float> GFX_VR_SCREEN_SIZE;
-extern const Info<float> GFX_VR_SCREEN_YAW_OFFSET;
 extern const Info<float> GFX_VR_HEAD_LOCKED_CURVATURE;
 extern const Info<bool> GFX_VR_DONT_CLEAR_SCREEN;
 extern const Info<bool> GFX_VR_LOAD_CUSTOM_SHADERS;

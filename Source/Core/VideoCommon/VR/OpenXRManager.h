@@ -186,8 +186,7 @@ public:
   void DestroySession();
 
   // Step 4: Create the local reference space used for head tracking.
-  bool CreateReferenceSpace(const XrPosef& base_pose_in_ref_space = {{0.f, 0.f, 0.f, 1.f},
-                                                                      {0.f, 0.f, 0.f}});
+  bool CreateReferenceSpace();
 
   // ---- Per-frame interface ----
 
@@ -492,11 +491,9 @@ private:
   std::array<XREyeView, 2> GetTrackingAdjustedEyeViews() const;
   void ResetInputActionsState();
   void HandleSessionStateChange(XrSessionState new_state);
-  // Quad pose for the flat panel, in reference space. When head_locked is false (flat mono
-  // panel), the pose is captured lazily from the current head pose and world-locked until
-  // recenter. When head_locked is true (stereoscopic virtual screen), it is recomputed every
-  // frame from the current head pose so the screen always stays in front of the user.
-  XrPosef GetFlatScreenPose(bool head_locked = false) const;
+  // World-locked quad pose for the flat panel, in reference space. Captured lazily from the
+  // current head pose and invalidated on recenter.
+  XrPosef GetFlatScreenPose() const;
   void CaptureStartupDisplayRefreshRateFromExtension();
   void SetStartupDisplayRefreshRate(float refresh_rate_hz, std::string_view source);
 
@@ -504,10 +501,6 @@ private:
   // XR_FB_display_refresh_rate is available; silently ignored otherwise. Rate is clamped
   // to a positive value. Returns true if the request was issued (not necessarily honored).
   bool RequestDisplayRefreshRate(float refresh_rate_hz);
-
-  // Compute the pose that maps the current head pose to the reference-space origin
-  // (yaw-only, upright). Used when recentering so the screen appears in front of the user.
-  XrPosef ComputeRecenterOffset() const;
 
   XrInstance m_instance = XR_NULL_HANDLE;
   XrSystemId m_system_id = XR_NULL_SYSTEM_ID;
@@ -704,8 +697,6 @@ private:
   mutable bool m_home_set{false};
   mutable XrVector3f m_home_position{0.f, 0.f, 0.f};
   std::atomic<bool> m_recenter_requested{false};
-  // Debug: number of frames to log head/screen yaw after a recenter.
-  int m_recenter_debug_frames = 0;
 
   // Flat mono panel state. The quad pose is captured lazily and invalidated on recenter; the
   // composition layer member gives stable storage across the xrEndFrame call that references it.

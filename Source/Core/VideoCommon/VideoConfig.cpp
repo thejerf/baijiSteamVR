@@ -222,7 +222,6 @@ void VideoConfig::Refresh()
   vr_screen_size = std::clamp(Config::Get(Config::GFX_VR_SCREEN_SIZE),
                               Config::GFX_VR_SCREEN_SIZE_MIN,
                               Config::GFX_VR_SCREEN_SIZE_MAX);
-  vr_screen_yaw_offset = Config::Get(Config::GFX_VR_SCREEN_YAW_OFFSET);
   vr_head_locked_curvature = std::clamp(Config::Get(Config::GFX_VR_HEAD_LOCKED_CURVATURE),
                                         Config::GFX_VR_HEAD_LOCKED_CURVATURE_MIN,
                                         Config::GFX_VR_HEAD_LOCKED_CURVATURE_MAX);
