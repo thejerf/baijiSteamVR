@@ -201,7 +201,10 @@ bool VideoBackend::Initialize(const WindowSystemInfo& wsi)
 
   // Create Vulkan instance, needed before we can create a surface, or enumerate devices.
   // We use this instance to fill in backend info, then re-use it for the actual device.
-  bool enable_surface = wsi.type != WindowSystemType::Headless;
+  // In VR mode the output goes to OpenXR swapchains, not a desktop window, so we can run
+  // headless. This avoids crashes in compositor WSI layers (e.g. Gamescope) that intercept
+  // Xlib/Xcb surface creation inside their own session.
+  bool enable_surface = wsi.type != WindowSystemType::Headless && !g_Config.VRSessionActive();
   bool enable_debug_utils = ShouldEnableDebugUtils(enable_validation_layer);
   u32 vk_api_version = 0;
   VkInstance instance = VK_NULL_HANDLE;

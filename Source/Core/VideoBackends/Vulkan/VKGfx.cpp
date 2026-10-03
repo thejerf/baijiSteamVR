@@ -327,6 +327,10 @@ bool VKGfx::BindBackbuffer(const ClearColor& clear_color)
 
   g_command_buffer_mgr->WaitForWorkerThreadIdle();
 
+  // Headless contexts (e.g. Vulkan VR with no desktop surface) have no swap chain.
+  if (!m_swap_chain)
+    return false;
+
   // Handle host window resizes.
   CheckForSurfaceChange();
   CheckForSurfaceResize();
@@ -415,7 +419,7 @@ void VKGfx::PresentBackbuffer()
   // End drawing to backbuffer
   StateTracker::GetInstance()->EndRenderPass();
 
-  if (m_swap_chain->IsCurrentImageValid())
+  if (m_swap_chain && m_swap_chain->IsCurrentImageValid())
   {
     // Transition the backbuffer to PRESENT_SRC to ensure all commands drawing
     // to it have finished before present.
@@ -440,7 +444,7 @@ void VKGfx::PresentBackbuffer()
 
 void VKGfx::SetFullscreen(bool enable_fullscreen)
 {
-  if (!m_swap_chain->IsFullscreenSupported())
+  if (!m_swap_chain || !m_swap_chain->IsFullscreenSupported())
     return;
 
   m_swap_chain->SetNextFullscreenState(enable_fullscreen);
