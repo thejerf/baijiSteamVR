@@ -2696,6 +2696,13 @@ bool OpenXRManager::EndFrameDetached(XrTime display_time,
   return true;
 }
 
+static float QuaternionYawDegrees(const XrQuaternionf& q)
+{
+  const float yaw =
+      std::atan2(2.f * (q.x * q.z + q.w * q.y), 1.f - 2.f * (q.x * q.x + q.y * q.y));
+  return yaw * 180.f / 3.14159265358979323846f;
+}
+
 bool OpenXRManager::LocateViews()
 {
   // Runs on the video/emu thread. With the pacing thread active, m_frame_state belongs
@@ -2779,8 +2786,10 @@ bool OpenXRManager::LocateViews()
     m_home_set = true;
     // Re-place the flat panel in front of the newly recentered head pose.
     m_flat_screen_pose_valid = false;
-    INFO_LOG_FMT(OPENXR, "OpenXR: Recentered home position to ({:.4f},{:.4f},{:.4f})",
-                 m_home_position.x, m_home_position.y, m_home_position.z);
+    const float head_yaw = QuaternionYawDegrees(m_eye_views[0].pose.orientation);
+    INFO_LOG_FMT(OPENXR,
+                 "OpenXR: Recentered home position to ({:.4f},{:.4f},{:.4f}) head_yaw={:.2f}deg.",
+                 m_home_position.x, m_home_position.y, m_home_position.z, head_yaw);
   }
 
   return true;
@@ -2817,9 +2826,27 @@ XrPosef OpenXRManager::GetFlatScreenPose() const
   pose.orientation = {0.f, std::sin(yaw * 0.5f), 0.f, std::cos(yaw * 0.5f)};
   pose.position = {center.x - std::sin(yaw) * distance, center.y,
                    center.z - std::cos(yaw) * distance};
+
+  static int s_flat_screen_log_count = 0;
+  if (s_flat_screen_log_count < 10)
+  {
+    ++s_flat_screen_log_count;
+    const float head_yaw_deg = QuaternionYawDegrees(q);
+    const float screen_yaw_deg = yaw * 180.f / 3.14159265358979323846f;
+    const float dx = pose.position.x - center.x;
+    const float dz = pose.position.z - center.z;
+    const float screen_dir_yaw_deg = std::atan2(dx, -dz) * 180.f / 3.14159265358979323846f;
+    INFO_LOG_FMT(OPENXR,
+                 "OpenXR: FlatScreenPose head_yaw={:.2f}deg screen_yaw={:.2f}deg "
+                 "screen_dir_yaw={:.2f}deg head_center=({:.3f},{:.3f},{:.3f}) "
+                 "screen_pos=({:.3f},{:.3f},{:.3f}).",
+                 head_yaw_deg, screen_yaw_deg, screen_dir_yaw_deg, center.x, center.y, center.z,
+                 pose.position.x, pose.position.y, pose.position.z);
+  }
+
   m_flat_screen_pose = pose;
   m_flat_screen_pose_valid = true;
-  return m_flat_screen_pose;
+  return pose;
 }
 
 bool OpenXRManager::SubmitFlatQuadFrame(XrSwapchain swapchain, uint32_t width, uint32_t height)
