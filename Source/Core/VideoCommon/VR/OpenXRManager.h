@@ -186,7 +186,8 @@ public:
   void DestroySession();
 
   // Step 4: Create the local reference space used for head tracking.
-  bool CreateReferenceSpace();
+  bool CreateReferenceSpace(const XrPosef& base_pose_in_ref_space = {{0.f, 0.f, 0.f, 1.f},
+                                                                      {0.f, 0.f, 0.f}});
 
   // ---- Per-frame interface ----
 
@@ -503,6 +504,10 @@ private:
   // XR_FB_display_refresh_rate is available; silently ignored otherwise. Rate is clamped
   // to a positive value. Returns true if the request was issued (not necessarily honored).
   bool RequestDisplayRefreshRate(float refresh_rate_hz);
+
+  // Compute the pose that maps the current head pose to the reference-space origin
+  // (yaw-only, upright). Used when recentering so the screen appears in front of the user.
+  XrPosef ComputeRecenterOffset() const;
 
   XrInstance m_instance = XR_NULL_HANDLE;
   XrSystemId m_system_id = XR_NULL_SYSTEM_ID;

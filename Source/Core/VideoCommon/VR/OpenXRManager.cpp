@@ -1485,6 +1485,32 @@ void OpenXRManager::SetStartupDisplayRefreshRate(float refresh_rate_hz, std::str
   Config::OnConfigChanged();
 }
 
+XrPosef OpenXRManager::ComputeRecenterOffset() const
+{
+  const XrVector3f& p0 = m_eye_views[0].pose.position;
+  const XrVector3f& p1 = m_eye_views[1].pose.position;
+  const XrVector3f center{0.5f * (p0.x + p1.x), 0.5f * (p0.y + p1.y), 0.5f * (p0.z + p1.z)};
+
+  // Yaw-only: keep the screen upright by ignoring pitch/roll.
+  const XrQuaternionf& q = m_eye_views[0].pose.orientation;
+  const float yaw =
+      std::atan2(2.f * (q.x * q.z + q.w * q.y), 1.f - 2.f * (q.x * q.x + q.y * q.y));
+  const float half_neg_yaw = -yaw * 0.5f;
+
+  XrPosef offset{};
+  offset.orientation = {0.f, std::sin(half_neg_yaw), 0.f, std::cos(half_neg_yaw)};
+
+  // offset.position = -rotate(center, offset.orientation)
+  // rotate by -yaw around Y: x' = x*cos(yaw) + z*sin(yaw), z' = -x*sin(yaw) + z*cos(yaw)
+  const float c = std::cos(yaw);
+  const float s = std::sin(yaw);
+  const float rx = center.x * c + center.z * s;
+  const float rz = -center.x * s + center.z * c;
+  offset.position = {-rx, -center.y, -rz};
+
+  return offset;
+}
+
 bool OpenXRManager::RequestDisplayRefreshRate(float refresh_rate_hz)
 {
   if (m_session == XR_NULL_HANDLE || m_xrRequestDisplayRefreshRateFB == nullptr)
@@ -2273,16 +2299,15 @@ void OpenXRManager::UpdateInputActions()
   UpdateHaptics();
 }
 
-bool OpenXRManager::CreateReferenceSpace()
+bool OpenXRManager::CreateReferenceSpace(const XrPosef& base_pose_in_ref_space)
 {
   XrReferenceSpaceCreateInfo space_info{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
-  // Identity pose: origin at (0,0,0), no rotation.
-  space_info.poseInReferenceSpace = {{0.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f}};
+  space_info.poseInReferenceSpace = base_pose_in_ref_space;
 
   const OpenXRReferenceSpaceMode reference_space_mode = g_ActiveConfig.vr_reference_space_mode;
   const XrReferenceSpaceType requested_type =
       reference_space_mode == OpenXRReferenceSpaceMode::Local ? XR_REFERENCE_SPACE_TYPE_LOCAL :
-                                                                XR_REFERENCE_SPACE_TYPE_STAGE;
+                                                                 XR_REFERENCE_SPACE_TYPE_STAGE;
 
   space_info.referenceSpaceType = requested_type;
   XrResult result = xrCreateReferenceSpace(m_session, &space_info, &m_reference_space);
@@ -2773,14 +2798,21 @@ bool OpenXRManager::LocateViews()
 
   if (m_recenter_requested.exchange(false, std::memory_order_acq_rel) && view_count >= 2)
   {
-    m_home_position.x = 0.5f * (m_eye_views[0].pose.position.x + m_eye_views[1].pose.position.x);
-    m_home_position.y = 0.5f * (m_eye_views[0].pose.position.y + m_eye_views[1].pose.position.y);
-    m_home_position.z = 0.5f * (m_eye_views[0].pose.position.z + m_eye_views[1].pose.position.z);
-    m_home_set = true;
-    // Re-place the flat panel in front of the newly recentered head pose.
-    m_flat_screen_pose_valid = false;
-    INFO_LOG_FMT(OPENXR, "OpenXR: Recentered home position to ({:.4f},{:.4f},{:.4f})",
-                 m_home_position.x, m_home_position.y, m_home_position.z);
+    // Reorient the reference space so the user's current head yaw becomes the new forward
+    // direction. This makes the flat panel appear in front of them after recentering.
+    const XrPosef recenter_offset = ComputeRecenterOffset();
+    if (CreateReferenceSpace(recenter_offset))
+    {
+      m_home_set = true;
+      m_flat_screen_pose_valid = false;
+      INFO_LOG_FMT(OPENXR,
+                   "OpenXR: Recentered reference space; home at ({:.4f},{:.4f},{:.4f}).",
+                   m_home_position.x, m_home_position.y, m_home_position.z);
+    }
+    else
+    {
+      WARN_LOG_FMT(OPENXR, "OpenXR: Recenter reference-space recreation failed.");
+    }
   }
 
   return true;
@@ -2870,11 +2902,7 @@ bool OpenXRManager::SubmitStereoQuadFrame(std::array<XrSwapchain, 2> swapchains,
   const float height_m = g_ActiveConfig.vr_screen_size;
   const float aspect =
       m_flat_screen_aspect > 0.f ? m_flat_screen_aspect : static_cast<float>(width) / height;
-  // Stereoscopic virtual screen: keep the panel head-locked so it always stays in front of
-  // the user's current gaze. This avoids the world-locked initial-placement/recenter issues
-  // that are acceptable for a mono cinema panel but confusing for a 3D game screen.
-  const bool head_locked = g_ActiveConfig.vr_stereo_screen;
-  const XrPosef pose = GetFlatScreenPose(head_locked);
+  const XrPosef pose = GetFlatScreenPose();
 
   std::array<XrCompositionLayerQuad, 2> quad_layers{};
   for (uint32_t eye = 0; eye < 2; ++eye)
