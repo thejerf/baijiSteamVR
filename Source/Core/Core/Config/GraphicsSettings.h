@@ -212,6 +212,7 @@ extern const Info<OpenXRReferenceSpaceMode> GFX_VR_REFERENCE_SPACE_MODE;
 extern const Info<OpenXRTrackingMode> GFX_VR_TRACKING_MODE;
 extern const Info<bool> GFX_VR_USE_OPENXR_PLAY_SPACE_CENTER;
 extern const Info<int> GFX_VR_FORCED_VBI_FREQUENCY;
+extern const Info<int> GFX_VR_REQUESTED_REFRESH_RATE;
 // Dedicated XR frame-pacing thread: owns xrWaitFrame/xrBeginFrame/xrEndFrame and
 // re-submits the last frame at HMD cadence when the game runs slower (replaces the
 // legacy Opcode Replay). INI-only escape hatch; disable to fall back to the inline
@@ -280,6 +281,11 @@ static constexpr int GFX_VR_FORCED_VBI_FREQUENCY_OFF = 0;
 static constexpr int GFX_VR_FORCED_VBI_FREQUENCY_72 = 72;
 static constexpr int GFX_VR_FORCED_VBI_FREQUENCY_90 = 90;
 static constexpr int GFX_VR_FORCED_VBI_FREQUENCY_120 = 120;
+static constexpr int GFX_VR_REQUESTED_REFRESH_RATE_AUTO = 0;
+static constexpr int GFX_VR_REQUESTED_REFRESH_RATE_60 = 60;
+static constexpr int GFX_VR_REQUESTED_REFRESH_RATE_72 = 72;
+static constexpr int GFX_VR_REQUESTED_REFRESH_RATE_90 = 90;
+static constexpr int GFX_VR_REQUESTED_REFRESH_RATE_120 = 120;
 static constexpr float GFX_VR_HUD_THICKNESS_MIN = 0.0f;
 static constexpr float GFX_VR_HUD_THICKNESS_MAX = 1.0f;
 static constexpr float GFX_VR_HUD_THICKNESS_STEP = 0.02f;

@@ -239,6 +239,9 @@ constexpr bool DEFAULT_IMMEDIATE_XFB = false;
 #endif
 
 const Info<int> GFX_VR_FORCED_VBI_FREQUENCY{{System::GFX, "VR", "ForcedVBIFrequency"}, 0};
+// Request a specific display refresh rate from the OpenXR runtime (Hz). 0 means no request
+// (use the runtime's default). The runtime may clamp to the nearest available rate.
+const Info<int> GFX_VR_REQUESTED_REFRESH_RATE{{System::GFX, "VR", "RequestedRefreshRate"}, 0};
 const Info<bool> GFX_VR_AUTO_VBI_FROM_HMD{{System::GFX, "VR", "AutoVBIFromHMD"}, false};
 const Info<bool> GFX_VR_EXACT_SCREEN_DEPTH{{System::GFX, "VR", "ExactScreenDepth"}, true};
 const Info<bool> GFX_VR_AUTO_NATIVE_EFB_EFFECTS{{System::GFX, "VR", "AutoNativeEfbEffects"},

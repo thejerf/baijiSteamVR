@@ -609,7 +609,19 @@ bool OpenXRManager::CreateInstance(const std::vector<const char*>& extra_extensi
       m_xrGetDisplayRefreshRateFB = nullptr;
     }
 
-    else
+    refresh_rate_result =
+        xrGetInstanceProcAddr(m_instance, "xrRequestDisplayRefreshRateFB",
+                              reinterpret_cast<PFN_xrVoidFunction*>(&m_xrRequestDisplayRefreshRateFB));
+    if (XR_FAILED(refresh_rate_result) || m_xrRequestDisplayRefreshRateFB == nullptr)
+    {
+      WARN_LOG_FMT(OPENXR,
+                   "OpenXR: XR_FB_display_refresh_rate enabled but "
+                   "xrRequestDisplayRefreshRateFB could not be loaded ({}).",
+                   static_cast<int>(refresh_rate_result));
+      m_xrRequestDisplayRefreshRateFB = nullptr;
+    }
+
+    if (m_xrGetDisplayRefreshRateFB != nullptr)
     {
       INFO_LOG_FMT(OPENXR, "OpenXR: XR_FB_display_refresh_rate enabled.");
     }
@@ -1471,6 +1483,24 @@ void OpenXRManager::SetStartupDisplayRefreshRate(float refresh_rate_hz, std::str
   INFO_LOG_FMT(OPENXR, "OpenXR: Startup display refresh rate is {:.2f} Hz from {}.",
                m_startup_display_refresh_rate_hz, source);
   Config::OnConfigChanged();
+}
+
+bool OpenXRManager::RequestDisplayRefreshRate(float refresh_rate_hz)
+{
+  if (m_session == XR_NULL_HANDLE || m_xrRequestDisplayRefreshRateFB == nullptr)
+    return false;
+
+  refresh_rate_hz = std::max(refresh_rate_hz, 1.0f);
+  const XrResult result = m_xrRequestDisplayRefreshRateFB(m_session, refresh_rate_hz);
+  if (XR_FAILED(result))
+  {
+    WARN_LOG_FMT(OPENXR, "OpenXR: xrRequestDisplayRefreshRateFB({:.2f} Hz) failed ({}).",
+                 refresh_rate_hz, static_cast<int>(result));
+    return false;
+  }
+
+  INFO_LOG_FMT(OPENXR, "OpenXR: Requested display refresh rate {:.2f} Hz.", refresh_rate_hz);
+  return true;
 }
 
 bool OpenXRManager::InitializeInputActions()
@@ -2341,6 +2371,10 @@ void OpenXRManager::HandleSessionStateChange(XrSessionState new_state)
     {
       m_session_running = true;
       INFO_LOG_FMT(OPENXR, "OpenXR: Session running.");
+      if (g_ActiveConfig.vr_requested_refresh_rate > 0)
+      {
+        RequestDisplayRefreshRate(static_cast<float>(g_ActiveConfig.vr_requested_refresh_rate));
+      }
 #if defined(ANDROID)
       // Quest 3/3S expose the extra sustained CPU level through the manifest
       // CPU-for-GPU trade hint. Request sustained high when the session starts,

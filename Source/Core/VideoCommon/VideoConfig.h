@@ -397,6 +397,7 @@ float vr_screen_distance = 1.5f;
   bool vr_use_openxr_play_space_center = false;
   bool vr_use_xr_pacing_thread = true;  // Dedicated xrWaitFrame/Begin/EndFrame thread + heartbeat
   bool vr_eager_heartbeat = false;  // Fill every HMD slot (standalone) vs pace to game (PC SSW/ASW)
+  int vr_requested_refresh_rate = 0;  // Hz; 0 means no request to the OpenXR runtime
   bool vr_remove_bars = true;       // Expand scissor/viewport to remove cinematic letterbox bars
   bool vr_frame_size_from_xfb = true;  // Frame size from the XFB copy rect (off = legacy clears)
   bool vr_panes_on_screen = true;   // Route sub-screen 3D viewports (menu panes) to the screen

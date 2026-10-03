@@ -470,8 +470,17 @@ void VRConfigWidget::CreateWidgets()
                                Config::GFX_VR_FORCED_VBI_FREQUENCY, layer, m_global_layer.get()));
   framerate_layout->addWidget(new QLabel(tr("Forced VBI Frequency:")), 0, 0);
   framerate_layout->addWidget(forced_vbi, 0, 1);
+  auto* requested_refresh_rate = mark_default(new ConfigChoiceMap<int>(
+      {{tr("Auto"), Config::GFX_VR_REQUESTED_REFRESH_RATE_AUTO},
+       {tr("60 Hz"), Config::GFX_VR_REQUESTED_REFRESH_RATE_60},
+       {tr("72 Hz"), Config::GFX_VR_REQUESTED_REFRESH_RATE_72},
+       {tr("90 Hz"), Config::GFX_VR_REQUESTED_REFRESH_RATE_90},
+       {tr("120 Hz"), Config::GFX_VR_REQUESTED_REFRESH_RATE_120}},
+      Config::GFX_VR_REQUESTED_REFRESH_RATE, layer, m_global_layer.get()));
+  framerate_layout->addWidget(new QLabel(tr("Requested Refresh Rate:")), 1, 0);
+  framerate_layout->addWidget(requested_refresh_rate, 1, 1);
   framerate_layout->addWidget(
-      make_bool(tr("Eager Frame Heartbeat"), Config::GFX_VR_EAGER_HEARTBEAT), 1, 0, 1, 2);
+      make_bool(tr("Eager Frame Heartbeat"), Config::GFX_VR_EAGER_HEARTBEAT), 2, 0, 1, 2);
 
   auto* shaders_group = new QGroupBox(tr("Shaders"));
   auto* shaders_layout = new QVBoxLayout(shaders_group);

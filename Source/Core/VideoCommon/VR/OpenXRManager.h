@@ -497,6 +497,11 @@ private:
   void CaptureStartupDisplayRefreshRateFromExtension();
   void SetStartupDisplayRefreshRate(float refresh_rate_hz, std::string_view source);
 
+  // Request a specific display refresh rate from the OpenXR runtime. Only supported when
+  // XR_FB_display_refresh_rate is available; silently ignored otherwise. Rate is clamped
+  // to a positive value. Returns true if the request was issued (not necessarily honored).
+  bool RequestDisplayRefreshRate(float refresh_rate_hz);
+
   XrInstance m_instance = XR_NULL_HANDLE;
   XrSystemId m_system_id = XR_NULL_SYSTEM_ID;
   XrSession m_session = XR_NULL_HANDLE;
@@ -515,6 +520,7 @@ private:
   mutable std::optional<bool> m_quest_or_vd_runtime;
   uint32_t m_system_vendor_id = 0;
   PFN_xrGetDisplayRefreshRateFB m_xrGetDisplayRefreshRateFB = nullptr;
+  PFN_xrRequestDisplayRefreshRateFB m_xrRequestDisplayRefreshRateFB = nullptr;
 
   // XR_FB_foveation entry points (null when the extension is unavailable).
   PFN_xrCreateFoveationProfileFB m_xrCreateFoveationProfileFB = nullptr;

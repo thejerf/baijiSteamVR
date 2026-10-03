@@ -70,6 +70,7 @@ private:
   ConfigBool* m_layered_palette_conversion_path = nullptr;
   ConfigChoiceMap<OpenXRMirrorView>* m_mirror_view = nullptr;
   ConfigChoiceMap<int>* m_forced_vbi_frequency = nullptr;
+  ConfigChoiceMap<int>* m_requested_refresh_rate = nullptr;
   ConfigSlider* m_clear_efb_slider = nullptr;
   QLabel* m_clear_efb_value = nullptr;
   ConfigBool* m_remove_bars = nullptr;

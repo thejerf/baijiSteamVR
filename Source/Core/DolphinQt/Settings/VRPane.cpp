@@ -301,6 +301,16 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
   connect(m_forced_vbi_frequency, &QComboBox::currentIndexChanged, this,
           [](int) { Config::SetBaseOrCurrent(Config::GFX_VR_AUTO_VBI_FROM_HMD, false); });
 
+  m_requested_refresh_rate = new ConfigChoiceMap<int>(
+      {{tr("Auto"), Config::GFX_VR_REQUESTED_REFRESH_RATE_AUTO},
+       {tr("60 Hz"), Config::GFX_VR_REQUESTED_REFRESH_RATE_60},
+       {tr("72 Hz"), Config::GFX_VR_REQUESTED_REFRESH_RATE_72},
+       {tr("90 Hz"), Config::GFX_VR_REQUESTED_REFRESH_RATE_90},
+       {tr("120 Hz"), Config::GFX_VR_REQUESTED_REFRESH_RATE_120}},
+      Config::GFX_VR_REQUESTED_REFRESH_RATE);
+  framerate_layout->addWidget(new QLabel(tr("Requested Refresh Rate:")), 3, 0);
+  framerate_layout->addWidget(m_requested_refresh_rate, 3, 1, 1, 2);
+
   m_eager_heartbeat =
       new ConfigBool(tr("Eager Frame Heartbeat"), Config::GFX_VR_EAGER_HEARTBEAT);
   m_eager_heartbeat->setToolTip(
@@ -672,6 +682,14 @@ void VRPane::AddDescriptions()
       "<br><br>Uses the Screen Distance and Screen Size settings below. This setting cannot be "
       "changed while emulation is active."
       "<br><br><dolphin_emphasis>If unsure, leave this unchecked.</dolphin_emphasis>");
+  static constexpr char TR_REQUESTED_REFRESH_RATE_DESCRIPTION[] = QT_TR_NOOP(
+      "Requests a specific display refresh rate from the OpenXR runtime."
+      "<br><br>Auto leaves the runtime's default unchanged. Selecting a rate that matches the "
+      "game's frame rate (e.g. 60 Hz for most Wii games, or 120 Hz to show each 60 fps frame "
+      "twice) can reduce judder compared to running a 60 fps game on a 72 Hz display."
+      "<br><br>The runtime may clamp the request to the nearest supported rate. This setting "
+      "requires restarting emulation."
+      "<br><br><dolphin_emphasis>If unsure, use Auto.</dolphin_emphasis>");
   static constexpr char TR_USE_VULKAN_MULTIVIEW_DESCRIPTION[] = QT_TR_NOOP(
       "Uses Vulkan multiview for OpenXR stereo rendering when the GPU and runtime support it."
       "<br><br>This renders both eyes through a multiview render pass instead of using "
@@ -862,6 +880,7 @@ void VRPane::AddDescriptions()
   m_disable_cpu_cull->SetDescription(tr(TR_DISABLE_CPU_CULL_DESCRIPTION));
   m_mirror_view->SetDescription(tr(TR_MIRROR_VIEW_DESCRIPTION));
   m_forced_vbi_frequency->SetDescription(tr(TR_FORCED_VBI_FREQUENCY_DESCRIPTION));
+  m_requested_refresh_rate->SetDescription(tr(TR_REQUESTED_REFRESH_RATE_DESCRIPTION));
   m_clear_efb_slider->SetDescription(tr(TR_CLEAR_EFB_COPIES_DESCRIPTION));
   m_remove_bars->SetDescription(tr(TR_REMOVE_BARS_DESCRIPTION));
   m_ortho_scissor_fix->SetDescription(tr(TR_ORTHO_SCISSOR_FIX_DESCRIPTION));
@@ -886,6 +905,7 @@ void VRPane::OnEmulationStateChanged(Core::State state)
   m_enable_openxr->setEnabled(!running);
   m_flat_screen->setEnabled(!running);
   m_stereo_screen->setEnabled(!running);
+  m_requested_refresh_rate->setEnabled(!running);
   m_reference_space_mode->setEnabled(!running);
   m_use_vulkan_multiview->setEnabled(!running);
 }
