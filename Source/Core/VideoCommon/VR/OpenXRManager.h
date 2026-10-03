@@ -704,6 +704,8 @@ private:
   mutable bool m_home_set{false};
   mutable XrVector3f m_home_position{0.f, 0.f, 0.f};
   std::atomic<bool> m_recenter_requested{false};
+  // Debug: number of frames to log head/screen yaw after a recenter.
+  int m_recenter_debug_frames = 0;
 
   // Flat mono panel state. The quad pose is captured lazily and invalidated on recenter; the
   // composition layer member gives stable storage across the xrEndFrame call that references it.

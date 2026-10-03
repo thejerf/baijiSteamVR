@@ -1485,6 +1485,13 @@ void OpenXRManager::SetStartupDisplayRefreshRate(float refresh_rate_hz, std::str
   Config::OnConfigChanged();
 }
 
+static float QuaternionYawDegrees(const XrQuaternionf& q)
+{
+  const float yaw =
+      std::atan2(2.f * (q.x * q.z + q.w * q.y), 1.f - 2.f * (q.x * q.x + q.y * q.y));
+  return yaw * 180.f / 3.14159265358979323846f;
+}
+
 XrPosef OpenXRManager::ComputeRecenterOffset() const
 {
   const XrVector3f& p0 = m_eye_views[0].pose.position;
@@ -1493,8 +1500,8 @@ XrPosef OpenXRManager::ComputeRecenterOffset() const
 
   // Yaw-only: keep the screen upright by ignoring pitch/roll.
   const XrQuaternionf& q = m_eye_views[0].pose.orientation;
-  const float yaw =
-      std::atan2(2.f * (q.x * q.z + q.w * q.y), 1.f - 2.f * (q.x * q.x + q.y * q.y));
+  const float yaw_deg = QuaternionYawDegrees(q);
+  const float yaw = yaw_deg * 3.14159265358979323846f / 180.f;
   const float half_yaw = yaw * 0.5f;
 
   // The new reference space's origin is at the current head center and rotated by the current
@@ -1502,6 +1509,11 @@ XrPosef OpenXRManager::ComputeRecenterOffset() const
   XrPosef offset{};
   offset.orientation = {0.f, std::sin(half_yaw), 0.f, std::cos(half_yaw)};
   offset.position = center;
+
+  INFO_LOG_FMT(OPENXR,
+               "OpenXR: ComputeRecenterOffset head_center=({:.3f},{:.3f},{:.3f}) "
+               "head_yaw={:.2f}deg offset_yaw={:.2f}deg.",
+               center.x, center.y, center.z, yaw_deg, yaw_deg);
   return offset;
 }
 
@@ -2794,19 +2806,42 @@ bool OpenXRManager::LocateViews()
   {
     // Reorient the reference space so the user's current head yaw becomes the new forward
     // direction. This makes the flat panel appear in front of them after recentering.
+    const float pre_yaw = QuaternionYawDegrees(m_eye_views[0].pose.orientation);
     const XrPosef recenter_offset = ComputeRecenterOffset();
+    const float offset_yaw = QuaternionYawDegrees(recenter_offset.orientation);
     if (CreateReferenceSpace(recenter_offset))
     {
       m_home_set = true;
       m_flat_screen_pose_valid = false;
+      m_recenter_debug_frames = 5;
       INFO_LOG_FMT(OPENXR,
-                   "OpenXR: Recentered reference space; home at ({:.4f},{:.4f},{:.4f}).",
-                   m_home_position.x, m_home_position.y, m_home_position.z);
+                   "OpenXR: Recentered reference space; pre_recenter_head_yaw={:.2f}deg "
+                   "offset_yaw={:.2f}deg home=({:.3f},{:.3f},{:.3f}).",
+                   pre_yaw, offset_yaw, m_home_position.x, m_home_position.y, m_home_position.z);
     }
     else
     {
       WARN_LOG_FMT(OPENXR, "OpenXR: Recenter reference-space recreation failed.");
     }
+  }
+
+  if (m_recenter_debug_frames > 0 && view_count >= 2)
+  {
+    --m_recenter_debug_frames;
+    const float head_yaw = QuaternionYawDegrees(m_eye_views[0].pose.orientation);
+    const XrVector3f& p0 = m_eye_views[0].pose.position;
+    const XrVector3f& p1 = m_eye_views[1].pose.position;
+    const XrVector3f center{0.5f * (p0.x + p1.x), 0.5f * (p0.y + p1.y), 0.5f * (p0.z + p1.z)};
+    const XrPosef screen_pose = GetFlatScreenPose();
+    const float screen_yaw = QuaternionYawDegrees(screen_pose.orientation);
+    const float dx = screen_pose.position.x - center.x;
+    const float dz = screen_pose.position.z - center.z;
+    const float screen_dir_yaw = std::atan2(dx, -dz) * 180.f / 3.14159265358979323846f;
+    INFO_LOG_FMT(OPENXR,
+                 "OpenXR: PostRecenter head_yaw={:.2f}deg head_center=({:.3f},{:.3f},{:.3f}) "
+                 "screen_yaw={:.2f}deg screen_dir_yaw={:.2f}deg screen_pos=({:.3f},{:.3f},{:.3f}).",
+                 head_yaw, center.x, center.y, center.z, screen_yaw, screen_dir_yaw,
+                 screen_pose.position.x, screen_pose.position.y, screen_pose.position.z);
   }
 
   return true;
