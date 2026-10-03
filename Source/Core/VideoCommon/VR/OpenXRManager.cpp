@@ -274,27 +274,6 @@ static XrQuaternionf MultiplyQuaternions(const XrQuaternionf& a, const XrQuatern
           a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z};
 }
 
-static XrVector3f RotateVectorByQuaternion(const XrVector3f& v, const XrQuaternionf& q)
-{
-  // t = 2 * cross(q.xyz, v)
-  const XrVector3f t{2.f * (q.y * v.z - q.z * v.y), 2.f * (q.z * v.x - q.x * v.z),
-                     2.f * (q.x * v.y - q.y * v.x)};
-  // result = v + q.w * t + cross(q.xyz, t)
-  return {v.x + q.w * t.x + q.y * t.z - q.z * t.y,
-          v.y + q.w * t.y + q.z * t.x - q.x * t.z,
-          v.z + q.w * t.z + q.x * t.y - q.y * t.x};
-}
-
-static XrPosef ComposePoses(const XrPosef& parent, const XrPosef& child)
-{
-  XrPosef result;
-  result.orientation = MultiplyQuaternions(parent.orientation, child.orientation);
-  result.position.x = parent.position.x + RotateVectorByQuaternion(child.position, parent.orientation).x;
-  result.position.y = parent.position.y + RotateVectorByQuaternion(child.position, parent.orientation).y;
-  result.position.z = parent.position.z + RotateVectorByQuaternion(child.position, parent.orientation).z;
-  return result;
-}
-
 static void CopyOpenXRName(char* dst, size_t dst_size, std::string_view src)
 {
   std::memset(dst, 0, dst_size);
@@ -1201,7 +1180,6 @@ void OpenXRManager::DestroySession()
   m_logged_interaction_profiles = {XR_NULL_PATH, XR_NULL_PATH};
   m_home_set = false;
   m_home_position = {0.f, 0.f, 0.f};
-  m_recenter_offset = {{0.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f}};
   m_recenter_requested.store(false, std::memory_order_release);
   m_flat_screen_pose_valid = false;
   m_flat_screen_pose = {{0.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f}};
@@ -1524,10 +1502,6 @@ XrPosef OpenXRManager::ComputeRecenterOffset() const
   XrPosef offset{};
   offset.orientation = {0.f, std::sin(half_yaw), 0.f, std::cos(half_yaw)};
   offset.position = center;
-
-  INFO_LOG_FMT(OPENXR,
-               "OpenXR: ComputeRecenterOffset head_center=({:.4f},{:.4f},{:.4f}) yaw={:.3f} deg.",
-               center.x, center.y, center.z, yaw * 180.f / 3.14159265358979323846f);
   return offset;
 }
 
@@ -2820,28 +2794,14 @@ bool OpenXRManager::LocateViews()
   {
     // Reorient the reference space so the user's current head yaw becomes the new forward
     // direction. This makes the flat panel appear in front of them after recentering.
-    // The head pose returned by ComputeRecenterOffset() is expressed in the *current*
-    // reference space. To keep repeated recenters composable, accumulate it onto the offset
-    // relative to the runtime's natural LOCAL reference frame before creating the new space.
-    const XrPosef head_in_current_space = ComputeRecenterOffset();
-    m_recenter_offset = ComposePoses(m_recenter_offset, head_in_current_space);
-    if (CreateReferenceSpace(m_recenter_offset))
+    const XrPosef recenter_offset = ComputeRecenterOffset();
+    if (CreateReferenceSpace(recenter_offset))
     {
       m_home_set = true;
       m_flat_screen_pose_valid = false;
-      const float yaw = std::atan2(2.f * (m_recenter_offset.orientation.x *
-                                              m_recenter_offset.orientation.z +
-                                          m_recenter_offset.orientation.w *
-                                              m_recenter_offset.orientation.y),
-                                   1.f - 2.f * (m_recenter_offset.orientation.x *
-                                                    m_recenter_offset.orientation.x +
-                                                m_recenter_offset.orientation.y *
-                                                    m_recenter_offset.orientation.y));
       INFO_LOG_FMT(OPENXR,
-                   "OpenXR: Recentered reference space; accumulated yaw={:.3f} deg, "
-                   "home=({:.4f},{:.4f},{:.4f}).",
-                   yaw * 180.f / 3.14159265358979323846f, m_home_position.x, m_home_position.y,
-                   m_home_position.z);
+                   "OpenXR: Recentered reference space; home at ({:.4f},{:.4f},{:.4f}).",
+                   m_home_position.x, m_home_position.y, m_home_position.z);
     }
     else
     {

@@ -514,9 +514,6 @@ private:
   XrSession m_session = XR_NULL_HANDLE;
   XrSpace m_reference_space = XR_NULL_HANDLE;
   XrReferenceSpaceType m_reference_space_type = XR_REFERENCE_SPACE_TYPE_LOCAL;
-  // Accumulated pose of the current reference space relative to the runtime's natural LOCAL
-  // reference frame. Used to make repeated recenter operations compose correctly.
-  XrPosef m_recenter_offset = {{0.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f}};
 
   // Non-owning pointer; lifetime managed by the backend (D3DOpenXR).
   IOpenXRSwapchain* m_swapchain = nullptr;
