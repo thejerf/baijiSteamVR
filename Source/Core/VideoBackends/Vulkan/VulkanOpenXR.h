@@ -146,7 +146,12 @@ public:
   // release go through the base defaults; SubmitFlatFrame is overridden to submit the mono blit
   // and advance the Vulkan frame (direct-to-HMD skips PresentBackbuffer()).
   XrSwapchain GetFlatSwapchain() const override { return m_eye_swapchains[0].swapchain; }
+  XrSwapchain GetEyeSwapchainHandle(uint32_t eye) const override
+  {
+    return m_use_layered_swapchain ? m_layered_swapchain.swapchain : m_eye_swapchains[eye].swapchain;
+  }
   bool SubmitFlatFrame() override;
+  bool SubmitStereoFlatFrame() override;
 
 private:
   struct PendingXRFrame

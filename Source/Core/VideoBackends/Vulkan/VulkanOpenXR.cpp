@@ -1730,6 +1730,42 @@ bool VulkanOpenXR::SubmitFlatFrame()
                                            m_eye_swapchains[0].width, m_eye_swapchains[0].height);
 }
 
+bool VulkanOpenXR::SubmitStereoFlatFrame()
+{
+  ASSERT(VR::g_openxr != nullptr);
+
+#if defined(ANDROID)
+  // On Android the per-eye ReleaseEyeTexture only ends the render pass; the command-buffer
+  // submit and xrReleaseSwapchainImage are deferred to submit time. Release both eye images
+  // synchronously here, then submit the stereoscopic quad layers.
+  for (uint32_t eye = 0; eye < 2; ++eye)
+  {
+    if (m_image_acquired[eye])
+    {
+      StateTracker::GetInstance()->EndRenderPass();
+      g_command_buffer_mgr->SubmitCommandBuffer(false, false, true);
+      StateTracker::GetInstance()->InvalidateCachedState();
+
+      XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+      XrResult result = XR_SUCCESS;
+      {
+        auto queue_lock = AcquireGraphicsQueueLock();
+        result = xrReleaseSwapchainImage(m_eye_swapchains[eye].swapchain, &release_info);
+      }
+      if (XR_FAILED(result))
+      {
+        WARN_LOG_FMT(VIDEO, "OpenXR: xrReleaseSwapchainImage failed for stereo screen eye {} ({}).",
+                     eye, static_cast<int>(result));
+      }
+      m_image_acquired[eye] = false;
+    }
+  }
+#endif
+
+  return VR::g_openxr->SubmitStereoQuadFrame({m_eye_swapchains[0].swapchain, m_eye_swapchains[1].swapchain},
+                                             m_eye_swapchains[0].width, m_eye_swapchains[0].height);
+}
+
 }  // namespace Vulkan
 
 #endif  // ENABLE_VR

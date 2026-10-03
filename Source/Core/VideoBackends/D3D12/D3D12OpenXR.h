@@ -110,6 +110,10 @@ public:
 
   // Flat mono panel path reuses eye swapchain #0; the base class handles acquire/release/submit.
   XrSwapchain GetFlatSwapchain() const override { return m_eye_swapchains[0].swapchain; }
+  XrSwapchain GetEyeSwapchainHandle(uint32_t eye) const override
+  {
+    return m_use_layered_swapchain ? m_layered_swapchain.swapchain : m_eye_swapchains[eye].swapchain;
+  }
 
   const XREyeSwapchain& GetEyeSwapchain(uint32_t eye) const { return m_eye_swapchains[eye]; }
 

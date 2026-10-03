@@ -1201,7 +1201,20 @@ void OpenXRManager::PublishQuadFrame(const XrCompositionLayerQuad& quad)
 {
   std::lock_guard<std::mutex> lock(m_publish_mutex);
   m_published_frame.is_quad = true;
+  m_published_frame.is_stereo_quad = false;
   m_published_frame.quad = quad;
+  m_published_frame.stereo_quad_count = 0;
+  m_publish_serial++;
+  m_publish_cv.notify_all();
+}
+
+void OpenXRManager::PublishStereoQuadFrame(const std::array<XrCompositionLayerQuad, 2>& quads)
+{
+  std::lock_guard<std::mutex> lock(m_publish_mutex);
+  m_published_frame.is_quad = false;
+  m_published_frame.is_stereo_quad = true;
+  m_published_frame.stereo_quads = quads;
+  m_published_frame.stereo_quad_count = static_cast<uint32_t>(quads.size());
   m_publish_serial++;
   m_publish_cv.notify_all();
 }
@@ -1371,6 +1384,14 @@ void OpenXRManager::FrameThreadLoop()
       if (last_frame.is_quad)
       {
         layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&last_frame.quad));
+      }
+      else if (last_frame.is_stereo_quad)
+      {
+        for (uint32_t i = 0; i < last_frame.stereo_quad_count; ++i)
+        {
+          layers.push_back(
+              reinterpret_cast<XrCompositionLayerBaseHeader*>(&last_frame.stereo_quads[i]));
+        }
       }
       else
       {
@@ -2794,11 +2815,62 @@ bool OpenXRManager::SubmitFlatQuadFrame(XrSwapchain swapchain, uint32_t width, u
   return EndFrame(layers);
 }
 
+bool OpenXRManager::SubmitStereoQuadFrame(std::array<XrSwapchain, 2> swapchains, uint32_t width,
+                                          uint32_t height)
+{
+  if (swapchains[0] == XR_NULL_HANDLE || swapchains[1] == XR_NULL_HANDLE || width == 0 ||
+      height == 0)
+  {
+    return IsFrameThreadActive() ? true : EndFrame({});
+  }
+
+  const float height_m = g_ActiveConfig.vr_screen_size;
+  const float aspect =
+      m_flat_screen_aspect > 0.f ? m_flat_screen_aspect : static_cast<float>(width) / height;
+  const XrPosef pose = GetFlatScreenPose();
+
+  std::array<XrCompositionLayerQuad, 2> quad_layers{};
+  for (uint32_t eye = 0; eye < 2; ++eye)
+  {
+    quad_layers[eye] = {XR_TYPE_COMPOSITION_LAYER_QUAD};
+    quad_layers[eye].layerFlags = 0;
+    quad_layers[eye].space = m_reference_space;
+    quad_layers[eye].eyeVisibility =
+        eye == 0 ? XR_EYE_VISIBILITY_LEFT : XR_EYE_VISIBILITY_RIGHT;
+    quad_layers[eye].pose = pose;
+    quad_layers[eye].size = {height_m * aspect, height_m};
+    quad_layers[eye].subImage.swapchain = swapchains[eye];
+    quad_layers[eye].subImage.imageArrayIndex = 0;
+    quad_layers[eye].subImage.imageRect.offset = {0, 0};
+    quad_layers[eye].subImage.imageRect.extent = {static_cast<int32_t>(width),
+                                                  static_cast<int32_t>(height)};
+  }
+
+  if (IsFrameThreadActive())
+  {
+    PublishStereoQuadFrame(quad_layers);
+    return true;
+  }
+
+  const std::vector<XrCompositionLayerBaseHeader*> layers = {
+      reinterpret_cast<XrCompositionLayerBaseHeader*>(&quad_layers[0]),
+      reinterpret_cast<XrCompositionLayerBaseHeader*>(&quad_layers[1])};
+  return EndFrame(layers);
+}
+
 bool IOpenXRSwapchain::SubmitFlatFrame()
 {
   if (!g_openxr)
     return false;
   return g_openxr->SubmitFlatQuadFrame(GetFlatSwapchain(), GetEyeWidth(), GetEyeHeight());
+}
+
+bool IOpenXRSwapchain::SubmitStereoFlatFrame()
+{
+  if (!g_openxr)
+    return false;
+  return g_openxr->SubmitStereoQuadFrame({GetEyeSwapchainHandle(0), GetEyeSwapchainHandle(1)},
+                                         GetEyeWidth(), GetEyeHeight());
 }
 
 void OpenXRManager::RecordRenderedEyeViews()

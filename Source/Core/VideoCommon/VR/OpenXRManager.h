@@ -87,6 +87,18 @@ public:
   // Defined in OpenXRManager.cpp; delegates the quad math to OpenXRManager::SubmitFlatQuadFrame.
   virtual bool SubmitFlatFrame();
 
+  // ---- Stereoscopic virtual screen path (StereoMode::SBS + vr_stereo_screen) ----
+  // The game is rendered with classic SBS stereoscopy; layer 0 is left eye and layer 1 is right
+  // eye. The default implementations reuse the per-eye swapchains and submit two quad layers
+  // with LEFT/RIGHT eye visibility at the virtual-screen pose.
+  virtual XrSwapchain GetEyeSwapchainHandle(uint32_t eye) const { return XR_NULL_HANDLE; }
+  virtual bool SupportsStereoFlatScreen() const
+  {
+    return GetEyeSwapchainHandle(0) != XR_NULL_HANDLE &&
+           GetEyeSwapchainHandle(1) != XR_NULL_HANDLE;
+  }
+  virtual bool SubmitStereoFlatFrame();
+
   // Vulkan-backed OpenXR calls can touch the VkQueue bound to the XrSession. Backends that need
   // external queue synchronization return a held lock here; other backends return an empty lock.
   virtual std::unique_lock<std::mutex> AcquireGraphicsQueueLock() { return {}; }
@@ -220,6 +232,8 @@ public:
                     XrCompositionLayerFlags layer_flags);
   // Flat mono panel variant: a fully built world-locked quad layer.
   void PublishQuadFrame(const XrCompositionLayerQuad& quad);
+  // Stereoscopic virtual screen variant: two world-locked quad layers, one per eye.
+  void PublishStereoQuadFrame(const std::array<XrCompositionLayerQuad, 2>& quads);
 
   // Brackets the video thread's release-swapchain-images → publish-poses sequence.
   // Releasing an eye image flips the compositor's front image immediately, but the
@@ -268,6 +282,12 @@ public:
   // pose is captured on first use and recomputed on recenter. Backends call this from
   // SubmitFlatFrame(); passthrough layers are prepended centrally in EndFrameDetached.
   bool SubmitFlatQuadFrame(XrSwapchain swapchain, uint32_t width, uint32_t height);
+
+  // Build two world-locked XrCompositionLayerQuad layers (one per eye) from already-rendered
+  // eye swapchain images and submit them via EndFrame(). Backends call this from
+  // SubmitStereoFlatFrame(); passthrough layers are prepended centrally in EndFrameDetached.
+  bool SubmitStereoQuadFrame(std::array<XrSwapchain, 2> swapchains, uint32_t width,
+                             uint32_t height);
 
   // ---- Accessors ----
 
@@ -600,9 +620,12 @@ private:
   struct PublishedXRFrame
   {
     bool is_quad = false;
+    bool is_stereo_quad = false;
     std::array<XrCompositionLayerProjectionView, 2> views{};
     XrCompositionLayerFlags layer_flags = 0;
     XrCompositionLayerQuad quad{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    std::array<XrCompositionLayerQuad, 2> stereo_quads{};
+    uint32_t stereo_quad_count = 0;
   };
 
   std::thread m_frame_thread;

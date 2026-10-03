@@ -39,6 +39,7 @@ private:
 
   ConfigBool* m_enable_openxr = nullptr;
   ConfigBool* m_flat_screen = nullptr;
+  ConfigBool* m_stereo_screen = nullptr;
   ConfigChoiceMap<OpenXRReferenceSpaceMode>* m_reference_space_mode = nullptr;
   ConfigChoiceMap<OpenXRTrackingMode>* m_tracking_mode = nullptr;
   ConfigFloatSlider* m_units_per_meter = nullptr;

@@ -344,6 +344,9 @@ void VRConfigWidget::CreateWidgets()
   openxr_layout->addWidget(mirror_view, 2, 1, 1, 2);
   openxr_layout->addWidget(make_bool(tr("Flat Screen (2D, no stereo)"), Config::GFX_VR_FLAT_SCREEN),
                            3, 0, 1, 3);
+  openxr_layout->addWidget(
+      make_bool(tr("Stereo Screen (SBS 3D, no immersive VR)"), Config::GFX_VR_STEREO_SCREEN), 4, 0,
+      1, 3);
 
   auto* camera_group = new QGroupBox(tr("Camera"));
   auto* camera_layout = new QGridLayout(camera_group);
