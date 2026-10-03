@@ -274,6 +274,18 @@ static XrQuaternionf MultiplyQuaternions(const XrQuaternionf& a, const XrQuatern
           a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z};
 }
 
+static float QuaternionYawDegrees(float qx, float qy, float qz, float qw)
+{
+  const float yaw =
+      std::atan2(2.f * (qx * qz + qw * qy), 1.f - 2.f * (qx * qx + qy * qy));
+  return yaw * 180.f / 3.14159265358979323846f;
+}
+
+static float QuaternionYawDegrees(const XrQuaternionf& q)
+{
+  return QuaternionYawDegrees(q.x, q.y, q.z, q.w);
+}
+
 static void CopyOpenXRName(char* dst, size_t dst_size, std::string_view src)
 {
   std::memset(dst, 0, dst_size);
@@ -2244,6 +2256,32 @@ void OpenXRManager::UpdateInputActions()
                  "OpenXR input: sync={}, focused={}, left_connected={}, right_connected={}",
                  static_cast<int>(sync_result), m_session_focused.load(),
                  controllers[0].connected, controllers[1].connected);
+
+    // Diagnostic: compare HMD view yaw against controller aim yaw. On a healthy runtime
+    // both live in the same frame, so with the user holding head and controller still the
+    // values should track each other. A constant offset indicates the runtime reports
+    // controllers in a different (e.g. stale or mismatched) tracking universe.
+    const float view_yaw = QuaternionYawDegrees(m_eye_views[0].pose.orientation);
+    float aim_yaw_l = 0.0f, aim_yaw_r = 0.0f;
+    if (controllers[0].aim_pose.valid)
+    {
+      aim_yaw_l = QuaternionYawDegrees(controllers[0].aim_pose.orientation[0],
+                                       controllers[0].aim_pose.orientation[1],
+                                       controllers[0].aim_pose.orientation[2],
+                                       controllers[0].aim_pose.orientation[3]);
+    }
+    if (controllers[1].aim_pose.valid)
+    {
+      aim_yaw_r = QuaternionYawDegrees(controllers[1].aim_pose.orientation[0],
+                                       controllers[1].aim_pose.orientation[1],
+                                       controllers[1].aim_pose.orientation[2],
+                                       controllers[1].aim_pose.orientation[3]);
+    }
+    INFO_LOG_FMT(OPENXR,
+                 "OpenXR yaw diag: view={:.2f}deg aim_L={:.2f}deg aim_R={:.2f}deg "
+                 "(valid L={}, R={}).",
+                 view_yaw, aim_yaw_l, aim_yaw_r, controllers[0].aim_pose.valid,
+                 controllers[1].aim_pose.valid);
   }
 
   // Provide HMD head orientation for IR pointer reference direction.
@@ -2333,8 +2371,22 @@ bool OpenXRManager::PollEvents()
       return false;
 
     case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING:
-      INFO_LOG_FMT(OPENXR, "OpenXR: Reference space change pending.");
+    {
+      const auto& ev = *reinterpret_cast<const XrEventDataReferenceSpaceChangePending*>(&event);
+      const float delta_yaw = ev.poseValid ? QuaternionYawDegrees(ev.poseInPreviousSpace.orientation)
+                                           : 0.0f;
+      INFO_LOG_FMT(OPENXR,
+                   "OpenXR: Reference space change pending (type={}, pose_valid={}, delta "
+                   "yaw={:.2f}deg) — re-anchoring flat screen to current head pose.",
+                   ReferenceSpaceTypeName(ev.referenceSpaceType),
+                   ev.poseValid == XR_TRUE, delta_yaw);
+      // The runtime rebased the reference space (system recenter, universe switch,
+      // relocalization). Any cached world-locked pose is expressed in the old frame and is
+      // now stale. Re-place the flat panel in front of the user's current gaze, which is
+      // also what the user expects after a system recenter.
+      m_flat_screen_pose_valid = false;
       break;
+    }
 
     default:
       break;
@@ -2694,13 +2746,6 @@ bool OpenXRManager::EndFrameDetached(XrTime display_time,
     XR_CHECK(xrEndFrame(m_session, &end_info));
   }
   return true;
-}
-
-static float QuaternionYawDegrees(const XrQuaternionf& q)
-{
-  const float yaw =
-      std::atan2(2.f * (q.x * q.z + q.w * q.y), 1.f - 2.f * (q.x * q.x + q.y * q.y));
-  return yaw * 180.f / 3.14159265358979323846f;
 }
 
 bool OpenXRManager::LocateViews()
