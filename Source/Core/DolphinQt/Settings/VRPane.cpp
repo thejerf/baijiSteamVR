@@ -73,6 +73,16 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
   m_flat_screen = new ConfigBool(tr("Flat Screen (2D, no stereo)"), Config::GFX_VR_FLAT_SCREEN);
   m_stereo_screen = new ConfigBool(tr("Stereo Screen (SBS 3D, no immersive VR)"),
                                    Config::GFX_VR_STEREO_SCREEN);
+
+  // Flat screen and stereo screen are mutually exclusive display modes.
+  connect(m_flat_screen, &QCheckBox::toggled, this, [this](bool checked) {
+    if (checked && m_stereo_screen->isChecked())
+      m_stereo_screen->setChecked(false);
+  });
+  connect(m_stereo_screen, &QCheckBox::toggled, this, [this](bool checked) {
+    if (checked && m_flat_screen->isChecked())
+      m_flat_screen->setChecked(false);
+  });
   m_reference_space_mode = new ConfigChoiceMap<OpenXRReferenceSpaceMode>(
       {{tr("LOCAL"), OpenXRReferenceSpaceMode::Local},
        {tr("STAGE + Height"), OpenXRReferenceSpaceMode::StageHeight},

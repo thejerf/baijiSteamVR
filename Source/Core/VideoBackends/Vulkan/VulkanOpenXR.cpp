@@ -1736,15 +1736,27 @@ bool VulkanOpenXR::SubmitStereoFlatFrame()
 
 #if defined(ANDROID)
   // On Android the per-eye ReleaseEyeTexture only ends the render pass; the command-buffer
-  // submit and xrReleaseSwapchainImage are deferred to submit time. Release both eye images
-  // synchronously here, then submit the stereoscopic quad layers.
+  // submit and xrReleaseSwapchainImage are deferred to submit time. End the render pass once,
+  // submit the accumulated command buffer, then release both eye images synchronously.
+  bool any_acquired = false;
   for (uint32_t eye = 0; eye < 2; ++eye)
   {
     if (m_image_acquired[eye])
     {
-      StateTracker::GetInstance()->EndRenderPass();
-      g_command_buffer_mgr->SubmitCommandBuffer(false, false, true);
-      StateTracker::GetInstance()->InvalidateCachedState();
+      any_acquired = true;
+      break;
+    }
+  }
+  if (any_acquired)
+  {
+    StateTracker::GetInstance()->EndRenderPass();
+    g_command_buffer_mgr->SubmitCommandBuffer(false, false, true);
+    StateTracker::GetInstance()->InvalidateCachedState();
+
+    for (uint32_t eye = 0; eye < 2; ++eye)
+    {
+      if (!m_image_acquired[eye])
+        continue;
 
       XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
       XrResult result = XR_SUCCESS;
@@ -1754,8 +1766,9 @@ bool VulkanOpenXR::SubmitStereoFlatFrame()
       }
       if (XR_FAILED(result))
       {
-        WARN_LOG_FMT(VIDEO, "OpenXR: xrReleaseSwapchainImage failed for stereo screen eye {} ({}).",
-                     eye, static_cast<int>(result));
+        WARN_LOG_FMT(VIDEO,
+                     "OpenXR: xrReleaseSwapchainImage failed for stereo screen eye {} ({}).", eye,
+                     static_cast<int>(result));
       }
       m_image_acquired[eye] = false;
     }
