@@ -378,10 +378,13 @@ struct VideoConfig final
   // them natively over each eye (like a Fullscreen override) instead of capturing them onto the
   // virtual screen. Downscaled copies always qualify; full-res copies only when blended.
   bool vr_auto_native_efb_effects = true;
-  // Render the whole game as a flat mono panel in the VR scene (StereoMode::Off), while the
-  // OpenXR session still runs. Used by the "Launch games in VR = off" cinema path on Quest.
-  bool vr_flat_screen = false;
-  float vr_screen_distance = 1.5f;
+// Render the whole game as a flat mono panel in the VR scene (StereoMode::Off), while the
+// OpenXR session still runs. Used by the "Launch games in VR = off" cinema path on Quest.
+bool vr_flat_screen = false;
+// Render the game using classic SBS stereoscopy and submit it as a stereoscopic virtual screen
+// (two OpenXR quad layers). Bypasses the immersive per-eye reprojection path.
+bool vr_stereo_screen = false;
+float vr_screen_distance = 1.5f;
   float vr_screen_size = 1.5f;
   float vr_hud_thickness = 0.0f;  // World-space depth (m) spread across a 2D layer's ortho-Z (0 = flat)
   float vr_head_locked_curvature = 0.0f;
@@ -475,12 +478,12 @@ struct VideoConfig final
     return bPreferVSForLinePointExpansion;
   }
   bool MultisamplingEnabled() const { return iMultisamples > 1; }
-  // True whenever an OpenXR session must run: either per-eye stereo (StereoMode::OpenXR) or the
-  // flat mono panel path (stereo_mode is Off but vr_flat_screen keeps the session alive). Use
-  // this for session lifecycle gates; keep stereo-specific rendering on stereo_mode == OpenXR.
+  // True whenever an OpenXR session must run: per-eye stereo (StereoMode::OpenXR), the flat
+  // mono panel path, or the classic-SBS stereoscopic virtual-screen path. Use this for session
+  // lifecycle gates; keep immersive stereo-specific rendering on stereo_mode == OpenXR.
   bool VRSessionActive() const
   {
-    return stereo_mode == StereoMode::OpenXR || vr_flat_screen;
+    return stereo_mode == StereoMode::OpenXR || vr_flat_screen || vr_stereo_screen;
   }
   // Hold one head pose for every draw of a game frame, refreshed only at the XFB-copy
   // boundary. Required whenever ImmediateXFB is off: presentation then happens at VI

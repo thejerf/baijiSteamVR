@@ -166,16 +166,24 @@ void VideoConfig::Refresh()
   stereo_mode = Config::Get(Config::GFX_STEREO_MODE);
   const bool vr_openxr_enabled = Config::Get(Config::GFX_VR_ENABLE_OPENXR);
   vr_flat_screen = Config::Get(Config::GFX_VR_FLAT_SCREEN);
+  vr_stereo_screen = Config::Get(Config::GFX_VR_STEREO_SCREEN);
   if (vr_openxr_enabled)
   {
     // OpenXR mode is now driven by a dedicated VR setting. Flat mode keeps the session running
     // but renders the game mono (StereoMode::Off); the present path swaps to a quad layer.
-    stereo_mode = vr_flat_screen ? StereoMode::Off : StereoMode::OpenXR;
+    // Stereo-screen mode uses the classic SBS stereo pipeline and submits two eye quads.
+    if (vr_flat_screen)
+      stereo_mode = StereoMode::Off;
+    else if (vr_stereo_screen)
+      stereo_mode = StereoMode::SBS;
+    else
+      stereo_mode = StereoMode::OpenXR;
   }
   else
   {
-    // No OpenXR session at all, so the flat-panel path is meaningless.
+    // No OpenXR session at all, so the flat/stereo-screen paths are meaningless.
     vr_flat_screen = false;
+    vr_stereo_screen = false;
     // Prevent stale legacy config values from forcing OpenXR.
     if (stereo_mode == StereoMode::OpenXR)
       stereo_mode = StereoMode::Off;

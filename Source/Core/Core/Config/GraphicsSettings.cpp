@@ -191,6 +191,9 @@ const Info<bool> GFX_VR_ENABLE_OPENXR{{System::GFX, "VR", "EnableOpenXR"}, true}
 // When OpenXR is enabled, render the game as a flat mono panel in the VR scene instead of
 // per-eye stereoscopic 3D (the "Launch games in VR" off / cinema path).
 const Info<bool> GFX_VR_FLAT_SCREEN{{System::GFX, "VR", "FlatScreen"}, false};
+// When OpenXR is enabled, render the game using classic SBS stereoscopy and submit it as a
+// stereoscopic virtual screen (two quad layers) instead of immersive per-eye reprojection.
+const Info<bool> GFX_VR_STEREO_SCREEN{{System::GFX, "VR", "StereoScreen"}, false};
 const Info<float> GFX_VR_UNITS_PER_METER{{System::GFX, "VR", "UnitsPerMeter"}, 1.0f};
 const Info<bool> GFX_VR_ENABLE_LEAN_BACK_ANGLE{{System::GFX, "VR", "EnableLeanBackAngle"}, true};
 const Info<float> GFX_VR_LEAN_BACK_ANGLE{{System::GFX, "VR", "LeanBackAngle"}, 0.0f};
