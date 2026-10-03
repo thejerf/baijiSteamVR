@@ -2791,7 +2791,7 @@ void OpenXRManager::RequestRecenter()
   m_recenter_requested.store(true, std::memory_order_release);
 }
 
-XrPosef OpenXRManager::GetFlatScreenPose() const
+XrPosef OpenXRManager::GetFlatScreenPose(bool head_locked) const
 {
   const float distance = g_ActiveConfig.vr_screen_distance;
 
@@ -2802,7 +2802,7 @@ XrPosef OpenXRManager::GetFlatScreenPose() const
   if (!have_pose)
     return {{0.f, 0.f, 0.f, 1.f}, {0.f, 0.f, -distance}};
 
-  if (m_flat_screen_pose_valid)
+  if (!head_locked && m_flat_screen_pose_valid)
     return m_flat_screen_pose;
 
   // Head center and yaw-only heading, so the panel sits in front of the user, upright and
@@ -2817,9 +2817,13 @@ XrPosef OpenXRManager::GetFlatScreenPose() const
   pose.orientation = {0.f, std::sin(yaw * 0.5f), 0.f, std::cos(yaw * 0.5f)};
   pose.position = {center.x - std::sin(yaw) * distance, center.y,
                    center.z - std::cos(yaw) * distance};
-  m_flat_screen_pose = pose;
-  m_flat_screen_pose_valid = true;
-  return m_flat_screen_pose;
+
+  if (!head_locked)
+  {
+    m_flat_screen_pose = pose;
+    m_flat_screen_pose_valid = true;
+  }
+  return pose;
 }
 
 bool OpenXRManager::SubmitFlatQuadFrame(XrSwapchain swapchain, uint32_t width, uint32_t height)
@@ -2866,7 +2870,11 @@ bool OpenXRManager::SubmitStereoQuadFrame(std::array<XrSwapchain, 2> swapchains,
   const float height_m = g_ActiveConfig.vr_screen_size;
   const float aspect =
       m_flat_screen_aspect > 0.f ? m_flat_screen_aspect : static_cast<float>(width) / height;
-  const XrPosef pose = GetFlatScreenPose();
+  // Stereoscopic virtual screen: keep the panel head-locked so it always stays in front of
+  // the user's current gaze. This avoids the world-locked initial-placement/recenter issues
+  // that are acceptable for a mono cinema panel but confusing for a 3D game screen.
+  const bool head_locked = g_ActiveConfig.vr_stereo_screen;
+  const XrPosef pose = GetFlatScreenPose(head_locked);
 
   std::array<XrCompositionLayerQuad, 2> quad_layers{};
   for (uint32_t eye = 0; eye < 2; ++eye)

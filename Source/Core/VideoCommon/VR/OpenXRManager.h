@@ -491,9 +491,11 @@ private:
   std::array<XREyeView, 2> GetTrackingAdjustedEyeViews() const;
   void ResetInputActionsState();
   void HandleSessionStateChange(XrSessionState new_state);
-  // World-locked quad pose for the flat panel, in reference space. Captured lazily from the
-  // current head pose and invalidated on recenter.
-  XrPosef GetFlatScreenPose() const;
+  // Quad pose for the flat panel, in reference space. When head_locked is false (flat mono
+  // panel), the pose is captured lazily from the current head pose and world-locked until
+  // recenter. When head_locked is true (stereoscopic virtual screen), it is recomputed every
+  // frame from the current head pose so the screen always stays in front of the user.
+  XrPosef GetFlatScreenPose(bool head_locked = false) const;
   void CaptureStartupDisplayRefreshRateFromExtension();
   void SetStartupDisplayRefreshRate(float refresh_rate_hz, std::string_view source);
 
