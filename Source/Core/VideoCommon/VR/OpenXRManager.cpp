@@ -2839,10 +2839,14 @@ XrPosef OpenXRManager::GetFlatScreenPose(bool head_locked) const
   const float yaw =
       std::atan2(2.f * (q.x * q.z + q.w * q.y), 1.f - 2.f * (q.x * q.x + q.y * q.y));
 
+  constexpr float PI = 3.14159265358979323846f;
+  const float yaw_offset = g_ActiveConfig.vr_screen_yaw_offset * PI / 180.0f;
+  const float yaw_total = yaw + yaw_offset;
+
   XrPosef pose{};
-  pose.orientation = {0.f, std::sin(yaw * 0.5f), 0.f, std::cos(yaw * 0.5f)};
-  pose.position = {center.x - std::sin(yaw) * distance, center.y,
-                   center.z - std::cos(yaw) * distance};
+  pose.orientation = {0.f, std::sin(yaw_total * 0.5f), 0.f, std::cos(yaw_total * 0.5f)};
+  pose.position = {center.x - std::sin(yaw_total) * distance, center.y,
+                   center.z - std::cos(yaw_total) * distance};
 
   if (!head_locked)
   {
