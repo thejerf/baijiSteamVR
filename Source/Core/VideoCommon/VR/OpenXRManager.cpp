@@ -1488,7 +1488,12 @@ void OpenXRManager::SetStartupDisplayRefreshRate(float refresh_rate_hz, std::str
 bool OpenXRManager::RequestDisplayRefreshRate(float refresh_rate_hz)
 {
   if (m_session == XR_NULL_HANDLE || m_xrRequestDisplayRefreshRateFB == nullptr)
+  {
+    WARN_LOG_FMT(OPENXR,
+                 "OpenXR: Cannot request refresh rate (session={} request_pfn={}).",
+                 m_session != XR_NULL_HANDLE, m_xrRequestDisplayRefreshRateFB != nullptr);
     return false;
+  }
 
   refresh_rate_hz = std::max(refresh_rate_hz, 1.0f);
   const XrResult result = m_xrRequestDisplayRefreshRateFB(m_session, refresh_rate_hz);
