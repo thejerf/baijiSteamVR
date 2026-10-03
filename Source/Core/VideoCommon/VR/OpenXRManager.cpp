@@ -1495,19 +1495,13 @@ XrPosef OpenXRManager::ComputeRecenterOffset() const
   const XrQuaternionf& q = m_eye_views[0].pose.orientation;
   const float yaw =
       std::atan2(2.f * (q.x * q.z + q.w * q.y), 1.f - 2.f * (q.x * q.x + q.y * q.y));
-  const float half_neg_yaw = -yaw * 0.5f;
+  const float half_yaw = yaw * 0.5f;
 
+  // The new reference space's origin is at the current head center and rotated by the current
+  // head yaw. This makes the user's current gaze become the new forward (-Z) direction.
   XrPosef offset{};
-  offset.orientation = {0.f, std::sin(half_neg_yaw), 0.f, std::cos(half_neg_yaw)};
-
-  // offset.position = -rotate(center, offset.orientation)
-  // rotate by -yaw around Y: x' = x*cos(yaw) + z*sin(yaw), z' = -x*sin(yaw) + z*cos(yaw)
-  const float c = std::cos(yaw);
-  const float s = std::sin(yaw);
-  const float rx = center.x * c + center.z * s;
-  const float rz = -center.x * s + center.z * c;
-  offset.position = {-rx, -center.y, -rz};
-
+  offset.orientation = {0.f, std::sin(half_yaw), 0.f, std::cos(half_yaw)};
+  offset.position = center;
   return offset;
 }
 
