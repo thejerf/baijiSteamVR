@@ -139,6 +139,9 @@ private:
   // True when an OpenXR session is running but the game is shown as a flat mono panel
   // (StereoMode::Off + vr_flat_screen) rather than per-eye stereo.
   bool IsOpenXRFlat() const;
+  // True when an OpenXR session is running and the game is rendered with classic SBS stereoscopy
+  // then submitted as a stereoscopic virtual screen.
+  bool IsOpenXRStereoScreen() const;
   bool SubmitOpenXRFrameFromCurrentSource(const AbstractTexture* source_texture,
                                           const MathUtil::Rectangle<int>& source_rc,
                                           bool blit_source);

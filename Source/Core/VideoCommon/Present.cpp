@@ -1052,6 +1052,12 @@ bool Presenter::IsOpenXRFlat() const
          g_ActiveConfig.stereo_mode != StereoMode::OpenXR;
 }
 
+bool Presenter::IsOpenXRStereoScreen() const
+{
+  return VR::g_openxr && g_ActiveConfig.vr_stereo_screen &&
+         g_ActiveConfig.stereo_mode == StereoMode::SBS;
+}
+
 void Presenter::BlitCurrentSourceToOpenXRFlat(const AbstractTexture* source_texture,
                                               const MathUtil::Rectangle<int>& source_rc)
 {
@@ -1107,6 +1113,18 @@ bool Presenter::SubmitOpenXRFrameFromCurrentSource(const AbstractTexture* source
       // stereo eye blit for flat mode.
       BlitCurrentSourceToOpenXRFlat(source_texture, source_rc);
       return sc->SubmitFlatFrame();
+    }
+
+    if (IsOpenXRStereoScreen())
+    {
+      // Classic SBS stereo: layer 0 is left eye, layer 1 is right eye. Blit each layer into the
+      // corresponding OpenXR eye swapchain and submit as two quad layers at the virtual screen pose.
+      BlitCurrentSourceToOpenXREyes(source_texture, source_rc);
+      const int src_w = source_rc.GetWidth();
+      const int src_h = source_rc.GetHeight();
+      if (src_w > 0 && src_h > 0)
+        VR::g_openxr->SetFlatScreenAspect(static_cast<float>(src_w) / static_cast<float>(src_h));
+      return sc->SubmitStereoFlatFrame();
     }
 
     if (blit_source)
@@ -1288,10 +1306,10 @@ void Presenter::Present(PresentInfo* present_info)
   }
 #ifdef ENABLE_VR
   else if (openxr_direct_to_hmd && vr_frame_started && m_xfb_entry && !IsOpenXRFlat() &&
-           !vr_skip_duplicate_publish)
+           !IsOpenXRStereoScreen() && !vr_skip_duplicate_publish)
   {
-    // Stereo direct-to-HMD path. Flat mode blits at submit time
-    // (SubmitOpenXRFrameFromCurrentSource) instead, so it is skipped here.
+    // Stereo direct-to-HMD path. Flat and stereo-screen modes blit at submit time
+    // (SubmitOpenXRFrameFromCurrentSource) instead, so they are skipped here.
     auto replay_target_rc = GetTargetRectangle();
     auto replay_source_rc = m_xfb_rect;
     AdjustRectanglesToFitBounds(&replay_target_rc, &replay_source_rc, m_backbuffer_width,
@@ -1334,9 +1352,10 @@ void Presenter::Present(PresentInfo* present_info)
       // Pacing thread active: the eye blit was deferred from RenderXFBToScreen to here so
       // its swapchain release sits right next to the pose publish (both inside the handoff
       // bracket in SubmitOpenXRFrameFromCurrentSource). Legacy flow already blit inline, so
-      // it only publishes/ends here. Flat and direct-to-HMD manage their own blit.
+      // it only publishes/ends here. Flat, stereo-screen, and direct-to-HMD manage their own blit.
       const bool blit_at_submit = VR::g_openxr && VR::g_openxr->IsFrameThreadActive() &&
-                                  !openxr_direct_to_hmd && !IsOpenXRFlat();
+                                  !openxr_direct_to_hmd && !IsOpenXRFlat() &&
+                                  !IsOpenXRStereoScreen();
       SubmitOpenXRFrameFromCurrentSource(m_xfb_entry ? m_xfb_entry->texture.get() : nullptr,
                                          m_xfb_rect, blit_at_submit);
     }
