@@ -525,7 +525,12 @@ void HotkeyScheduler::Run()
       };
 
       if (IsHotkey(HK_VR_TOGGLE_OPENXR))
+      {
+        // Let the legacy toggle operate on EnableOpenXR, then follow that setting until the
+        // presentation selector is changed again.
+        Config::SetCurrent(Config::GFX_VR_PRESENTATION_MODE, OpenXRPresentationMode::Legacy);
         ToggleVRSetting(Config::GFX_VR_ENABLE_OPENXR, "OpenXR");
+      }
 
       if (IsHotkey(HK_VR_RESET_POSITION))
       {

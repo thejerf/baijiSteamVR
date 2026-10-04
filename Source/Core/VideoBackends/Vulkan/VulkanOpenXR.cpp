@@ -586,7 +586,7 @@ bool VulkanOpenXR::Initialize()
   // can actually composite it (XR_FB_passthrough or an ALPHA_BLEND environment).
   g_backend_info.bSupportsVRPassthroughCoverage &=
       VR::g_openxr->SupportsPassthrough();
-  if (g_ActiveConfig.vr_passthrough &&
+  if (g_ActiveConfig.vr_passthrough && !g_ActiveConfig.vr_stereo_screen &&
       !g_backend_info.bSupportsVRPassthroughCoverage)
   {
     OSD::AddMessage("Passthrough disabled: this OpenXR runtime does not expose a compatible "

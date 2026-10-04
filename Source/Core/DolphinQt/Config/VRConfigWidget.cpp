@@ -323,7 +323,46 @@ void VRConfigWidget::CreateWidgets()
 
   auto* openxr_group = new QGroupBox(tr("OpenXR"));
   auto* openxr_layout = new QGridLayout(openxr_group);
-  openxr_layout->addWidget(make_bool(tr("Enable VR"), Config::GFX_VR_ENABLE_OPENXR), 0, 0, 1, 3);
+  const auto get_game_or_base = [layer, this](const auto& setting) {
+    if (layer->Exists(setting.GetLocation()))
+      return layer->Get(setting);
+    if (m_global_layer->Exists(setting.GetLocation()))
+      return m_global_layer->Get(setting);
+    return Config::GetBase(setting);
+  };
+  QString legacy_mode_name = tr("Use existing settings");
+  if (!get_game_or_base(Config::GFX_VR_ENABLE_OPENXR))
+    legacy_mode_name += tr(" (Vulkan flat display)");
+  else if (get_game_or_base(Config::GFX_VR_FLAT_SCREEN))
+    legacy_mode_name += tr(" (2D screen in VR)");
+  else if (get_game_or_base(Config::GFX_VR_STEREO_SCREEN))
+    legacy_mode_name += tr(" (stereo 3D screen)");
+  else
+    legacy_mode_name += tr(" (immersive VR)");
+
+  auto* presentation_mode = mark_default(new ConfigChoiceMap<OpenXRPresentationMode>(
+      {{legacy_mode_name, OpenXRPresentationMode::Legacy},
+       {tr("Flat Display (Vulkan)"), OpenXRPresentationMode::Vulkan},
+       {tr("Immersive VR"), OpenXRPresentationMode::Immersive},
+       {tr("Stereo 3D Screen"), OpenXRPresentationMode::StereoScreen}},
+      Config::GFX_VR_PRESENTATION_MODE, layer, m_global_layer.get()));
+  presentation_mode->setToolTip(
+      tr("Selects standard Vulkan flat output, DolphinXR immersive VR, or a stereoscopic 3D "
+         "screen in the headset."));
+  connect(presentation_mode, &QComboBox::currentIndexChanged, this, [layer] {
+    const OpenXRPresentationMode mode = layer->Get(Config::GFX_VR_PRESENTATION_MODE);
+    if (mode == OpenXRPresentationMode::Legacy)
+      return;
+
+    layer->Set(Config::GFX_VR_ENABLE_OPENXR.GetLocation(),
+               mode != OpenXRPresentationMode::Vulkan);
+    layer->Set(Config::GFX_VR_FLAT_SCREEN.GetLocation(), false);
+    layer->Set(Config::GFX_VR_STEREO_SCREEN.GetLocation(),
+               mode == OpenXRPresentationMode::StereoScreen);
+    Config::OnConfigChanged();
+  });
+  openxr_layout->addWidget(new QLabel(tr("Presentation Mode:")), 0, 0);
+  openxr_layout->addWidget(presentation_mode, 0, 1, 1, 2);
   add_float(
       openxr_layout, 1, tr("Units per Meter:"), Config::GFX_VR_UNITS_PER_METER_MIN,
       Config::GFX_VR_UNITS_PER_METER_MAX, Config::GFX_VR_UNITS_PER_METER,
@@ -342,12 +381,6 @@ void VRConfigWidget::CreateWidgets()
       Config::GFX_VR_MIRROR_VIEW, layer, m_global_layer.get()));
   openxr_layout->addWidget(new QLabel(tr("Desktop Mirror View:")), 2, 0);
   openxr_layout->addWidget(mirror_view, 2, 1, 1, 2);
-  openxr_layout->addWidget(make_bool(tr("Flat Screen (2D, no stereo)"), Config::GFX_VR_FLAT_SCREEN),
-                           3, 0, 1, 3);
-  openxr_layout->addWidget(
-      make_bool(tr("Stereo Screen (SBS 3D, no immersive VR)"), Config::GFX_VR_STEREO_SCREEN), 4, 0,
-      1, 3);
-
   auto* camera_group = new QGroupBox(tr("Camera"));
   auto* camera_layout = new QGridLayout(camera_group);
   camera_layout->addWidget(

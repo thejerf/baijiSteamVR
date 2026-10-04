@@ -22,6 +22,7 @@ enum class VertexLoaderType : int;
 enum class OpenXRMirrorView : int;
 enum class OpenXRReferenceSpaceMode : int;
 enum class OpenXRTrackingMode : int;
+enum class OpenXRPresentationMode : int;
 enum class VRPassthroughCoverageMode : int;
 
 namespace Config
@@ -173,6 +174,7 @@ static constexpr float GFX_STEREO_CONVERGENCE_MAXIMUM = 200;
 extern const Info<bool> GFX_VR_ENABLE_OPENXR;
 extern const Info<bool> GFX_VR_FLAT_SCREEN;
 extern const Info<bool> GFX_VR_STEREO_SCREEN;
+extern const Info<OpenXRPresentationMode> GFX_VR_PRESENTATION_MODE;
 extern const Info<float> GFX_VR_UNITS_PER_METER;
 extern const Info<bool> GFX_VR_ENABLE_LEAN_BACK_ANGLE;
 extern const Info<float> GFX_VR_LEAN_BACK_ANGLE;

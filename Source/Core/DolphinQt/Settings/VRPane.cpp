@@ -69,19 +69,37 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
   auto* passthrough_layout = new QGridLayout;
   passthrough_group->setLayout(passthrough_layout);
 
-  m_enable_openxr = new ConfigBool(tr("Enable VR"), Config::GFX_VR_ENABLE_OPENXR);
-  m_flat_screen = new ConfigBool(tr("Flat Screen (2D, no stereo)"), Config::GFX_VR_FLAT_SCREEN);
-  m_stereo_screen = new ConfigBool(tr("Stereo Screen (SBS 3D, no immersive VR)"),
-                                   Config::GFX_VR_STEREO_SCREEN);
+  QString legacy_mode_name = tr("Use existing settings");
+  if (!Config::Get(Config::GFX_VR_ENABLE_OPENXR))
+    legacy_mode_name += tr(" (Vulkan flat display)");
+  else if (Config::Get(Config::GFX_VR_FLAT_SCREEN))
+    legacy_mode_name += tr(" (2D screen in VR)");
+  else if (Config::Get(Config::GFX_VR_STEREO_SCREEN))
+    legacy_mode_name += tr(" (stereo 3D screen)");
+  else
+    legacy_mode_name += tr(" (immersive VR)");
 
-  // Flat screen and stereo screen are mutually exclusive display modes.
-  connect(m_flat_screen, &QCheckBox::toggled, this, [this](bool checked) {
-    if (checked && m_stereo_screen->isChecked())
-      m_stereo_screen->setChecked(false);
-  });
-  connect(m_stereo_screen, &QCheckBox::toggled, this, [this](bool checked) {
-    if (checked && m_flat_screen->isChecked())
-      m_flat_screen->setChecked(false);
+  m_presentation_mode = new ConfigChoiceMap<OpenXRPresentationMode>(
+      {{legacy_mode_name, OpenXRPresentationMode::Legacy},
+       {tr("Flat Display (Vulkan)"), OpenXRPresentationMode::Vulkan},
+       {tr("Immersive VR"), OpenXRPresentationMode::Immersive},
+       {tr("Stereo 3D Screen"), OpenXRPresentationMode::StereoScreen}},
+      Config::GFX_VR_PRESENTATION_MODE);
+  m_presentation_mode->setToolTip(
+      tr("Selects standard Vulkan flat output, DolphinXR immersive VR, or a stereoscopic 3D "
+         "screen in the headset. The legacy choice follows the previous Enable VR and screen "
+         "settings."));
+  connect(m_presentation_mode, &QComboBox::currentIndexChanged, this, [this](int) {
+    const OpenXRPresentationMode mode = Config::Get(Config::GFX_VR_PRESENTATION_MODE);
+    if (mode == OpenXRPresentationMode::Legacy)
+      return;
+
+    Config::ConfigChangeCallbackGuard guard;
+    Config::SetBaseOrCurrent(Config::GFX_VR_ENABLE_OPENXR,
+                             mode != OpenXRPresentationMode::Vulkan);
+    Config::SetBaseOrCurrent(Config::GFX_VR_FLAT_SCREEN, false);
+    Config::SetBaseOrCurrent(Config::GFX_VR_STEREO_SCREEN,
+                             mode == OpenXRPresentationMode::StereoScreen);
   });
   m_reference_space_mode = new ConfigChoiceMap<OpenXRReferenceSpaceMode>(
       {{tr("LOCAL"), OpenXRReferenceSpaceMode::Local},
@@ -154,7 +172,8 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
          "its game orientation. When no override matches, or this is disabled, elements\n"
          "render where the game put them."));
 
-  openxr_layout->addWidget(m_enable_openxr, 0, 0, 1, 3);
+  openxr_layout->addWidget(new QLabel(tr("Presentation Mode:")), 0, 0);
+  openxr_layout->addWidget(m_presentation_mode, 0, 1, 1, 2);
 
   m_passthrough = new ConfigBool(tr("Enable Passthrough"), Config::GFX_VR_PASSTHROUGH);
   m_passthrough_remove_black_bg =
@@ -177,6 +196,16 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
       {{tr("Exact"), VRPassthroughCoverageMode::Exact},
        {tr("Fast"), VRPassthroughCoverageMode::Fast}},
       Config::GFX_VR_PASSTHROUGH_COVERAGE_MODE);
+  openxr_layout->addWidget(m_passthrough, 3, 0, 1, 3);
+  const auto update_passthrough_enabled = [this] {
+    const OpenXRPresentationMode mode = Config::Get(Config::GFX_VR_PRESENTATION_MODE);
+    m_passthrough->setEnabled(mode == OpenXRPresentationMode::Legacy ?
+                                  Config::Get(Config::GFX_VR_ENABLE_OPENXR) :
+                                  mode != OpenXRPresentationMode::Vulkan);
+  };
+  connect(m_presentation_mode, &QComboBox::currentIndexChanged, this,
+          [update_passthrough_enabled](int) { update_passthrough_enabled(); });
+  update_passthrough_enabled();
 
   openxr_layout->addWidget(new ConfigFloatLabel(tr("Units per Meter:"), m_units_per_meter), 1, 0);
   openxr_layout->addWidget(m_units_per_meter, 1, 1);
@@ -190,9 +219,6 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
       Config::GFX_VR_MIRROR_VIEW);
   openxr_layout->addWidget(new QLabel(tr("Desktop Mirror View:")), 2, 0);
   openxr_layout->addWidget(m_mirror_view, 2, 1, 1, 2);
-
-  openxr_layout->addWidget(m_flat_screen, 3, 0, 1, 3);
-  openxr_layout->addWidget(m_stereo_screen, 4, 0, 1, 3);
 
   camera_layout->addWidget(m_enable_lean_back_angle, 0, 0);
   camera_layout->addWidget(m_lean_back_angle, 0, 1);
@@ -518,15 +544,14 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
   shaders_group_layout->addWidget(m_load_custom_shaders);
   hack_layout->addWidget(shaders_group);
 
-  passthrough_layout->addWidget(m_passthrough, 0, 0, 1, 3);
-  passthrough_layout->addWidget(m_passthrough_remove_black_bg, 1, 0, 1, 3);
-  passthrough_layout->addWidget(m_passthrough_remove_black_clears, 2, 0, 1, 3);
+  passthrough_layout->addWidget(m_passthrough_remove_black_bg, 0, 0, 1, 3);
+  passthrough_layout->addWidget(m_passthrough_remove_black_clears, 1, 0, 1, 3);
   passthrough_layout->addWidget(
-      new ConfigFloatLabel(tr("Scene Opacity:"), m_passthrough_scene_opacity), 3, 0);
-  passthrough_layout->addWidget(m_passthrough_scene_opacity, 3, 1);
-  passthrough_layout->addWidget(m_passthrough_scene_opacity_value, 3, 2);
-  passthrough_layout->addWidget(new QLabel(tr("Coverage Mode:")), 4, 0);
-  passthrough_layout->addWidget(m_passthrough_coverage_mode, 4, 1, 1, 2);
+      new ConfigFloatLabel(tr("Scene Opacity:"), m_passthrough_scene_opacity), 2, 0);
+  passthrough_layout->addWidget(m_passthrough_scene_opacity, 2, 1);
+  passthrough_layout->addWidget(m_passthrough_scene_opacity_value, 2, 2);
+  passthrough_layout->addWidget(new QLabel(tr("Coverage Mode:")), 3, 0);
+  passthrough_layout->addWidget(m_passthrough_coverage_mode, 3, 1, 1, 2);
 #if defined(_WIN32)
   const auto update_passthrough_backend = [passthrough_group] {
     passthrough_group->setEnabled(Config::Get(Config::MAIN_GFX_BACKEND) == "Vulkan");
@@ -660,28 +685,6 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
 
 void VRPane::AddDescriptions()
 {
-  static constexpr char TR_ENABLE_OPENXR_DESCRIPTION[] = QT_TR_NOOP(
-      "Enables VR rendering through OpenXR."
-      "<br><br>When enabled, Dolphin uses OpenXR instead of Stereoscopic 3D output modes."
-      "<br><br>This setting cannot be changed while emulation is active."
-      "<br><br><dolphin_emphasis>If unsure, leave this unchecked.</dolphin_emphasis>");
-  static constexpr char TR_FLAT_SCREEN_DESCRIPTION[] = QT_TR_NOOP(
-      "Shows the game on a flat 2D screen floating in the VR scene instead of rendering in "
-      "stereoscopic 3D."
-      "<br><br>Requires Enable VR. Uses the Screen Distance and Screen Size settings below to "
-      "position and size the panel. The screen is world-locked; use Recenter to bring it back "
-      "in front of you."
-      "<br><br>This setting cannot be changed while emulation is active."
-      "<br><br><dolphin_emphasis>If unsure, leave this unchecked.</dolphin_emphasis>");
-  static constexpr char TR_STEREO_SCREEN_DESCRIPTION[] = QT_TR_NOOP(
-      "Shows the game as a stereoscopic 3D screen floating in the VR scene using Dolphin's "
-      "classic side-by-side stereo output."
-      "<br><br>Requires Enable VR. Each eye sees only its corresponding half of the SBS image, "
-      "so 3D content appears at the correct depth. This avoids the immersive per-eye "
-      "reprojection path and is often more compatible with render-to-texture effects."
-      "<br><br>Uses the Screen Distance and Screen Size settings below. This setting cannot be "
-      "changed while emulation is active."
-      "<br><br><dolphin_emphasis>If unsure, leave this unchecked.</dolphin_emphasis>");
   static constexpr char TR_REQUESTED_REFRESH_RATE_DESCRIPTION[] = QT_TR_NOOP(
       "Requests a specific display refresh rate from the OpenXR runtime."
       "<br><br>Auto leaves the runtime's default unchanged. Selecting a rate that matches the "
@@ -825,8 +828,10 @@ void VRPane::AddDescriptions()
       "the game's original shaders. Files must be named &lt;hash&gt;-&lt;vs|ps|gs&gt;.txt."
       "<br><br><dolphin_emphasis>If unsure, leave this unchecked.</dolphin_emphasis>");
   static constexpr char TR_PASSTHROUGH_DESCRIPTION[] = QT_TR_NOOP(
-      "Shows the headset camera feed through the dedicated coverage mask. This is supported "
-      "only by Windows Vulkan OpenXR."
+      "Shows the headset camera feed behind the game. In Stereo 3D Screen mode the game remains "
+      "an opaque virtual screen while the camera view is visible around it. In immersive VR, "
+      "transparent game regions additionally require Vulkan coverage support. OpenXR runtimes "
+      "must support alpha blending or a passthrough extension."
       "<br><br>Meta Horizon Link uses <code>XR_FB_passthrough</code> when <b>Passthrough over "
       "Meta Horizon Link</b> is enabled. Other runtimes may use the <code>ALPHA_BLEND</code> "
       "environment blend mode."
@@ -862,9 +867,6 @@ void VRPane::AddDescriptions()
       "custom draws still use a prepass."
       "<br><br><dolphin_emphasis>If unsure, select Exact.</dolphin_emphasis>");
 
-  m_enable_openxr->SetDescription(tr(TR_ENABLE_OPENXR_DESCRIPTION));
-  m_flat_screen->SetDescription(tr(TR_FLAT_SCREEN_DESCRIPTION));
-  m_stereo_screen->SetDescription(tr(TR_STEREO_SCREEN_DESCRIPTION));
   m_use_vulkan_multiview->SetDescription(tr(TR_USE_VULKAN_MULTIVIEW_DESCRIPTION));
   m_reference_space_mode->SetDescription(tr(TR_REFERENCE_SPACE_MODE_DESCRIPTION));
   m_tracking_mode->SetDescription(tr(TR_TRACKING_MODE_DESCRIPTION));
@@ -902,9 +904,7 @@ void VRPane::AddDescriptions()
 void VRPane::OnEmulationStateChanged(Core::State state)
 {
   const bool running = state != Core::State::Uninitialized;
-  m_enable_openxr->setEnabled(!running);
-  m_flat_screen->setEnabled(!running);
-  m_stereo_screen->setEnabled(!running);
+  m_presentation_mode->setEnabled(!running);
   m_requested_refresh_rate->setEnabled(!running);
   m_reference_space_mode->setEnabled(!running);
   m_use_vulkan_multiview->setEnabled(!running);
@@ -918,6 +918,10 @@ void VRPane::ResetGeneralSettings()
                            Config::GFX_VR_ENABLE_OPENXR.GetDefaultValue());
   Config::SetBaseOrCurrent(Config::GFX_VR_FLAT_SCREEN,
                            Config::GFX_VR_FLAT_SCREEN.GetDefaultValue());
+  Config::SetBaseOrCurrent(Config::GFX_VR_STEREO_SCREEN,
+                           Config::GFX_VR_STEREO_SCREEN.GetDefaultValue());
+  Config::SetBaseOrCurrent(Config::GFX_VR_PRESENTATION_MODE,
+                           Config::GFX_VR_PRESENTATION_MODE.GetDefaultValue());
   Config::SetBaseOrCurrent(Config::GFX_VR_REFERENCE_SPACE_MODE,
                            Config::GFX_VR_REFERENCE_SPACE_MODE.GetDefaultValue());
   Config::SetBaseOrCurrent(Config::GFX_VR_TRACKING_MODE,

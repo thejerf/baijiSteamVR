@@ -18,6 +18,7 @@ template <typename T>
 class ConfigChoiceMap;
 enum class OpenXRMirrorView : int;
 enum class OpenXRReferenceSpaceMode : int;
+enum class OpenXRPresentationMode : int;
 enum class OpenXRTrackingMode : int;
 enum class VRPassthroughCoverageMode : int;
 
@@ -37,9 +38,7 @@ private:
   void OnEmulationStateChanged(Core::State state);
   void ResetGeneralSettings();
 
-  ConfigBool* m_enable_openxr = nullptr;
-  ConfigBool* m_flat_screen = nullptr;
-  ConfigBool* m_stereo_screen = nullptr;
+  ConfigChoiceMap<OpenXRPresentationMode>* m_presentation_mode = nullptr;
   ConfigChoiceMap<OpenXRReferenceSpaceMode>* m_reference_space_mode = nullptr;
   ConfigChoiceMap<OpenXRTrackingMode>* m_tracking_mode = nullptr;
   ConfigFloatSlider* m_units_per_meter = nullptr;

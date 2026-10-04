@@ -214,9 +214,6 @@ void EnhancementsWidget::CreateWidgets()
   auto* stereoscopy_layout = new QGridLayout();
   m_stereoscopy_box->setLayout(stereoscopy_layout);
 
-  m_3d_mode = new ConfigChoice({tr("Off"), tr("Side-by-Side"), tr("Top-and-Bottom"), tr("Anaglyph"),
-                                tr("HDMI 3D"), tr("Passive")},
-                               Config::GFX_STEREO_MODE, m_game_layer);
   m_3d_depth = new ConfigFloatSlider(0, Config::GFX_STEREO_DEPTH_MAXIMUM, Config::GFX_STEREO_DEPTH,
                                      1.0f, m_game_layer);
   m_3d_convergence = new ConfigFloatSlider(0, Config::GFX_STEREO_CONVERGENCE_MAXIMUM,
@@ -229,23 +226,17 @@ void EnhancementsWidget::CreateWidgets()
   m_3d_per_eye_resolution = new ConfigBool(
       tr("Use Full Resolution Per Eye"), Config::GFX_STEREO_PER_EYE_RESOLUTION_FULL, m_game_layer);
 
-  stereoscopy_layout->addWidget(new QLabel(tr("Stereoscopic 3D Mode:")), 0, 0);
-  stereoscopy_layout->addWidget(m_3d_mode, 0, 1);
-  stereoscopy_layout->addWidget(new ConfigFloatLabel(tr("Depth:"), m_3d_depth), 1, 0);
-  stereoscopy_layout->addWidget(m_3d_depth, 1, 1);
-  stereoscopy_layout->addWidget(m_3d_depth_value, 1, 2);
-  stereoscopy_layout->addWidget(new ConfigFloatLabel(tr("Convergence:"), m_3d_convergence), 2, 0);
-  stereoscopy_layout->addWidget(m_3d_convergence, 2, 1);
-  stereoscopy_layout->addWidget(m_3d_convergence_value, 2, 2);
-  stereoscopy_layout->addWidget(m_3d_swap_eyes, 3, 0);
-  stereoscopy_layout->addWidget(m_3d_per_eye_resolution, 4, 0);
+  stereoscopy_layout->addWidget(new ConfigFloatLabel(tr("Depth:"), m_3d_depth), 0, 0);
+  stereoscopy_layout->addWidget(m_3d_depth, 0, 1);
+  stereoscopy_layout->addWidget(m_3d_depth_value, 0, 2);
+  stereoscopy_layout->addWidget(new ConfigFloatLabel(tr("Convergence:"), m_3d_convergence), 1, 0);
+  stereoscopy_layout->addWidget(m_3d_convergence, 1, 1);
+  stereoscopy_layout->addWidget(m_3d_convergence_value, 1, 2);
+  stereoscopy_layout->addWidget(m_3d_swap_eyes, 2, 0);
+  stereoscopy_layout->addWidget(m_3d_per_eye_resolution, 3, 0);
 
   m_3d_depth_value->setText(QString::asprintf("%.0f", m_3d_depth->GetValue()));
   m_3d_convergence_value->setText(QString::asprintf("%.2f", m_3d_convergence->GetValue()));
-
-  auto current_stereo_mode = ReadSetting(Config::GFX_STEREO_MODE);
-  if (current_stereo_mode != StereoMode::SBS && current_stereo_mode != StereoMode::TAB)
-    m_3d_per_eye_resolution->hide();
 
   main_layout->addWidget(enhancements_box);
   main_layout->addWidget(m_stereoscopy_box);
@@ -256,16 +247,6 @@ void EnhancementsWidget::CreateWidgets()
 
 void EnhancementsWidget::ConnectWidgets()
 {
-  connect(m_3d_mode, &QComboBox::currentIndexChanged, [this] {
-    auto current_stereo_mode = ReadSetting(Config::GFX_STEREO_MODE);
-    LoadPostProcessingShaders();
-
-    if (current_stereo_mode == StereoMode::SBS || current_stereo_mode == StereoMode::TAB)
-      m_3d_per_eye_resolution->show();
-    else
-      m_3d_per_eye_resolution->hide();
-  });
-
   connect(m_post_processing_effect, &QComboBox::currentIndexChanged, this,
           &EnhancementsWidget::ShaderChanged);
 
@@ -379,7 +360,12 @@ void EnhancementsWidget::UpdateStereoscopyAvailability()
 {
   const bool supports_stereoscopy = g_backend_info.bSupportsGeometryShaders;
   const bool openxr_enabled = Config::Get(Config::GFX_VR_ENABLE_OPENXR);
-  m_stereoscopy_box->setEnabled(supports_stereoscopy && !openxr_enabled);
+  const bool stereo_screen = Config::Get(Config::GFX_VR_PRESENTATION_MODE) ==
+                                 OpenXRPresentationMode::StereoScreen ||
+                             (Config::Get(Config::GFX_VR_PRESENTATION_MODE) ==
+                                  OpenXRPresentationMode::Legacy &&
+                              Config::Get(Config::GFX_VR_STEREO_SCREEN));
+  m_stereoscopy_box->setEnabled(supports_stereoscopy && (!openxr_enabled || stereo_screen));
 }
 
 void EnhancementsWidget::ShaderChanged()
@@ -538,14 +524,6 @@ void EnhancementsWidget::AddDescriptions()
                  "detail.<br><br>Disabling fog will break some games which rely on proper fog "
                  "emulation.<br><br><dolphin_emphasis>If unsure, leave this "
                  "unchecked.</dolphin_emphasis>");
-  static const char TR_3D_MODE_DESCRIPTION[] = QT_TR_NOOP(
-      "Selects the stereoscopic 3D mode. Stereoscopy allows a better feeling "
-      "of depth if the necessary hardware is present. Heavily decreases "
-      "emulation speed and sometimes causes issues.<br><br>Side-by-Side and Top-and-Bottom are "
-      "used by most 3D TVs.<br>Anaglyph is used for Red-Cyan colored glasses.<br>HDMI 3D is "
-      "used when the monitor supports 3D display resolutions.<br>Passive is another type of 3D "
-      "used by some TVs."
-      "<br><br><dolphin_emphasis>If unsure, select Off.</dolphin_emphasis>");
   static const char TR_3D_DEPTH_DESCRIPTION[] = QT_TR_NOOP(
       "Controls the separation distance between the virtual cameras.<br><br>A higher "
       "value creates a stronger feeling of depth while a lower value is more comfortable.");
@@ -620,9 +598,6 @@ void EnhancementsWidget::AddDescriptions()
   m_arbitrary_mipmap_detection->SetDescription(tr(TR_ARBITRARY_MIPMAP_DETECTION_DESCRIPTION));
 
   m_hdr->SetDescription(tr(TR_HDR_DESCRIPTION));
-
-  m_3d_mode->SetTitle(tr("Stereoscopic 3D Mode"));
-  m_3d_mode->SetDescription(tr(TR_3D_MODE_DESCRIPTION));
 
   m_3d_depth->SetTitle(tr("Depth"));
   m_3d_depth->SetDescription(tr(TR_3D_DEPTH_DESCRIPTION));

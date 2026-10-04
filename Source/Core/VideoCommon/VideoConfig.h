@@ -63,6 +63,16 @@ enum class OpenXRTrackingMode : int
   None = 2,
 };
 
+// Selects the top-level output path for Steam Frame. Legacy follows the previous
+// EnableOpenXR/FlatScreen/StereoScreen settings until the user selects a mode.
+enum class OpenXRPresentationMode : int
+{
+  Legacy = -1,
+  Vulkan = 0,
+  Immersive = 1,
+  StereoScreen = 2,
+};
+
 enum class VRPassthroughCoverageMode : int
 {
   Exact = 0,
@@ -500,6 +510,12 @@ float vr_screen_distance = 1.5f;
     return vr_passthrough && stereo_mode == StereoMode::OpenXR &&
            g_backend_info.bSupportsVRPassthroughCoverage &&
            (g_backend_info.vr_passthrough_coverage_sample_counts & iMultisamples) != 0;
+  }
+  // A stereo virtual screen can use environment passthrough around its opaque quad without
+  // requiring EFB coverage rendering. Immersive VR uses the stricter coverage check above.
+  bool VRPassthroughBackgroundEnabled() const
+  {
+    return vr_passthrough && (stereo_mode == StereoMode::OpenXR || vr_stereo_screen);
   }
   bool ExclusiveFullscreenEnabled() const
   {

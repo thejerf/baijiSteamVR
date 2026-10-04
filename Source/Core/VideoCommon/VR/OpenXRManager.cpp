@@ -2545,7 +2545,8 @@ XrEnvironmentBlendMode OpenXRManager::GetActiveBlendMode() const
 {
   // XR_FB_passthrough composites its own layer behind an OPAQUE projection layer, so
   // ALPHA_BLEND is only the fallback for runtimes without the extension.
-  if (g_ActiveConfig.VRPassthroughEnabled() && !IsFBPassthroughUsable() && SupportsAlphaBlend())
+  if (g_ActiveConfig.VRPassthroughBackgroundEnabled() && !IsFBPassthroughUsable() &&
+      SupportsAlphaBlend())
     return XR_ENVIRONMENT_BLEND_MODE_ALPHA_BLEND;
   return XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
 }
@@ -2679,7 +2680,7 @@ bool OpenXRManager::EndFrameDetached(XrTime display_time,
 {
   // Keep the FB passthrough feed in sync with the Passthrough setting. Gated on a
   // registered swapchain so the controller-binding utility session never starts it.
-  UpdateFBPassthrough(g_ActiveConfig.VRPassthroughEnabled() && m_swapchain != nullptr);
+  UpdateFBPassthrough(g_ActiveConfig.VRPassthroughBackgroundEnabled() && m_swapchain != nullptr);
 
   // The passthrough layer composites first (behind the projection layer), replacing the
   // black void with the camera feed wherever the projection layer's alpha is 0.

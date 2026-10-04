@@ -164,14 +164,37 @@ void VideoConfig::Refresh()
   color_correction.fHDRPaperWhiteNits = Config::Get(Config::GFX_CC_HDR_PAPER_WHITE_NITS);
 
   stereo_mode = Config::Get(Config::GFX_STEREO_MODE);
-  const bool vr_openxr_enabled = Config::Get(Config::GFX_VR_ENABLE_OPENXR);
+  const OpenXRPresentationMode vr_presentation_mode =
+      Config::Get(Config::GFX_VR_PRESENTATION_MODE);
+  bool vr_openxr_enabled = Config::Get(Config::GFX_VR_ENABLE_OPENXR);
   vr_flat_screen = Config::Get(Config::GFX_VR_FLAT_SCREEN);
   vr_stereo_screen = Config::Get(Config::GFX_VR_STEREO_SCREEN);
+
+  switch (vr_presentation_mode)
+  {
+  case OpenXRPresentationMode::Vulkan:
+    vr_openxr_enabled = false;
+    vr_flat_screen = false;
+    vr_stereo_screen = false;
+    break;
+  case OpenXRPresentationMode::Immersive:
+    vr_openxr_enabled = true;
+    vr_flat_screen = false;
+    vr_stereo_screen = false;
+    break;
+  case OpenXRPresentationMode::StereoScreen:
+    vr_openxr_enabled = true;
+    vr_flat_screen = false;
+    vr_stereo_screen = true;
+    break;
+  case OpenXRPresentationMode::Legacy:
+    break;
+  }
+
   if (vr_openxr_enabled)
   {
-    // OpenXR mode is now driven by a dedicated VR setting. Flat mode keeps the session running
-    // but renders the game mono (StereoMode::Off); the present path swaps to a quad layer.
-    // Stereo-screen mode uses the classic SBS stereo pipeline and submits two eye quads.
+    // Immersive VR uses DolphinXR's existing per-eye rendering path. Stereo-screen mode
+    // reuses Dolphin's SBS pipeline and submits its eyes as separate OpenXR quad layers.
     if (vr_flat_screen)
       stereo_mode = StereoMode::Off;
     else if (vr_stereo_screen)

@@ -66,7 +66,6 @@ private:
 
   // Stereoscopy
   QGroupBox* m_stereoscopy_box;
-  ConfigChoice* m_3d_mode;
   ConfigFloatSlider* m_3d_depth;
   QLabel* m_3d_depth_value;
   ConfigFloatSlider* m_3d_convergence;
