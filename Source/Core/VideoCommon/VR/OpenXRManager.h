@@ -219,9 +219,6 @@ public:
   // Started by SetSwapchain() when UseXRPacingThread is enabled; when inactive, the
   // legacy synchronous flow (Presenter calling Wait/Begin/End inline) applies.
   void StartFrameThread();
-  // Run the XR frame protocol without a graphics swapchain so OpenXR controller actions remain
-  // live while Flat Vulkan mode renders only to its desktop surface.
-  void StartInputOnlyFrameThread();
   void StopFrameThread();
   bool IsFrameThreadActive() const
   {
@@ -640,7 +637,6 @@ private:
   std::thread m_frame_thread;
   std::atomic<bool> m_frame_thread_running{false};
   std::atomic<bool> m_frame_thread_should_exit{false};
-  std::atomic<bool> m_input_only_frame_thread{false};
   std::mutex m_publish_mutex;
   std::condition_variable m_publish_cv;
   PublishedXRFrame m_published_frame;  // guarded by m_publish_mutex
@@ -654,7 +650,16 @@ private:
   std::array<XrPath, 2> m_input_hand_paths{XR_NULL_PATH, XR_NULL_PATH};
   XrAction m_action_primary_click = XR_NULL_HANDLE;
   XrAction m_action_secondary_click = XR_NULL_HANDLE;
+  XrAction m_action_frame_x_click = XR_NULL_HANDLE;
+  XrAction m_action_frame_y_click = XR_NULL_HANDLE;
   XrAction m_action_menu_click = XR_NULL_HANDLE;
+  XrAction m_action_system_click = XR_NULL_HANDLE;
+  XrAction m_action_view_click = XR_NULL_HANDLE;
+  XrAction m_action_bumper_click = XR_NULL_HANDLE;
+  XrAction m_action_dpad_up_click = XR_NULL_HANDLE;
+  XrAction m_action_dpad_down_click = XR_NULL_HANDLE;
+  XrAction m_action_dpad_left_click = XR_NULL_HANDLE;
+  XrAction m_action_dpad_right_click = XR_NULL_HANDLE;
   XrAction m_action_thumbstick_click = XR_NULL_HANDLE;
   XrAction m_action_trigger_click = XR_NULL_HANDLE;
   XrAction m_action_squeeze_click = XR_NULL_HANDLE;

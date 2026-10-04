@@ -9,9 +9,11 @@
 #include <array>
 #include <chrono>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
 
+#include "Common/Logging/Log.h"
 #include "Common/MathUtil.h"
 #include "Common/Matrix.h"
 #include "Common/VR/OpenXRInputState.h"
@@ -42,7 +44,8 @@ Common::Vec3 ToVec3(const std::array<float, 3>& vec)
 class OpenXRDevice final : public Core::Device
 {
 public:
-  OpenXRDevice()
+  explicit OpenXRDevice(ControllerInterface* controller_interface)
+      : m_controller_interface(*controller_interface)
   {
     AddHandInputs(Hand::Left);
     AddHandInputs(Hand::Right);
@@ -62,6 +65,35 @@ public:
   Core::DeviceRemoval UpdateInput() override
   {
     m_snapshot = Common::VR::OpenXRInputState::GetSnapshot();
+    const bool has_openxr_controller = m_snapshot.runtime_active &&
+                                       (m_snapshot.controllers[0].connected ||
+                                        m_snapshot.controllers[1].connected);
+    if (!has_openxr_controller)
+    {
+      if (const auto gamepad = FindSteamInputGamepad())
+      {
+        m_snapshot = MakeGamepadSnapshot(*gamepad);
+        std::lock_guard lock(m_gamepad_mutex);
+        m_steam_input_gamepad = gamepad;
+        if (!m_gamepad_logged)
+        {
+          INFO_LOG_FMT(CONTROLLERINTERFACE, "OpenXR: Using SDL gamepad '{}' for Steam Frame input.",
+                       gamepad->GetName());
+          m_gamepad_logged = true;
+        }
+      }
+      else
+      {
+        std::lock_guard lock(m_gamepad_mutex);
+        m_steam_input_gamepad.reset();
+      }
+    }
+    else
+    {
+      std::lock_guard lock(m_gamepad_mutex);
+      m_steam_input_gamepad.reset();
+    }
+
     UpdateMotionState(Hand::Left);
     UpdateMotionState(Hand::Right);
     return Core::DeviceRemoval::Keep;
@@ -86,6 +118,81 @@ public:
   }
 
 private:
+  std::shared_ptr<ciface::Core::Device> FindSteamInputGamepad() const
+  {
+    const auto devices = m_controller_interface.GetAllDevices();
+
+    // In Flat Vulkan mode Steam Input presents the Frame controllers as an SDL gamepad. This
+    // Frame-only build deliberately binds the first SDL gamepad to its single logical controller.
+    for (const auto& device : devices)
+    {
+      if (device->GetSource() == "SDL" && device->FindInput("Button S") &&
+          device->FindInput("Left X+") && device->FindInput("Right X+"))
+      {
+        return device;
+      }
+    }
+
+    return {};
+  }
+
+  static ControlState GetInput(const ciface::Core::Device& device, std::string_view name)
+  {
+    for (const auto* input : device.Inputs())
+    {
+      if (input->IsMatchingName(name))
+        return input->GetState();
+    }
+    return 0.0;
+  }
+
+  static Common::VR::OpenXRInputSnapshot MakeGamepadSnapshot(const ciface::Core::Device& device)
+  {
+    Common::VR::OpenXRInputSnapshot snapshot{};
+    auto& left = snapshot.controllers[0];
+    auto& right = snapshot.controllers[1];
+    left.connected = true;
+    right.connected = true;
+
+    // SDL's standardized gamepad layout is the Steam Input compatibility layout for Flat mode.
+    left.primary_button = GetInput(device, "Button X") > 0.5;
+    left.secondary_button = GetInput(device, "Button Y") > 0.5;
+    left.view_button = GetInput(device, "Back") > 0.5;
+    left.system_button = GetInput(device, "Guide") > 0.5;
+    left.dpad_up = GetInput(device, "Pad N") > 0.5;
+    left.dpad_down = GetInput(device, "Pad S") > 0.5;
+    left.dpad_left = GetInput(device, "Pad W") > 0.5;
+    left.dpad_right = GetInput(device, "Pad E") > 0.5;
+    left.bumper_button = GetInput(device, "Shoulder L") > 0.5;
+    left.squeeze_button = GetInput(device, "Paddle 2") > 0.5;
+    left.squeeze_value = left.squeeze_button ? 1.0f : 0.0f;
+    left.trigger_value = static_cast<float>(std::clamp(GetInput(device, "Trigger L"), 0.0, 1.0));
+    left.trigger_button = left.trigger_value > 0.5f;
+    left.thumbstick_x = static_cast<float>(GetInput(device, "Left X+") -
+                                            GetInput(device, "Left X-"));
+    left.thumbstick_y = static_cast<float>(GetInput(device, "Left Y+") -
+                                            GetInput(device, "Left Y-"));
+    left.thumbstick_button = GetInput(device, "Thumb L") > 0.5;
+
+    right.primary_button = GetInput(device, "Button A") > 0.5;
+    right.secondary_button = GetInput(device, "Button B") > 0.5;
+    right.frame_x_button = GetInput(device, "Button X") > 0.5;
+    right.frame_y_button = GetInput(device, "Button Y") > 0.5;
+    right.menu_button = GetInput(device, "Start") > 0.5;
+    right.system_button = GetInput(device, "Guide") > 0.5;
+    right.bumper_button = GetInput(device, "Shoulder R") > 0.5;
+    right.squeeze_button = GetInput(device, "Paddle 1") > 0.5;
+    right.squeeze_value = right.squeeze_button ? 1.0f : 0.0f;
+    right.trigger_value = static_cast<float>(std::clamp(GetInput(device, "Trigger R"), 0.0, 1.0));
+    right.trigger_button = right.trigger_value > 0.5f;
+    right.thumbstick_x = static_cast<float>(GetInput(device, "Right X+") -
+                                             GetInput(device, "Right X-"));
+    right.thumbstick_y = static_cast<float>(GetInput(device, "Right Y+") -
+                                             GetInput(device, "Right Y-"));
+    right.thumbstick_button = GetInput(device, "Thumb R") > 0.5;
+    return snapshot;
+  }
+
   enum class RumbleTarget
   {
     Both,
@@ -124,6 +231,44 @@ private:
   void SetRumbleState(ControlState state, RumbleTarget target)
   {
     const float amplitude = std::clamp(static_cast<float>(state), 0.0f, 1.0f);
+    std::shared_ptr<ciface::Core::Device> gamepad;
+    {
+      std::lock_guard lock(m_gamepad_mutex);
+      gamepad = m_steam_input_gamepad;
+    }
+
+    if (gamepad)
+    {
+      const auto set_output = [gamepad, amplitude](std::string_view name) {
+        if (auto* const output = gamepad->FindOutput(name))
+        {
+          output->SetState(amplitude);
+          return true;
+        }
+        return false;
+      };
+
+      switch (target)
+      {
+      case RumbleTarget::Both:
+        if (!set_output("Motor"))
+        {
+          set_output("Motor L");
+          set_output("Motor R");
+        }
+        break;
+      case RumbleTarget::Left:
+        if (!set_output("Motor L"))
+          set_output("Motor");
+        break;
+      case RumbleTarget::Right:
+        if (!set_output("Motor R"))
+          set_output("Motor");
+        break;
+      }
+      return;
+    }
+
     switch (target)
     {
     case RumbleTarget::Both:
@@ -143,12 +288,26 @@ private:
     AddInput(new DigitalInput(this, hand, DigitalControl::Primary));
     AddInput(new DigitalInput(this, hand, DigitalControl::Secondary));
     AddInput(new DigitalInput(this, hand, DigitalControl::Menu));
+    AddInput(new DigitalInput(this, hand, DigitalControl::System));
+    AddInput(new DigitalInput(this, hand, DigitalControl::Bumper));
     AddInput(new DigitalInput(this, hand, DigitalControl::Trigger));
     AddInput(new DigitalInput(this, hand, DigitalControl::Squeeze));
     AddInput(new DigitalInput(this, hand, DigitalControl::Thumbstick));
+    if (hand == Hand::Left)
+    {
+      AddInput(new DigitalInput(this, hand, DigitalControl::View));
+      AddInput(new DigitalInput(this, hand, DigitalControl::DpadUp));
+      AddInput(new DigitalInput(this, hand, DigitalControl::DpadDown));
+      AddInput(new DigitalInput(this, hand, DigitalControl::DpadLeft));
+      AddInput(new DigitalInput(this, hand, DigitalControl::DpadRight));
+    }
+    else
+    {
+      AddInput(new DigitalInput(this, hand, DigitalControl::FrameX));
+      AddInput(new DigitalInput(this, hand, DigitalControl::FrameY));
+    }
     AddInput(new AnalogInput(this, hand, AnalogControl::Trigger));
     AddInput(new AnalogInput(this, hand, AnalogControl::Squeeze));
-    AddInput(new AnalogInput(this, hand, AnalogControl::SqueezeForce));
     AddInput(new AxisInput(this, hand, AxisControl::ThumbstickX, false));
     AddInput(new AxisInput(this, hand, AxisControl::ThumbstickX, true));
     AddInput(new AxisInput(this, hand, AxisControl::ThumbstickY, false));
@@ -161,6 +320,15 @@ private:
     Primary,
     Secondary,
     Menu,
+    System,
+    View,
+    Bumper,
+    DpadUp,
+    DpadDown,
+    DpadLeft,
+    DpadRight,
+    FrameX,
+    FrameY,
     Trigger,
     Squeeze,
     Thumbstick,
@@ -214,6 +382,24 @@ private:
         return prefix + (m_hand == Hand::Left ? " Button Y" : " Button B");
       case DigitalControl::Menu:
         return prefix + " Button Menu";
+      case DigitalControl::System:
+        return prefix + " Button System";
+      case DigitalControl::View:
+        return prefix + " Button View";
+      case DigitalControl::Bumper:
+        return prefix + " Button Bumper";
+      case DigitalControl::DpadUp:
+        return prefix + " D-Pad Up";
+      case DigitalControl::DpadDown:
+        return prefix + " D-Pad Down";
+      case DigitalControl::DpadLeft:
+        return prefix + " D-Pad Left";
+      case DigitalControl::DpadRight:
+        return prefix + " D-Pad Right";
+      case DigitalControl::FrameX:
+        return prefix + " Button X";
+      case DigitalControl::FrameY:
+        return prefix + " Button Y";
       case DigitalControl::Trigger:
         return prefix + " Button Trigger";
       case DigitalControl::Squeeze:
@@ -239,6 +425,24 @@ private:
         return state.secondary_button ? 1.0 : 0.0;
       case DigitalControl::Menu:
         return state.menu_button ? 1.0 : 0.0;
+      case DigitalControl::System:
+        return state.system_button ? 1.0 : 0.0;
+      case DigitalControl::View:
+        return state.view_button ? 1.0 : 0.0;
+      case DigitalControl::Bumper:
+        return state.bumper_button ? 1.0 : 0.0;
+      case DigitalControl::DpadUp:
+        return state.dpad_up ? 1.0 : 0.0;
+      case DigitalControl::DpadDown:
+        return state.dpad_down ? 1.0 : 0.0;
+      case DigitalControl::DpadLeft:
+        return state.dpad_left ? 1.0 : 0.0;
+      case DigitalControl::DpadRight:
+        return state.dpad_right ? 1.0 : 0.0;
+      case DigitalControl::FrameX:
+        return state.frame_x_button ? 1.0 : 0.0;
+      case DigitalControl::FrameY:
+        return state.frame_y_button ? 1.0 : 0.0;
       case DigitalControl::Trigger:
         return state.trigger_button ? 1.0 : 0.0;
       case DigitalControl::Squeeze:
@@ -248,6 +452,14 @@ private:
       }
 
       return 0.0;
+    }
+
+    bool IsHidden() const override
+    {
+      // Frame has a left D-pad and View button, not the left-hand X/Y/Menu controls in Touch.
+      return m_hand == Hand::Left &&
+             (m_control == DigitalControl::Primary || m_control == DigitalControl::Secondary ||
+              m_control == DigitalControl::Menu);
     }
 
   private:
@@ -279,6 +491,8 @@ private:
 
       return "";
     }
+
+    bool IsHidden() const override { return m_control == AnalogControl::Squeeze; }
 
     ControlState GetState() const override
     {
@@ -527,6 +741,10 @@ private:
   }
 
   Common::VR::OpenXRInputSnapshot m_snapshot{};
+  ControllerInterface& m_controller_interface;
+  std::mutex m_gamepad_mutex;
+  std::shared_ptr<ciface::Core::Device> m_steam_input_gamepad;
+  bool m_gamepad_logged = false;
   std::array<MotionState, 2> m_motion_state{};
   std::array<VelocityHistory, 2> m_velocity_history{};
 };
@@ -541,7 +759,7 @@ public:
     GetControllerInterface().RemoveDevice(
         [](const auto* dev) { return dev->GetSource() == std::string(SOURCE_NAME); });
 
-    GetControllerInterface().AddDevice(std::make_shared<OpenXRDevice>());
+    GetControllerInterface().AddDevice(std::make_shared<OpenXRDevice>(&GetControllerInterface()));
   }
 };
 }  // namespace

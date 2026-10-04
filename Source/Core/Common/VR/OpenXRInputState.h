@@ -44,7 +44,16 @@ struct OpenXRControllerState
   bool connected = false;
   bool primary_button = false;
   bool secondary_button = false;
+  bool frame_x_button = false;
+  bool frame_y_button = false;
   bool menu_button = false;
+  bool system_button = false;
+  bool view_button = false;
+  bool bumper_button = false;
+  bool dpad_up = false;
+  bool dpad_down = false;
+  bool dpad_left = false;
+  bool dpad_right = false;
   bool trigger_button = false;
   bool squeeze_button = false;
   bool thumbstick_button = false;

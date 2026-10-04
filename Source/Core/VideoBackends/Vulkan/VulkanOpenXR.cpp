@@ -547,10 +547,9 @@ bool VulkanOpenXR::PreQueryVulkanExtensions(VulkanExtensionRequirements& out)
   return true;
 }
 
-bool VulkanOpenXR::Initialize(bool input_only)
+bool VulkanOpenXR::Initialize()
 {
   INFO_LOG_FMT(VIDEO, "OpenXR Vulkan: Starting initialization...");
-  m_input_only = input_only;
 
   // If PreQueryVulkanExtensions() was called, VR::g_openxr already exists.
   if (!VR::g_openxr)
@@ -614,13 +613,6 @@ bool VulkanOpenXR::Initialize(bool input_only)
     ERROR_LOG_FMT(VIDEO, "OpenXR Vulkan: Reference space creation failed — disabling VR.");
     VR::g_openxr.reset();
     return false;
-  }
-
-  if (input_only)
-  {
-    INFO_LOG_FMT(VIDEO, "OpenXR Vulkan: Starting input-only session for Flat Vulkan controls.");
-    VR::g_openxr->StartInputOnlyFrameThread();
-    return true;
   }
 
   INFO_LOG_FMT(VIDEO, "OpenXR Vulkan: Creating swapchains...");

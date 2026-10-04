@@ -330,10 +330,15 @@ std::vector<const char*> OpenXRManager::GetAvailableControllerExtensions()
     return {};
 #endif
 
-  static const std::array<const char*, 3> s_optional = {
+  // The Frame controller extension is newer than the pinned OpenXR headers in some
+  // build environments, so keep its published extension name as a string literal.
+  static constexpr const char* FRAME_CONTROLLER_EXTENSION =
+      "XR_VALVE_frame_controller_interaction";
+  static const std::array<const char*, 4> s_optional = {
       XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME,
       XR_META_TOUCH_CONTROLLER_PLUS_EXTENSION_NAME,
       XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME,
+      FRAME_CONTROLLER_EXTENSION,
   };
 
   uint32_t ext_count = 0;
@@ -1073,26 +1078,19 @@ void OpenXRManager::StartFrameThread()
   INFO_LOG_FMT(OPENXR, "OpenXR: XR pacing thread started.");
 }
 
-void OpenXRManager::StartInputOnlyFrameThread()
-{
-  m_input_only_frame_thread.store(true, std::memory_order_release);
-  StartFrameThread();
-}
-
 void OpenXRManager::StopFrameThread()
 {
-  if (m_frame_thread.joinable())
+  if (!m_frame_thread.joinable())
+    return;
+
+  m_frame_thread_should_exit.store(true, std::memory_order_release);
   {
-    m_frame_thread_should_exit.store(true, std::memory_order_release);
-    {
-      std::lock_guard<std::mutex> lock(m_publish_mutex);
-      m_publish_cv.notify_all();
-    }
-    m_frame_thread.join();
-    m_frame_thread_running.store(false, std::memory_order_release);
-    INFO_LOG_FMT(OPENXR, "OpenXR: XR pacing thread stopped.");
+    std::lock_guard<std::mutex> lock(m_publish_mutex);
+    m_publish_cv.notify_all();
   }
-  m_input_only_frame_thread.store(false, std::memory_order_release);
+  m_frame_thread.join();
+  m_frame_thread_running.store(false, std::memory_order_release);
+  INFO_LOG_FMT(OPENXR, "OpenXR: XR pacing thread stopped.");
 }
 
 void OpenXRManager::ShutdownSession()
@@ -1298,8 +1296,7 @@ void OpenXRManager::FrameThreadLoop()
 
   while (!m_frame_thread_should_exit.load(std::memory_order_acquire))
   {
-    const bool eager_heartbeat = m_input_only_frame_thread.load(std::memory_order_acquire) ||
-                                 g_ActiveConfig.vr_eager_heartbeat;
+    const bool eager_heartbeat = g_ActiveConfig.vr_eager_heartbeat;
     const u64 cycle_start_us = Common::Timer::NowUs();
     if (!PollEvents())
       break;
@@ -1583,7 +1580,25 @@ bool OpenXRManager::InitializeInputActions()
                      XR_ACTION_TYPE_BOOLEAN_INPUT) ||
       !create_action(&m_action_secondary_click, "secondary_click", "Secondary Button",
                      XR_ACTION_TYPE_BOOLEAN_INPUT) ||
+      !create_action(&m_action_frame_x_click, "frame_x_click", "X Button",
+                     XR_ACTION_TYPE_BOOLEAN_INPUT) ||
+      !create_action(&m_action_frame_y_click, "frame_y_click", "Y Button",
+                     XR_ACTION_TYPE_BOOLEAN_INPUT) ||
       !create_action(&m_action_menu_click, "menu_click", "Menu Button",
+                     XR_ACTION_TYPE_BOOLEAN_INPUT) ||
+      !create_action(&m_action_system_click, "system_click", "System Button",
+                     XR_ACTION_TYPE_BOOLEAN_INPUT) ||
+      !create_action(&m_action_view_click, "view_click", "View Button",
+                     XR_ACTION_TYPE_BOOLEAN_INPUT) ||
+      !create_action(&m_action_bumper_click, "bumper_click", "Bumper",
+                     XR_ACTION_TYPE_BOOLEAN_INPUT) ||
+      !create_action(&m_action_dpad_up_click, "dpad_up_click", "D-Pad Up",
+                     XR_ACTION_TYPE_BOOLEAN_INPUT) ||
+      !create_action(&m_action_dpad_down_click, "dpad_down_click", "D-Pad Down",
+                     XR_ACTION_TYPE_BOOLEAN_INPUT) ||
+      !create_action(&m_action_dpad_left_click, "dpad_left_click", "D-Pad Left",
+                     XR_ACTION_TYPE_BOOLEAN_INPUT) ||
+      !create_action(&m_action_dpad_right_click, "dpad_right_click", "D-Pad Right",
                      XR_ACTION_TYPE_BOOLEAN_INPUT) ||
       !create_action(&m_action_thumbstick_click, "thumbstick_click", "Thumbstick Click",
                      XR_ACTION_TYPE_BOOLEAN_INPUT) ||
@@ -1919,8 +1934,51 @@ bool OpenXRManager::InitializeInputActions()
                        {m_action_aim_pose, "/user/hand/right/input/aim/pose"},
                        {m_action_grip_pose, "/user/hand/right/input/grip/pose"},
                        {m_action_haptic, "/user/hand/left/output/haptic"},
-                       {m_action_haptic, "/user/hand/right/output/haptic"},
-                   });
+                        {m_action_haptic, "/user/hand/right/output/haptic"},
+                    });
+
+  static constexpr const char* FRAME_CONTROLLER_PROFILE =
+      "/interaction_profiles/valve/frame_controller_valve";
+  if (IsExtensionEnabled("XR_VALVE_frame_controller_interaction"))
+  {
+    // Steam Frame exposes its native button layout through this profile. Touch and grip-pose
+    // inputs are intentionally not mapped into Dolphin's emulated controller UI.
+    suggest_bindings(FRAME_CONTROLLER_PROFILE,
+                     {
+                         {m_action_primary_click, "/user/hand/right/input/a/click"},
+                         {m_action_secondary_click, "/user/hand/right/input/b/click"},
+                         {m_action_frame_x_click, "/user/hand/right/input/x/click"},
+                         {m_action_frame_y_click, "/user/hand/right/input/y/click"},
+                         {m_action_menu_click, "/user/hand/right/input/menu/click"},
+                         {m_action_system_click, "/user/hand/left/input/system/click"},
+                         {m_action_system_click, "/user/hand/right/input/system/click"},
+                         {m_action_view_click, "/user/hand/left/input/view/click"},
+                         {m_action_bumper_click, "/user/hand/left/input/bumper/click"},
+                         {m_action_bumper_click, "/user/hand/right/input/bumper/click"},
+                         {m_action_dpad_up_click, "/user/hand/left/input/dpad_up/click"},
+                         {m_action_dpad_down_click, "/user/hand/left/input/dpad_down/click"},
+                         {m_action_dpad_left_click, "/user/hand/left/input/dpad_left/click"},
+                         {m_action_dpad_right_click, "/user/hand/left/input/dpad_right/click"},
+                         {m_action_thumbstick_click, "/user/hand/left/input/thumbstick/click"},
+                         {m_action_thumbstick_x, "/user/hand/left/input/thumbstick/x"},
+                         {m_action_thumbstick_y, "/user/hand/left/input/thumbstick/y"},
+                         {m_action_thumbstick_click, "/user/hand/right/input/thumbstick/click"},
+                         {m_action_thumbstick_x, "/user/hand/right/input/thumbstick/x"},
+                         {m_action_thumbstick_y, "/user/hand/right/input/thumbstick/y"},
+                         {m_action_trigger_click, "/user/hand/left/input/trigger/click"},
+                         {m_action_trigger_value, "/user/hand/left/input/trigger/value"},
+                         {m_action_trigger_click, "/user/hand/right/input/trigger/click"},
+                         {m_action_trigger_value, "/user/hand/right/input/trigger/value"},
+                         {m_action_squeeze_click, "/user/hand/left/input/squeeze/click"},
+                         {m_action_squeeze_click, "/user/hand/right/input/squeeze/click"},
+                         {m_action_aim_pose, "/user/hand/left/input/aim/pose"},
+                         {m_action_aim_pose, "/user/hand/right/input/aim/pose"},
+                         {m_action_grip_pose, "/user/hand/left/input/grip/pose"},
+                         {m_action_grip_pose, "/user/hand/right/input/grip/pose"},
+                         {m_action_haptic, "/user/hand/left/output/haptic"},
+                         {m_action_haptic, "/user/hand/right/output/haptic"},
+                     });
+  }
 
   XrSessionActionSetsAttachInfo attach_info{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
   const XrActionSet action_set = m_input_action_set;
@@ -1959,8 +2017,8 @@ bool OpenXRManager::InitializeInputActions()
                         "grip");
   }
 
-  INFO_LOG_FMT(OPENXR, "OpenXR: Input action system initialized — "
-                        "action set 'dolphin_input' with 14 actions, spaces created for both hands.");
+  INFO_LOG_FMT(OPENXR, "OpenXR: Input action system initialized — action set 'dolphin_input', "
+                        "spaces created for both hands.");
   return true;
 }
 
@@ -1988,7 +2046,16 @@ void OpenXRManager::DestroyInputActions()
   m_input_hand_paths = {XR_NULL_PATH, XR_NULL_PATH};
   m_action_primary_click = XR_NULL_HANDLE;
   m_action_secondary_click = XR_NULL_HANDLE;
+  m_action_frame_x_click = XR_NULL_HANDLE;
+  m_action_frame_y_click = XR_NULL_HANDLE;
   m_action_menu_click = XR_NULL_HANDLE;
+  m_action_system_click = XR_NULL_HANDLE;
+  m_action_view_click = XR_NULL_HANDLE;
+  m_action_bumper_click = XR_NULL_HANDLE;
+  m_action_dpad_up_click = XR_NULL_HANDLE;
+  m_action_dpad_down_click = XR_NULL_HANDLE;
+  m_action_dpad_left_click = XR_NULL_HANDLE;
+  m_action_dpad_right_click = XR_NULL_HANDLE;
   m_action_thumbstick_click = XR_NULL_HANDLE;
   m_action_trigger_click = XR_NULL_HANDLE;
   m_action_squeeze_click = XR_NULL_HANDLE;
@@ -2219,7 +2286,16 @@ void OpenXRManager::UpdateInputActions()
 
     controller.primary_button = get_boolean(m_action_primary_click);
     controller.secondary_button = get_boolean(m_action_secondary_click);
+    controller.frame_x_button = get_boolean(m_action_frame_x_click);
+    controller.frame_y_button = get_boolean(m_action_frame_y_click);
     controller.menu_button = get_boolean(m_action_menu_click);
+    controller.system_button = get_boolean(m_action_system_click);
+    controller.view_button = get_boolean(m_action_view_click);
+    controller.bumper_button = get_boolean(m_action_bumper_click);
+    controller.dpad_up = get_boolean(m_action_dpad_up_click);
+    controller.dpad_down = get_boolean(m_action_dpad_down_click);
+    controller.dpad_left = get_boolean(m_action_dpad_left_click);
+    controller.dpad_right = get_boolean(m_action_dpad_right_click);
     controller.thumbstick_button = get_boolean(m_action_thumbstick_click);
 
     const bool trigger_click = get_boolean(m_action_trigger_click);

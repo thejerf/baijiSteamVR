@@ -104,12 +104,10 @@ public:
   // OpenXR runtime, and stores the OpenXRManager in VR::g_openxr for later reuse.
   static bool PreQueryVulkanExtensions(VulkanExtensionRequirements& out_requirements);
 
-  // Creates a Vulkan-bound XrSession and reference space. Normal VR also creates per-eye
-  // swapchains; input_only starts an empty-layer pacing loop for controller input while the
-  // game's Vulkan window surface remains the output. If PreQueryVulkanExtensions() was called,
-  // reuses the existing VR::g_openxr; otherwise creates a new one.
-  bool Initialize(bool input_only = false);
-  bool IsInputOnly() const { return m_input_only; }
+  // Full initialization: creates Vulkan-bound XrSession, reference space, and
+  // per-eye swapchains. If PreQueryVulkanExtensions() was called, reuses the
+  // existing VR::g_openxr; otherwise creates a new one.
+  bool Initialize();
 
   // Tears down swapchains and resets g_openxr.
   void Shutdown();
@@ -207,7 +205,6 @@ private:
   // True when any swapchain framebuffer carries a fragment density map; PostProcessing
   // compiles matching foveated pipelines when set.
   bool m_foveated = false;
-  bool m_input_only = false;
 
   // Reused per-frame composition data (avoids per-frame heap allocation).
   std::array<XrCompositionLayerProjectionView, 2> m_projection_views{};

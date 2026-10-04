@@ -497,12 +497,6 @@ float vr_screen_distance = 1.5f;
   {
     return stereo_mode == StereoMode::OpenXR || vr_flat_screen || vr_stereo_screen;
   }
-  // Flat Vulkan output still keeps an OpenXR session alive for Frame controller actions.
-  // The session submits no composition layers, so rendering/presentation stays on the window.
-  bool OpenXRSessionActive() const
-  {
-    return VRSessionActive() || vr_presentation_mode == OpenXRPresentationMode::Vulkan;
-  }
   // Hold one head pose for every draw of a game frame, refreshed only at the XFB-copy
   // boundary. Required whenever ImmediateXFB is off: presentation then happens at VI
   // time, interleaved with the NEXT frame's draw stream, so a per-draw pose refresh
