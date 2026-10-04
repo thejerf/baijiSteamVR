@@ -597,6 +597,7 @@ private:
     }
 
     bool IsDetectable() const override { return false; }
+    bool IsHidden() const override { return true; }
 
     ControlState GetState() const override
     {

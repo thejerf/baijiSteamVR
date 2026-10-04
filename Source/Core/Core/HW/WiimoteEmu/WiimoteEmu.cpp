@@ -718,18 +718,6 @@ void Wiimote::LoadDefaults(const ControllerInterface& ciface)
   for (int i = 0; i < 3; ++i)
     m_shake->SetControlExpression(i, "`Right Button Squeeze`");
 
-  m_imu_accelerometer->SetControlExpression(0, "`Right Raw Accel Up`");
-  m_imu_accelerometer->SetControlExpression(1, "`Right Raw Accel Down`");
-  m_imu_accelerometer->SetControlExpression(2, "`Right Raw Accel Left`");
-  m_imu_accelerometer->SetControlExpression(3, "`Right Raw Accel Right`");
-  m_imu_accelerometer->SetControlExpression(4, "`Right Raw Accel Forward`");
-  m_imu_accelerometer->SetControlExpression(5, "`Right Raw Accel Backward`");
-  m_imu_gyroscope->SetControlExpression(0, "`Right Raw Gyro Pitch Up`");
-  m_imu_gyroscope->SetControlExpression(1, "`Right Raw Gyro Pitch Down`");
-  m_imu_gyroscope->SetControlExpression(2, "`Right Raw Gyro Roll Left`");
-  m_imu_gyroscope->SetControlExpression(3, "`Right Raw Gyro Roll Right`");
-  m_imu_gyroscope->SetControlExpression(4, "`Right Raw Gyro Yaw Left`");
-  m_imu_gyroscope->SetControlExpression(5, "`Right Raw Gyro Yaw Right`");
   m_rumble->SetControlExpression(0, "Motor");
 #elif defined(ANDROID)
   // Rumble

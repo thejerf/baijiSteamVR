@@ -43,15 +43,6 @@ void WiimoteEmuMotionControlIMU::CreateMainLayout()
     groups_layout->addWidget(
         CreateGroupBox(Wiimote::GetWiimoteGroup(GetPort(), WiimoteEmu::WiimoteGroup::IMUGyroscope)));
   }
-  else
-  {
-    auto* imu_layout = new QVBoxLayout();
-    imu_layout->addWidget(
-        CreateGroupBox(Wiimote::GetWiimoteGroup(GetPort(), WiimoteEmu::WiimoteGroup::IMUGyroscope)));
-    imu_layout->addWidget(CreateGroupBox(
-        Wiimote::GetWiimoteGroup(GetPort(), WiimoteEmu::WiimoteGroup::IMUAccelerometer)));
-    groups_layout->addLayout(imu_layout);
-  }
 
   m_main_layout = new QVBoxLayout();
   if (source != WiimoteSource::OpenXR)
