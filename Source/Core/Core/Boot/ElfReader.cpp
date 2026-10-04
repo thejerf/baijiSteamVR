@@ -130,7 +130,7 @@ bool ElfReader::LoadIntoMemory(Core::System& system, bool only_in_mem1) const
 
   if (bRelocate)
   {
-    PanicAlertFmt("Error: Dolphin doesn't know how to load a relocatable elf.");
+    PanicAlertFmt("Error: BaijiSteamVR doesn't know how to load a relocatable elf.");
     return false;
   }
 

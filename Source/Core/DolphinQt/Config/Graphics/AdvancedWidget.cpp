@@ -268,7 +268,7 @@ void AdvancedWidget::AddDescriptions()
                  "leave this unchecked.</dolphin_emphasis>");
   static const char TR_LOG_RENDERTIME_DESCRIPTION[] = QT_TR_NOOP(
       "Logs the render time of every frame to User/Logs/render_time.txt.<br><br>Use this "
-      "feature to measure Dolphin's performance.<br><br><dolphin_emphasis>If "
+       "feature to measure BaijiSteamVR's performance.<br><br><dolphin_emphasis>If "
       "unsure, leave this unchecked.</dolphin_emphasis>");
   static const char TR_DUMP_TEXTURE_DESCRIPTION[] =
       QT_TR_NOOP("Dumps decoded game textures based on the other flags to "
@@ -360,7 +360,7 @@ void AdvancedWidget::AddDescriptions()
                  "<dolphin_emphasis>If unsure, leave this unchecked.</dolphin_emphasis>");
   static const char TR_COMMAND_BUFFERS_IN_FLIGHT_DESCRIPTION[] = QT_TR_NOOP(
       "How many command lists (D3D12) or command buffers (Vulkan) the backend keeps in flight. "
-      "Each time one is submitted, Dolphin reuses the oldest and must wait for it to finish on "
+      "Each time one is submitted, BaijiSteamVR reuses the oldest and must wait for it to finish on "
       "the GPU, so a shallow ring stalls whenever the GPU is slower to complete work than Dolphin "
       "is to queue it. Raising this can recover a lot of performance in games that submit many "
       "times per frame, such as those needing CPU EFB Access, and in VR.<br><br>Higher values cost "

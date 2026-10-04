@@ -84,7 +84,7 @@ const Info<bool> GFX_ENABLE_PIXEL_LIGHTING{{System::GFX, "Settings", "EnablePixe
 const Info<bool> GFX_FAST_DEPTH_CALC{{System::GFX, "Settings", "FastDepthCalc"}, true};
 const Info<u32> GFX_MSAA{{System::GFX, "Settings", "MSAA"}, 1};
 const Info<bool> GFX_SSAA{{System::GFX, "Settings", "SSAA"}, false};
-const Info<int> GFX_EFB_SCALE{{System::GFX, "Settings", "InternalResolution"}, 1};
+const Info<int> GFX_EFB_SCALE{{System::GFX, "Settings", "InternalResolution"}, 2};
 const Info<int> GFX_MAX_EFB_SCALE{{System::GFX, "Settings", "MaxInternalResolution"}, 12};
 const Info<bool> GFX_TEXFMT_OVERLAY_ENABLE{{System::GFX, "Settings", "TexFmtOverlayEnable"}, false};
 const Info<bool> GFX_TEXFMT_OVERLAY_CENTER{{System::GFX, "Settings", "TexFmtOverlayCenter"}, false};
@@ -104,7 +104,7 @@ const Info<int> GFX_COMMAND_BUFFERS_IN_FLIGHT{
 
 const Info<bool> GFX_SHADER_CACHE{{System::GFX, "Settings", "ShaderCache"}, true};
 const Info<bool> GFX_WAIT_FOR_SHADERS_BEFORE_STARTING{
-    {System::GFX, "Settings", "WaitForShadersBeforeStarting"}, false};
+    {System::GFX, "Settings", "WaitForShadersBeforeStarting"}, true};
 const Info<ShaderCompilationMode> GFX_SHADER_COMPILATION_MODE{
     {System::GFX, "Settings", "ShaderCompilationMode"}, ShaderCompilationMode::Synchronous};
 const Info<int> GFX_SHADER_COMPILER_THREADS{{System::GFX, "Settings", "ShaderCompilerThreads"}, 1};
@@ -195,7 +195,7 @@ const Info<bool> GFX_VR_FLAT_SCREEN{{System::GFX, "VR", "FlatScreen"}, false};
 // stereoscopic virtual screen (two quad layers) instead of immersive per-eye reprojection.
 const Info<bool> GFX_VR_STEREO_SCREEN{{System::GFX, "VR", "StereoScreen"}, false};
 const Info<OpenXRPresentationMode> GFX_VR_PRESENTATION_MODE{
-    {System::GFX, "VR", "PresentationMode"}, OpenXRPresentationMode::Legacy};
+    {System::GFX, "VR", "PresentationMode"}, OpenXRPresentationMode::StereoScreen};
 const Info<float> GFX_VR_UNITS_PER_METER{{System::GFX, "VR", "UnitsPerMeter"}, 1.0f};
 const Info<bool> GFX_VR_ENABLE_LEAN_BACK_ANGLE{{System::GFX, "VR", "EnableLeanBackAngle"}, true};
 const Info<float> GFX_VR_LEAN_BACK_ANGLE{{System::GFX, "VR", "LeanBackAngle"}, 0.0f};
@@ -231,7 +231,7 @@ constexpr bool DEFAULT_VR_PIN_EMULATION_CORES = false;
 #endif
 const Info<bool> GFX_VR_PIN_EMULATION_CORES{{System::GFX, "VR", "PinEmulationCores"},
                                             DEFAULT_VR_PIN_EMULATION_CORES};
-const Info<bool> GFX_VR_EAGER_HEARTBEAT{{System::GFX, "VR", "EagerHeartbeat"}, false};
+const Info<bool> GFX_VR_EAGER_HEARTBEAT{{System::GFX, "VR", "EagerHeartbeat"}, true};
 #if defined(__ANDROID__) && defined(ENABLE_VR)
 constexpr bool DEFAULT_VR_ANDROID_DIRECT_TO_HMD = true;
 constexpr bool DEFAULT_IMMEDIATE_XFB = true;

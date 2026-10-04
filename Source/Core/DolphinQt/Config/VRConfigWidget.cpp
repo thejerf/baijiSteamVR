@@ -347,7 +347,7 @@ void VRConfigWidget::CreateWidgets()
        {tr("Stereo 3D Screen"), OpenXRPresentationMode::StereoScreen}},
       Config::GFX_VR_PRESENTATION_MODE, layer, m_global_layer.get()));
   presentation_mode->setToolTip(
-      tr("Selects standard Vulkan flat output, DolphinXR immersive VR, or a stereoscopic 3D "
+      tr("Selects standard Vulkan flat output, BaijiSteamVR immersive VR, or a stereoscopic 3D "
          "screen in the headset."));
   connect(presentation_mode, &QComboBox::currentIndexChanged, this, [layer] {
     const OpenXRPresentationMode mode = layer->Get(Config::GFX_VR_PRESENTATION_MODE);
@@ -600,7 +600,7 @@ void VRConfigWidget::CreateWidgets()
   const QString help_message =
       tr("Italics mark default game settings and bold marks user settings. "
          "Right-click a control to remove its user setting.");
-  auto* help_label = new QLabel(tr("These VR settings override core Dolphin settings."));
+  auto* help_label = new QLabel(tr("These VR settings override core BaijiSteamVR settings."));
   auto* help_widget = QtUtils::CreateIconWarning(this, QStyle::SP_MessageBoxQuestion, help_label);
   help_widget->setToolTip(help_message);
 

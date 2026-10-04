@@ -30,6 +30,8 @@ if (WIN32)
     DEBUG_POSTFIX    D
     OUTPUT_NAME      DolphinNoGUI
   )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set_target_properties(dolphin-nogui PROPERTIES OUTPUT_NAME baiji-nogui)
 else()
   set_target_properties(dolphin-nogui PROPERTIES OUTPUT_NAME dolphin-emu-nogui)
 endif()
@@ -66,4 +68,3 @@ endif()
 
 set(CPACK_PACKAGE_EXECUTABLES ${CPACK_PACKAGE_EXECUTABLES} dolphin-nogui)
 install(TARGETS dolphin-nogui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-

@@ -11,7 +11,7 @@
 int SignalDaemon::s_sigterm_fd[2];
 
 static constexpr char message[] =
-    "\nA signal was received. A second signal will force Dolphin to stop.\n";
+    "\nA signal was received. A second signal will force BaijiSteamVR to stop.\n";
 
 SignalDaemon::SignalDaemon(QObject* parent) : QObject(parent)
 {

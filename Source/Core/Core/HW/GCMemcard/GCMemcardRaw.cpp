@@ -136,7 +136,7 @@ void MemoryCard::FlushThread()
     {
       PanicAlertFmtT(
           "Could not write memory card file {0}.\n\n"
-          "Are you running Dolphin from a CD/DVD, or is the save file maybe write protected?\n\n"
+          "Are you running BaijiSteamVR from a CD/DVD, or is the save file maybe write protected?\n\n"
           "Are you receiving this after moving the emulator directory?\nIf so, then you may "
           "need to re-specify your memory card location in the options.",
           m_filename);

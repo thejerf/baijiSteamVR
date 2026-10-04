@@ -405,7 +405,7 @@ void SetUserDirectory(std::string custom_path)
   }
   else
   {
-    const char* env_path = getenv("DOLPHIN_EMU_USERPATH");
+    const char* env_path = getenv("BAIJI_USERPATH");
     const char* home = getenv("HOME");
     if (!home)
       home = getenv("PWD");
@@ -413,13 +413,15 @@ void SetUserDirectory(std::string custom_path)
       home = "";
     std::string home_path = std::string(home) + DIR_SEP;
 
-    // On a non-Apple and non-Android POSIX system, there are 4 cases:
+    // Linux uses Baiji's own XDG paths (unless a Baiji-specific override or portable
+    // mode is explicitly selected). It never probes legacy emulator paths or migrates
+    // their data. The hidden-directory fallback below is only for other POSIX systems:
     // 1. GetExeDirectory()/portable.txt exists
     //    -> Use GetExeDirectory()/User
-    // 2. $DOLPHIN_EMU_USERPATH is set
-    //    -> Use $DOLPHIN_EMU_USERPATH
-    // 3. ~/.dolphin-emu directory exists, and we're not in flatpak
-    //    -> Use ~/.dolphin-emu
+    // 2. $BAIJI_USERPATH is set
+    //    -> Use $BAIJI_USERPATH
+    // 3. A legacy hidden user directory exists, and we're not in flatpak
+    //    -> Use that directory
     // 4. Default
     //    -> Use XDG basedir, see
     //    http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
@@ -427,8 +429,8 @@ void SetUserDirectory(std::string custom_path)
     // On macOS:
     // 1. GetExeDirectory()/portable.txt exists
     //    -> Use GetExeDirectory()/User
-    // 2. $DOLPHIN_EMU_USERPATH is set
-    //    -> Use $DOLPHIN_EMU_USERPATH
+    // 2. A platform-specific user path override is set
+    //    -> Use that path
     // 3. Default
     //
     // On Android, custom_path is set, so this code path is never reached.
@@ -445,6 +447,32 @@ void SetUserDirectory(std::string custom_path)
     else
     {
       user_path = home_path + NORMAL_USER_DIR DIR_SEP;
+    }
+#elif defined(__linux__)
+    else
+    {
+      const char* data_home = getenv("XDG_DATA_HOME");
+      std::string data_path =
+          std::string(data_home && data_home[0] == '/' ? data_home :
+                                                         (home_path + ".local" DIR_SEP "share")) +
+          DIR_SEP NORMAL_USER_DIR DIR_SEP;
+
+      const char* config_home = getenv("XDG_CONFIG_HOME");
+      std::string config_path =
+          std::string(config_home && config_home[0] == '/' ? config_home :
+                                                             (home_path + ".config")) +
+          DIR_SEP NORMAL_USER_DIR DIR_SEP;
+
+      const char* cache_home = getenv("XDG_CACHE_HOME");
+      std::string cache_path =
+          std::string(cache_home && cache_home[0] == '/' ? cache_home :
+                                                         (home_path + ".cache")) +
+          DIR_SEP NORMAL_USER_DIR DIR_SEP;
+
+      File::SetUserPath(D_USER_IDX, data_path);
+      File::SetUserPath(D_CONFIG_IDX, config_path);
+      File::SetUserPath(D_CACHE_IDX, cache_path);
+      return;
     }
 #else
     else

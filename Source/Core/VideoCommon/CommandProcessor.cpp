@@ -709,7 +709,7 @@ void CommandProcessorManager::HandleUnknownOpcode(u8 cmd_byte, const u8* buffer,
                    "{3}\n"
                    "\n"
                    "Further errors will be sent to the Video Backend log and "
-                   "Dolphin will now likely crash or hang.",
+                    "BaijiSteamVR will now likely crash or hang.",
                    cmd_byte, fmt::ptr(buffer), preprocess, Common::GetStringT(advice));
   }
 }

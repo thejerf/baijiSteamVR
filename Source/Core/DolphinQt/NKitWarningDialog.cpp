@@ -41,7 +41,7 @@ NKitWarningDialog::NKitWarningDialog(QWidget* parent) : QDialog(parent)
          "• Input recordings are not compatible between NKit disc images and normal disc images\n"
          "• Savestates are not compatible between NKit disc images and normal disc images\n"
          "• Some games can crash, such as Super Paper Mario and Metal Gear Solid: The Twin Snakes\n"
-         "• Wii games don't work at all in older versions of Dolphin and in many other programs\n"
+         "• Wii games don't work at all in older versions of BaijiSteamVR and in many other programs\n"
          "\n"
          "Are you sure you want to continue anyway?"));
   warning->setWordWrap(true);

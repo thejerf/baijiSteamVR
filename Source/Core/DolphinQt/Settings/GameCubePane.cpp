@@ -472,7 +472,7 @@ bool GameCubePane::SetMemcard(ExpansionInterface::Slot slot, const QString& file
     // TODO: We could try to autodetect the card region here and offer automatic renaming.
     ModalMessageBox::critical(
         this, tr("Error"),
-        tr("The filename %1 does not conform to Dolphin's region code format "
+         tr("The filename %1 does not conform to BaijiSteamVR's region code format "
            "for memory cards. Please rename this file to either %2, %3, %4, or "
            "%5, matching the region of the save files that are on it.")
             .arg(QString::fromStdString(PathToFileName(raw_path)))
@@ -599,7 +599,7 @@ bool GameCubePane::SetGCIFolder(ExpansionInterface::Slot slot, const QString& pa
       // TODO: We could try to autodetect the card region here and offer automatic renaming.
       ModalMessageBox::critical(
           this, tr("Error"),
-          tr("The folder %1 does not conform to Dolphin's region code format "
+           tr("The folder %1 does not conform to BaijiSteamVR's region code format "
              "for GCI folders. Please rename this folder to either %2, %3, %4, or "
              "%5, matching the region of the save files that are in it.")
               .arg(QString::fromStdString(PathToFileName(raw_path)))

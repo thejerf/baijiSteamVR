@@ -68,7 +68,11 @@ std::shared_ptr<cubeb> GetContext()
   }
 
   cubeb* ctx;
+#ifdef BAIJI_STEAMVR
+  if (cubeb_init(&ctx, "BaijiSteamVR", nullptr) != CUBEB_OK)
+#else
   if (cubeb_init(&ctx, "Dolphin Emulator", nullptr) != CUBEB_OK)
+#endif
   {
     ERROR_LOG_FMT(AUDIO, "Error initializing cubeb library");
     return nullptr;

@@ -730,7 +730,7 @@ void CEXIETHERNET::BuiltInBBAInterface::ReadThreadHandler(CEXIETHERNET::BuiltInB
       if (datasize > BBA_RECV_SIZE)
       {
         ERROR_LOG_FMT(SP1, "Frame size is exceiding BBA capacity, frame stack might be corrupted"
-                           "Killing Dolphin...");
+                            "Killing BaijiSteamVR...");
         std::exit(0);
       }
       std::memcpy(self->m_eth_ref->mRecvBuffer.get(), self->m_queue_data[self->m_queue_read].data(),

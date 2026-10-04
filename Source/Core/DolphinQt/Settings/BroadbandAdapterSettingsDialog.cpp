@@ -39,9 +39,7 @@ void BroadbandAdapterSettingsDialog::InitControls()
     address_label = new QLabel(tr("Enter new Broadband Adapter MAC address:"));
     address_placeholder = QString::fromStdString("aa:bb:cc:dd:ee:ff");
     current_address = QString::fromStdString(Config::Get(Config::MAIN_BBA_MAC));
-    description = new QLabel(tr("For setup instructions, <a "
-                                "href=\"https://wiki.dolphin-emu.org/"
-                                "index.php?title=Broadband_Adapter\">refer to this page</a>."));
+    description = new QLabel(tr("Configure the emulated Broadband Adapter MAC address."));
 
     // i18n: MAC stands for Media Access Control. A MAC address uniquely identifies a network
     // interface (physical) like a serial number. "MAC" should be kept in translations.
@@ -87,9 +85,7 @@ void BroadbandAdapterSettingsDialog::InitControls()
     address_label = new QLabel(tr("Enter IP address of device running the XLink Kai Client:"));
     address_placeholder = QString::fromStdString("127.0.0.1");
     current_address = QString::fromStdString(Config::Get(Config::MAIN_BBA_XLINK_IP));
-    description =
-        new QLabel(tr("For setup instructions, <a "
-                      "href=\"https://www.teamxlink.co.uk/wiki/Dolphin\">refer to this page</a>."));
+    description = new QLabel(tr("The XLink Kai Client must be running on the configured device."));
     window_title = tr("XLink Kai BBA Destination Address");
     break;
   }

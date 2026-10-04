@@ -51,7 +51,7 @@ IPCReply ESDevice::GetTicketViewCount(const IOCtlVRequest& request)
   if (!IsEmulated(TitleID))
   {
     view_count = 0;
-    ERROR_LOG_FMT(IOS_ES, "GetViewCount: Dolphin doesn't emulate IOS title {:016x}", TitleID);
+    ERROR_LOG_FMT(IOS_ES, "GetViewCount: BaijiSteamVR doesn't emulate IOS title {:016x}", TitleID);
   }
   else if (ShouldReturnFakeViewsForIOSes(TitleID, m_core.m_title_context))
   {
@@ -81,7 +81,7 @@ IPCReply ESDevice::GetTicketViews(const IOCtlVRequest& request)
 
   if (!IsEmulated(TitleID))
   {
-    ERROR_LOG_FMT(IOS_ES, "GetViews: Dolphin doesn't emulate IOS title {:016x}", TitleID);
+    ERROR_LOG_FMT(IOS_ES, "GetViews: BaijiSteamVR doesn't emulate IOS title {:016x}", TitleID);
   }
   else if (ticket.IsValid())
   {

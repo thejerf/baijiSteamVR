@@ -23,6 +23,10 @@ set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
 project(dolphin-emu)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_compile_definitions(BAIJI_STEAMVR)
+endif()
+
 if (CMAKE_VERSION VERSION_LESS "3.25" AND CMAKE_SYSTEM_NAME MATCHES "Linux")
   set(LINUX TRUE)
 endif()
@@ -61,7 +65,7 @@ endif()
 # Name of the Dolphin distributor. If you redistribute Dolphin builds (forks,
 # unofficial builds) please consider identifying your distribution with a
 # unique name here.
-set(DISTRIBUTOR "None" CACHE STRING "Name of the distributor.")
+set(DISTRIBUTOR "BaijiSteamVR" CACHE STRING "Name of the distributor.")
 
 set(DOLPHIN_DEFAULT_UPDATE_TRACK "" CACHE STRING "Name of the default update track. If empty, disables auto-update.")
 
@@ -171,7 +175,7 @@ include(RemoveCompileFlag)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # Set up paths
-set(datadir ${CMAKE_INSTALL_FULL_DATADIR}/dolphin-emu CACHE PATH "datadir")
+set(datadir ${CMAKE_INSTALL_FULL_DATADIR}/baiji CACHE PATH "datadir")
 add_definitions(-DDATA_DIR="${datadir}/")
 
 if(CMAKE_SYSROOT)
@@ -888,23 +892,28 @@ if(NOT CMAKE_SYSTEM_NAME MATCHES "Linux|FreeBSD|OpenBSD|Darwin")
 endif()
 if(CMAKE_SYSTEM_NAME MATCHES "Linux|FreeBSD|OpenBSD")
   # Install the application icon and menu item
-  install(FILES Data/dolphin-emu.svg
-          DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/scalable/apps)
-  install(FILES Data/dolphin-emu.png
-          DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/256x256/apps)
-  install(FILES Data/dolphin-emu.desktop
-          DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications)
+  install(FILES Data/baiji.png
+          DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps)
+  install(FILES Data/org.baijisteamvr.BaijiSteamVR.desktop
+          DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
   # Install manpages
-  install(FILES Data/dolphin-emu.6
+  install(FILES Data/baiji.6
           DESTINATION ${CMAKE_INSTALL_MANDIR}/man6)
-  install(FILES Data/dolphin-emu-nogui.6
+  install(FILES Data/baiji-nogui.6
           DESTINATION ${CMAKE_INSTALL_MANDIR}/man6)
+  install(PROGRAMS scripts/baiji-vr DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
 
 # packaging information
-set(CPACK_PACKAGE_NAME "dolphin-emu")
-set(CPACK_PACKAGE_VENDOR "Dolphin Team")
-set(CPACK_PACKAGE_CONTACT "dolphinxr@example.com")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set(CPACK_PACKAGE_NAME "baijisteamvr")
+  set(CPACK_PACKAGE_VENDOR "BaijiSteamVR")
+  set(CPACK_PACKAGE_CONTACT "https://github.com/thejerf/baijiSteamVR")
+else()
+  set(CPACK_PACKAGE_NAME "dolphin-emu")
+  set(CPACK_PACKAGE_VENDOR "Dolphin Team")
+  set(CPACK_PACKAGE_CONTACT "dolphinxr@example.com")
+endif()
 set(CPACK_PACKAGE_VERSION_MAJOR ${DOLPHIN_VERSION_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${DOLPHIN_VERSION_MINOR})
 set(CPACK_PACKAGE_VERSION_PATCH ${DOLPHIN_VERSION_PATCH})

@@ -155,7 +155,11 @@ void ClearCurrentRunLayer()
 }
 
 static const std::map<System, std::string> system_to_name = {
+#ifdef BAIJI_STEAMVR
+    {System::Main, "BaijiSteamVR"},
+#else
     {System::Main, "Dolphin"},
+#endif
     {System::GCPad, "GCPad"},
     {System::WiiPad, "Wiimote"},
     {System::GCKeyboard, "GCKeyboard"},

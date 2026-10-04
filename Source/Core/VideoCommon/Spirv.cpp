@@ -201,7 +201,7 @@ CompileShaderToSPV(EShLanguage stage, APIType api_type,
     }
 
     stream << "\n";
-    stream << "Dolphin Version: " + Common::GetScmRevStr() + "\n";
+    stream << "BaijiSteamVR Version: " + Common::GetScmRevStr() + "\n";
     stream << "Video Backend: " + g_video_backend->GetDisplayName();
     stream.close();
 

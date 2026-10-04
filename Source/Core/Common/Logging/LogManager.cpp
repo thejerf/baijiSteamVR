@@ -102,7 +102,7 @@ LogManager::LogManager()
   m_log[LogType::BOOT] = {"BOOT", "Boot"};
   m_log[LogType::COMMANDPROCESSOR] = {"CP", "Command Processor"};
   m_log[LogType::COMMON] = {"COMMON", "Common"};
-  m_log[LogType::CONSOLE] = {"CONSOLE", "Dolphin Console"};
+  m_log[LogType::CONSOLE] = {"CONSOLE", "BaijiSteamVR Console"};
   m_log[LogType::CONTROLLERINTERFACE] = {"CI", "Controller Interface"};
   m_log[LogType::CORE] = {"CORE", "Core"};
   m_log[LogType::DISCIO] = {"DIO", "Disc IO"};

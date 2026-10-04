@@ -485,8 +485,7 @@ static void ShowFirmwareReadError(std::string_view fw_path)
 {
   PanicAlertFmtT("Bluetooth passthrough failed to read firmware file from:\n"
                  "{0}\n\n"
-                 "Refer to https://wiki.dolphin-emu.org/index.php?title=Bluetooth_Passthrough "
-                 "for instructions.",
+                  "Refer to the Bluetooth passthrough setup instructions.",
                  fw_path);
 }
 

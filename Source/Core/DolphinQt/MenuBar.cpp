@@ -76,7 +76,7 @@ QPointer<MenuBar> MenuBar::s_menu_bar;
 QString MenuBar::GetSignatureSelector() const
 {
   return QStringLiteral("%1 (*.dsy);; %2 (*.csv);; %3 (*.mega)")
-      .arg(tr("Dolphin Signature File"), tr("Dolphin Signature CSV File"),
+      .arg(tr("BaijiSteamVR Signature File"), tr("BaijiSteamVR Signature CSV File"),
            tr("WiiTools Signature MEGA File"));
 }
 
@@ -662,23 +662,6 @@ void MenuBar::InstallUpdateManually()
 void MenuBar::AddHelpMenu()
 {
   QMenu* help_menu = addMenu(tr("&Help"));
-
-  QAction* website = help_menu->addAction(tr("&Website"));
-  connect(website, &QAction::triggered, this,
-          [] { QDesktopServices::openUrl(QUrl(QStringLiteral("https://dolphin-emu.org/"))); });
-  QAction* documentation = help_menu->addAction(tr("Online &Documentation"));
-  connect(documentation, &QAction::triggered, this, [] {
-    QDesktopServices::openUrl(QUrl(QStringLiteral("https://dolphin-emu.org/docs/guides")));
-  });
-  QAction* github = help_menu->addAction(tr("&GitHub Repository"));
-  connect(github, &QAction::triggered, this, [] {
-    QDesktopServices::openUrl(QUrl(QStringLiteral("https://github.com/dolphin-emu/dolphin")));
-  });
-  QAction* bugtracker = help_menu->addAction(tr("&Bug Tracker"));
-  connect(bugtracker, &QAction::triggered, this, [] {
-    QDesktopServices::openUrl(
-        QUrl(QStringLiteral("https://bugs.dolphin-emu.org/projects/emulator")));
-  });
 
   if (AutoUpdateChecker::SystemSupportsAutoUpdates())
   {
@@ -1753,7 +1736,7 @@ void MenuBar::LoadOtherSymbolMap()
 {
   const QString file = DolphinFileDialog::getOpenFileName(
       this, tr("Load Map File"), QString::fromStdString(File::GetUserPath(D_MAPS_IDX)),
-      tr("Dolphin Map File (*.map)"));
+      tr("Map File (*.map)"));
 
   if (file.isEmpty())
     return;
@@ -1770,7 +1753,7 @@ void MenuBar::LoadBadSymbolMap()
 {
   const QString file = DolphinFileDialog::getOpenFileName(
       this, tr("Load Map File"), QString::fromStdString(File::GetUserPath(D_MAPS_IDX)),
-      tr("Dolphin Map File (*.map)"));
+      tr("Map File (*.map)"));
 
   if (file.isEmpty())
     return;
@@ -1789,7 +1772,7 @@ void MenuBar::SaveSymbolMapAs()
   const QString file = DolphinFileDialog::getSaveFileName(
       this, tr("Save Map File"),
       QString::fromStdString(File::GetUserPath(D_MAPS_IDX) + "/" + title_id_str + ".map"),
-      tr("Dolphin Map File (*.map)"));
+      tr("Map File (*.map)"));
 
   if (file.isEmpty())
     return;

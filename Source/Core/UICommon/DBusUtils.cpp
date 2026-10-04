@@ -20,7 +20,7 @@ static bool InhibitMate();
 static bool InhibitPortal();
 static void Uninhibit();
 
-static constexpr char s_app_id[] = "org.DolphinEmu.dolphin-emu";
+static constexpr char s_app_id[] = "org.baijisteamvr.BaijiSteamVR";
 
 // Cookie for the org.freedesktop.ScreenSaver interface
 static uint32_t s_fdo_cookie = 0;
@@ -116,7 +116,7 @@ static bool InhibitPortal()
     return false;
 
   QHash<QString, QVariant> options;
-  options["handle_token"] = "dolphin_" + QString::number(std::rand(), 0x10);
+  options["handle_token"] = "baiji_" + QString::number(std::rand(), 0x10);
   options["reason"] = QObject::tr("Playing a game");
   uint32_t flags = 9;  // logout | idle
   QDBusReply<QDBusObjectPath> reply = interface.call("Inhibit", "", flags, options);

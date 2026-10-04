@@ -340,8 +340,7 @@ bool ESDevice::LaunchTitle(u64 title_id, HangPPC hang_ppc)
     ERROR_LOG_FMT(IOS_ES, "Refusing to launch the shop channel with default device credentials");
     CriticalAlertFmtT(
         "You cannot use the Wii Shop Channel without using your own device credentials."
-        "\nPlease refer to the NAND usage guide for setup instructions: "
-        "https://dolphin-emu.org/docs/guides/nand-usage-guide/");
+        "\nPlease check the NAND setup instructions and use your own device credentials.");
 
     // Send the user back to the system menu instead of returning an error, which would
     // likely make the system menu crash. Doing this is okay as anyone who has the shop

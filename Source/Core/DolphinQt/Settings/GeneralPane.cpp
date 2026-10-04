@@ -381,7 +381,7 @@ void GeneralPane::AddDescriptions()
 {
   static constexpr char TR_DUALCORE_DESCRIPTION[] =
       QT_TR_NOOP("Separates CPU and GPU emulation work to separate threads. Reduces single-thread "
-                 "burden by spreading Dolphin's heaviest load across two cores, which usually "
+                  "burden by spreading BaijiSteamVR's heaviest load across two cores, which usually "
                  "improves performance. However, it can result in glitches and crashes."
                  "<br><br>This setting cannot be changed while emulation is active."
                  "<br><br><dolphin_emphasis>If unsure, leave this unchecked.</dolphin_emphasis>");
@@ -416,22 +416,22 @@ void GeneralPane::AddDescriptions()
                  "<br><br><dolphin_emphasis>If unsure, leave this checked.</dolphin_emphasis>");
 #endif
   static constexpr char TR_UPDATE_TRACK_DESCRIPTION[] = QT_TR_NOOP(
-      "Selects which update track Dolphin uses when checking for updates at startup. If a new "
-      "update is available, Dolphin will show a list of changes made since your current version "
+      "Selects which update track BaijiSteamVR uses when checking for updates at startup. If a new "
+      "update is available, BaijiSteamVR will show a list of changes made since your current version "
       "and ask you if you want to update."
-      "<br><br>The Dev track has the latest version of Dolphin which often updates multiple times "
+      "<br><br>The Dev track has the latest version of BaijiSteamVR which often updates multiple times "
       "per day. Select this track if you want the newest features and fixes."
       "<br><br>The Releases track has an update every few months. Some reasons you might prefer to "
       "use this track:"
       "<br>- You prefer using versions that have had additional testing."
-      "<br>- NetPlay requires players to have the same Dolphin version, and the latest Release "
+      "<br>- NetPlay requires players to have the same BaijiSteamVR version, and the latest Release "
       "version will have the most players to match with."
-      "<br>- You frequently use Dolphin's savestate system, which doesn't guarantee backward "
-      "compatibility of savestates between Dolphin versions. If this applies to you, make sure you "
+      "<br>- You frequently use BaijiSteamVR's savestate system, which doesn't guarantee backward "
+      "compatibility of savestates between BaijiSteamVR versions. If this applies to you, make sure you "
       "make an in-game save before updating (i.e. save your game in the same way you would on a "
-      "physical GameCube or Wii), then load the in-game save after updating Dolphin and before "
+      "physical GameCube or Wii), then load the in-game save after updating BaijiSteamVR and before "
       "making any new savestates."
-      "<br><br>Selecting \"Don't Update\" will prevent Dolphin from automatically checking for "
+      "<br><br>Selecting \"Don't Update\" will prevent BaijiSteamVR from automatically checking for "
       "updates."
       "<br><br><dolphin_emphasis>If unsure, select Releases.</dolphin_emphasis>");
   static constexpr char TR_FALLBACK_REGION_DESCRIPTION[] =
@@ -439,10 +439,10 @@ void GeneralPane::AddDescriptions()
                  "<br><br>This setting cannot be changed while emulation is active.");
 #if defined(USE_ANALYTICS) && USE_ANALYTICS
   static constexpr char TR_ENABLE_ANALYTICS_DESCRIPTION[] = QT_TR_NOOP(
-      "If selected, Dolphin can collect data on its performance, feature usage, emulated games, "
+      "If selected, BaijiSteamVR can collect data on its performance, feature usage, emulated games, "
       "and configuration, as well as data on your system's hardware and operating system."
       "<br><br>No private data is ever collected. This data helps us understand how people and "
-      "emulated games use Dolphin and prioritize our efforts. It also helps us identify rare "
+      "emulated games use BaijiSteamVR and prioritize our efforts. It also helps us identify rare "
       "configurations that are causing bugs, performance and stability issues.");
   static constexpr char TR_GENERATE_NEW_IDENTITY_DESCRIPTION[] =
       QT_TR_NOOP("Generate a new anonymous ID for your usage statistics. This will cause any "

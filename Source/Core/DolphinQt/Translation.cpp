@@ -280,6 +280,8 @@ static bool TryInstallTranslator(const QString& exact_language_code)
 #elif defined __APPLE__
         fmt::format("{}/Contents/Resources/{}.lproj/dolphin-emu.mo", File::GetBundleDirectory(),
                     lang)
+#elif defined BAIJI_STEAMVR
+        fmt::format("{}locale/{}/LC_MESSAGES/baiji.mo", DATA_DIR, lang)
 #elif defined LINUX_LOCAL_DEV
         fmt::format("{}/../Source/Core/DolphinQt/{}/dolphin-emu.mo", File::GetExeDirectory(), lang)
 #else

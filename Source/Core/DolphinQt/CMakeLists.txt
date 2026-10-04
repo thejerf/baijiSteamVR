@@ -451,6 +451,10 @@ add_executable(dolphin-emu
   WiiUpdate.h
 )
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set_target_properties(dolphin-emu PROPERTIES OUTPUT_NAME baiji)
+endif()
+
 if (WIN32)
   target_sources(dolphin-emu PRIVATE
     Styles/Dark/dark.qrc
@@ -623,6 +627,9 @@ if(GETTEXT_MSGFMT_EXECUTABLE)
     if(WIN32)
       set(mo_dir ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Languages)
       set(mo ${mo_dir}/${lang}.mo)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+      set(mo_dir ${CMAKE_CURRENT_BINARY_DIR}/${lang})
+      set(mo ${mo_dir}/baiji.mo)
     else()
       set(mo_dir ${CMAKE_CURRENT_BINARY_DIR}/${lang})
       set(mo ${mo_dir}/dolphin-emu.mo)
@@ -633,6 +640,8 @@ if(GETTEXT_MSGFMT_EXECUTABLE)
 
     if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
       set_source_files_properties(${mo} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/${lang}.lproj")
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+      install(FILES ${mo} DESTINATION ${datadir}/locale/${lang}/LC_MESSAGES)
     else()
       install(FILES ${mo} DESTINATION share/locale/${lang}/LC_MESSAGES)
     endif()

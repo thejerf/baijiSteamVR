@@ -734,7 +734,7 @@ void BranchWatchDialog::OnHelp()
          "\n\n"
          "Press the \"Start Branch Watch\" button to activate Branch Watch. Branch Watch persists "
          "across emulation sessions, and a snapshot of your progress can be saved to and loaded "
-         "from the User Directory to persist after Dolphin Emulator is closed. \"Save As...\" and "
+          "from the User Directory to persist after BaijiSteamVR is closed. \"Save As...\" and "
          "\"Load From...\" actions are also available, and auto-saving can be enabled to save a "
          "snapshot at every step of a search. The \"Pause Branch Watch\" button will halt Branch "
          "Watch from tracking further branch hits until it is told to resume. Press the \"Clear "

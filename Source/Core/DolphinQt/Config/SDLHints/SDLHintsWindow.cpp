@@ -85,7 +85,7 @@ void SDLHintsWindow::CreateMainLayout()
   m_directinput_detection = new ToolTipCheckBox(tr("Enable DirectInput Detection"));
   m_directinput_detection->SetDescription(
       tr("Controls whether SDL should use DirectInput for detecting controllers. Enabling this "
-         "fixes hotplug detection issues with DualSense controllers but causes Dolphin to hang up "
+       "fixes hotplug detection issues with DualSense controllers but causes BaijiSteamVR to hang up "
          "on shutdown when using certain 8BitDo controllers.<br><br><dolphin_emphasis>If unsure, "
          "leave this checked.</dolphin_emphasis>"));
   connect(m_directinput_detection, &ToolTipCheckBox::toggled, [](bool checked) {
@@ -144,7 +144,7 @@ void SDLHintsWindow::CreateMainLayout()
   connect(m_tab_widget, &QTabWidget::currentChanged, this, &SDLHintsWindow::TabChanged);
 
   auto* const warning_text =
-      new QLabel(tr("Dolphin must be restarted for these changes to take effect."));
+      new QLabel(tr("BaijiSteamVR must be restarted for these changes to take effect."));
   warning_text->setWordWrap(true);
 
   // Create main layout

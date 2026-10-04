@@ -82,7 +82,7 @@ static void WarnIfRunningUnderEmulation()
 
   // The process is not native; could use IsWow64Process2 to get native machine type, but for now
   // we can assume it is arm64.
-  PanicAlertFmtT("This build of Dolphin is not natively compiled for your CPU.\n"
+  PanicAlertFmtT("This build of BaijiSteamVR is not natively compiled for your CPU.\n"
                  "Please run the ARM64 build of Dolphin for a better experience.");
 }
 

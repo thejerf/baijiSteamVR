@@ -1358,22 +1358,22 @@ void VolumeVerifier::Finish()
     else
     {
       m_result.summary_text =
-          Common::GetStringT("This is a good dump according to Redump.org, but Dolphin has found "
-                             "problems. This might be a bug in Dolphin.");
+          Common::GetStringT("This is a good dump according to Redump.org, but BaijiSteamVR has found "
+                             "problems. This might be a bug in BaijiSteamVR.");
     }
     return;
   }
 
   if (m_is_datel)
   {
-    m_result.summary_text = Common::GetStringT("Dolphin is unable to verify unlicensed discs.");
+    m_result.summary_text = Common::GetStringT("BaijiSteamVR is unable to verify unlicensed discs.");
     return;
   }
 
   if (m_is_tgc)
   {
     m_result.summary_text =
-        Common::GetStringT("Dolphin is unable to verify typical TGC files properly, "
+        Common::GetStringT("BaijiSteamVR is unable to verify typical TGC files properly, "
                            "since they are not dumps of actual discs.");
     return;
   }
@@ -1381,7 +1381,7 @@ void VolumeVerifier::Finish()
   if (m_is_triforce)
   {
     m_result.summary_text =
-        Common::GetStringT("Dolphin is currently unable to verify Triforce games.");
+        Common::GetStringT("BaijiSteamVR is currently unable to verify Triforce games.");
     return;
   }
 
@@ -1393,7 +1393,7 @@ void VolumeVerifier::Finish()
       m_result.summary_text =
           Common::GetStringT("Compared to the Wii disc release of the game, this is a bad dump. "
                              "Despite this, it's possible that this is a good dump compared to the "
-                             "Wii U eShop release of the game. Dolphin can't verify this.");
+                              "Wii U eShop release of the game. BaijiSteamVR can't verify this.");
     }
     else
     {
@@ -1429,7 +1429,7 @@ void VolumeVerifier::Finish()
         m_result.summary_text = Common::GetStringT(
             "Compared to the Wii disc release of the game, problems of low severity were found. "
             "Despite this, it's possible that this is a good dump compared to the Wii U eShop "
-            "release of the game. Dolphin can't verify this.");
+            "release of the game. BaijiSteamVR can't verify this.");
       }
       else
       {
@@ -1454,13 +1454,13 @@ void VolumeVerifier::Finish()
   {
     m_result.summary_text +=
         Common::GetStringT("\n\nBecause GameCube disc images contain little verification data, "
-                           "there may be problems that Dolphin is unable to detect.");
+                            "there may be problems that BaijiSteamVR is unable to detect.");
   }
   else if (m_is_not_retail)
   {
     m_result.summary_text +=
         Common::GetStringT("\n\nBecause this title is not for retail Wii consoles, "
-                           "Dolphin cannot ensure that it hasn't been tampered with, even if "
+                            "BaijiSteamVR cannot ensure that it hasn't been tampered with, even if "
                            "signatures appear valid.");
   }
 }

@@ -20,7 +20,7 @@
 
 static void PrintUsage()
 {
-  fmt::print(std::cerr, "usage: dolphin-tool COMMAND -h\n"
+  fmt::print(std::cerr, "usage: baiji-tool COMMAND -h\n"
                         "\n"
                         "commands supported: [convert, verify, header, extract]\n");
 }
@@ -31,10 +31,11 @@ static void PrintUsage()
 
 int main(int argc, char* argv[])
 {
-  if (argc < 2)
+  if (argc < 2 || std::string_view(argv[1]) == "-h" ||
+      std::string_view(argv[1]) == "--help")
   {
     PrintUsage();
-    return EXIT_FAILURE;
+    return EXIT_SUCCESS;
   }
 
   const std::string_view command_str = argv[1];

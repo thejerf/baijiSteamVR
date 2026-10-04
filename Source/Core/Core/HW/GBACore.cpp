@@ -469,7 +469,7 @@ void Core::SetAVStream()
 void Core::SetupEvent()
 {
   m_event.context = this;
-  m_event.name = "Dolphin Sync";
+  m_event.name = "BaijiSteamVR Sync";
   m_event.callback = [](mTiming* timing, void* context, u32 cycles_late) {
     Core* core = static_cast<Core*>(context);
     if (core->m_core->platform(core->m_core) == mPLATFORM_GBA)

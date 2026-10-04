@@ -148,7 +148,7 @@ void OnScreenDisplayPane::AddDescriptions()
   static const char TR_OSD_FONT_SIZE_DESCRIPTION[] = QT_TR_NOOP(
       "Changes the font size of the On-Screen Display. Affects features such as performance "
       "statistics, frame counter, and netplay chat."
-      "<br><br>The font can be changed by placing a TTF font file into Dolphin's User/Load "
+       "<br><br>The font can be changed by placing a TTF font file into BaijiSteamVR's User/Load "
       "folder, and renaming it OSD_Font.ttf."
       "<br><br><dolphin_emphasis>If unsure, leave this at 13.</dolphin_emphasis>");
 

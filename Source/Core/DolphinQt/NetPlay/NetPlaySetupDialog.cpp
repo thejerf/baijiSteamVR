@@ -111,7 +111,7 @@ void NetPlaySetupDialog::CreateMainLayout()
   connection_layout->addWidget(m_connect_port_box, 0, 3);
   auto* const alert_label = new QLabel(
       tr("ALERT:\n\n"
-         "All players must use the same Dolphin version.\n"
+          "All players must use the same BaijiSteamVR version.\n"
          "If enabled, SD cards must be identical between players.\n"
          "If DSP LLE is used, DSP ROMs must be identical between players.\n"
          "If a game is hanging on boot, it may not support Dual Core Netplay."

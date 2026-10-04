@@ -407,7 +407,7 @@ void DVDInterface::SetDisc(std::unique_ptr<DiscIO::VolumeDisc> disc,
     {
       OSD::AddMessage("You are running a disc image with a very large block size.", 60000);
       OSD::AddMessage("This will likely lead to performance problems.", 60000);
-      OSD::AddMessage("You can use Dolphin's convert feature to reduce the block size.", 60000);
+      OSD::AddMessage("You can use BaijiSteamVR's convert feature to reduce the block size.", 60000);
     }
   }
 

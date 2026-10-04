@@ -17,6 +17,8 @@
 #define NORMAL_USER_DIR "Library/Application Support/Dolphin"
 #elif defined(ANDROID)
 #define NORMAL_USER_DIR "/sdcard/dolphin-emu"
+#elif defined(__linux__)
+#define NORMAL_USER_DIR "baiji"
 #else
 #define NORMAL_USER_DIR "dolphin-emu"
 #endif

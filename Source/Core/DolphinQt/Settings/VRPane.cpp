@@ -86,7 +86,7 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
        {tr("Stereo 3D Screen"), OpenXRPresentationMode::StereoScreen}},
       Config::GFX_VR_PRESENTATION_MODE);
   m_presentation_mode->setToolTip(
-      tr("Selects standard Vulkan flat output, DolphinXR immersive VR, or a stereoscopic 3D "
+      tr("Selects standard Vulkan flat output, BaijiSteamVR immersive VR, or a stereoscopic 3D "
          "screen in the headset. The legacy choice follows the previous Enable VR and screen "
          "settings."));
   connect(m_presentation_mode, &QComboBox::currentIndexChanged, this, [this](int) {
@@ -704,13 +704,13 @@ void VRPane::AddDescriptions()
       "<br><br>Higher values increase stereo scale and make the world appear smaller."
       "<br><br>Lower values decrease stereo scale and make the world appear larger.");
   static constexpr char TR_REFERENCE_SPACE_MODE_DESCRIPTION[] = QT_TR_NOOP(
-      "Selects how Dolphin sets the default VR position when OpenXR starts."
-      "<br><br>LOCAL uses OpenXR <code>LOCAL</code> space and keeps the current behavior: Dolphin "
+       "Selects how BaijiSteamVR sets the default VR position when OpenXR starts."
+       "<br><br>LOCAL uses OpenXR <code>LOCAL</code> space and keeps the current behavior: "
       "sets home from the initial headset position."
       "<br><br>STAGE + Height uses OpenXR <code>STAGE</code> space, keeps the play-space center "
       "for horizontal position, and offsets height by the initial headset height."
       "<br><br>STAGE uses OpenXR <code>STAGE</code> space and uses the play-space origin directly."
-      "<br><br>If <code>STAGE</code> is unavailable, Dolphin falls back to <code>LOCAL</code>."
+       "<br><br>If <code>STAGE</code> is unavailable, BaijiSteamVR falls back to <code>LOCAL</code>."
       "<br><br>This setting requires restarting emulation."
       "<br><br><dolphin_emphasis>If unsure, use LOCAL.</dolphin_emphasis>");
   static constexpr char TR_TRACKING_MODE_DESCRIPTION[] = QT_TR_NOOP(
@@ -752,7 +752,7 @@ void VRPane::AddDescriptions()
   static constexpr char TR_DISABLE_CPU_CULL_DESCRIPTION[] = QT_TR_NOOP(
       "Disables CPU-side primitive culling when OpenXR VR is active."
       "<br><br>This may fix missing geometry in some games at the cost of a small performance hit."
-      "<br><br>This only affects Dolphin's CPU culling optimization. It does not override "
+       "<br><br>This only affects BaijiSteamVR's CPU culling optimization. It does not override "
       "the game's own backface culling state.");
   static constexpr char TR_MIRROR_VIEW_DESCRIPTION[] = QT_TR_NOOP(
       "Selects what the desktop render window shows while OpenXR is active."
@@ -762,7 +762,7 @@ void VRPane::AddDescriptions()
       "<br><br>This only affects the desktop mirror view; it does not affect the OpenXR headset "
       "output.");
   static constexpr char TR_FORCED_VBI_FREQUENCY_DESCRIPTION[] = QT_TR_NOOP(
-      "Forces Dolphin's VBI frequency to the selected rate while OpenXR VR is enabled."
+       "Forces BaijiSteamVR's VBI frequency to the selected rate while OpenXR VR is enabled."
       "<br><br>Auto samples the headset refresh rate once at OpenXR session startup and uses "
       "the closest supported value: 72, 90, or 120 Hz."
       "<br><br>This overrides the Advanced tab's VBI percentage during VR sessions."
@@ -770,7 +770,7 @@ void VRPane::AddDescriptions()
   static constexpr char TR_HUD_THICKNESS_DESCRIPTION[] = QT_TR_NOOP(
       "Gives 2D HUD/menu layers real 3D depth in VR by spreading their elements across this "
       "much world-space thickness (in metres), instead of drawing them flat on a single plane."
-      "<br><br>Recreates the layered HUD effect from Dolphin VR Hydra (e.g. the Metroid Prime "
+       "<br><br>Recreates the layered HUD effect from the VR Hydra project (e.g. the Metroid Prime "
       "visor). Only affects 2D layers whose elements are drawn at different depths; flat menus "
       "and full-motion video are unaffected. Set to 0 (Off) for a completely flat HUD."
       "<br><br><dolphin_emphasis>If unsure, leave this at 0 (off).</dolphin_emphasis>");

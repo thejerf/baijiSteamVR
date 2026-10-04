@@ -45,7 +45,9 @@
 
 namespace
 {
+#ifdef USE_ANALYTICS
 constexpr char ANALYTICS_ENDPOINT[] = "https://analytics.dolphin-emu.org/report";
+#endif
 }  // namespace
 
 #if defined(ANDROID)
@@ -90,10 +92,12 @@ void DolphinAnalytics::ReloadConfig()
 
   // Install the HTTP backend if analytics support is enabled.
   std::unique_ptr<Common::AnalyticsReportingBackend> new_backend;
+#ifdef USE_ANALYTICS
   if (m_last_analytics_enabled)
   {
     new_backend = std::make_unique<Common::HttpAnalyticsBackend>(ANALYTICS_ENDPOINT);
   }
+#endif
   m_reporter.SetBackend(std::move(new_backend));
 
   // Load the unique ID or generate it if needed.

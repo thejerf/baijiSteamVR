@@ -267,7 +267,7 @@ Shader::CompileShader(D3D_FEATURE_LEVEL feature_level, ShaderStage stage, std::s
     file << "\n";
     file.write(static_cast<const char*>(errors->GetBufferPointer()), errors->GetBufferSize());
     file << "\n";
-    file << "Dolphin Version: " + Common::GetScmRevStr() + "\n";
+    file << "BaijiSteamVR Version: " + Common::GetScmRevStr() + "\n";
     file << "Video Backend: " + g_video_backend->GetDisplayName();
 
     if (const auto spirv = GetSpirv(stage, source, shader_includer))

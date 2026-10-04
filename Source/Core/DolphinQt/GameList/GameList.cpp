@@ -303,7 +303,7 @@ void GameList::UpdateColumnVisibility()
 void GameList::MakeEmptyView()
 {
   const QString refreshing_msg = tr("Refreshing...");
-  const QString empty_msg = tr("Dolphin could not find any GameCube/Wii ISOs or WADs.\n"
+  const QString empty_msg = tr("BaijiSteamVR could not find any GameCube/Wii ISOs or WADs.\n"
                                "Double-click here to set a games directory...");
 
   m_empty = new QLabel(this);
@@ -424,11 +424,6 @@ void GameList::ShowContextMenu(const QPoint&)
     const bool is_mod_descriptor = game->IsModDescriptor();
     DiscIO::Platform platform = game->GetPlatform();
     menu->addAction(tr("&Properties"), this, &GameList::OpenProperties);
-    if (!is_mod_descriptor && platform != DiscIO::Platform::ELFOrDOL)
-    {
-      menu->addAction(tr("&Wiki"), this, &GameList::OpenWiki);
-    }
-
     menu->addSeparator();
 
     if (!is_mod_descriptor && DiscIO::IsDisc(platform))
@@ -626,18 +621,6 @@ void GameList::ExportWiiSave()
   {
     ModalMessageBox::information(this, tr("Save Export"), tr("Successfully exported save files"));
   }
-}
-
-void GameList::OpenWiki()
-{
-  const auto game = GetSelectedGame();
-  if (!game)
-    return;
-
-  QString game_id = QString::fromStdString(game->GetGameID());
-  QString url =
-      QStringLiteral("https://wiki.dolphin-emu.org/dolphin-redirect.php?gameid=").append(game_id);
-  QDesktopServices::openUrl(QUrl(url));
 }
 
 void GameList::ConvertFile()

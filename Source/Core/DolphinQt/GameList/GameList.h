@@ -67,7 +67,6 @@ private:
   void OpenProperties();
   void OpenWiiSaveFolder();
   void OpenGCSaveFolder();
-  void OpenWiki();
   void StartWithRiivolution();
   void SetDefaultISO();
   void DeleteFile();

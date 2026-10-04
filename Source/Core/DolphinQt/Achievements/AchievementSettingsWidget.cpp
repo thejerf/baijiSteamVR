@@ -66,7 +66,7 @@ void AchievementSettingsWidget::CreateLayout()
       new ToolTipCheckBox(tr("Enable RetroAchievements.org Integration"));
   m_common_integration_enabled_input->SetDescription(
       tr("Enable integration with RetroAchievements for earning achievements and competing in "
-         "leaderboards.<br><br>Must log in with a RetroAchievements account to use. Dolphin does "
+          "leaderboards.<br><br>Must log in with a RetroAchievements account to use. BaijiSteamVR does "
          "not save your password locally and uses an API token to maintain login."));
   m_common_username_label = new QLabel(tr("Username"));
   m_common_username_input = new QLineEdit(QStringLiteral(""));

@@ -31,7 +31,7 @@ bool CEXIETHERNET::TAPNetworkInterface::Activate()
   if (IsActivated())
     return true;
 
-  // Assumes that there is a TAP device named "Dolphin" preconfigured for
+  // Assumes that there is a TAP device named "Baiji" preconfigured for
   // bridge/NAT/whatever the user wants it configured.
 
   if ((fd = open("/dev/net/tun", O_RDWR)) < 0)
@@ -47,7 +47,7 @@ bool CEXIETHERNET::TAPNetworkInterface::Activate()
   const int MAX_INTERFACES = 32;
   for (int i = 0; i < MAX_INTERFACES; ++i)
   {
-    fmt::format_to_n(ifr.ifr_name, IFNAMSIZ, "Dolphin{}", i);
+    fmt::format_to_n(ifr.ifr_name, IFNAMSIZ, "Baiji{}", i);
 
     int err;
     if ((err = ioctl(fd, TUNSETIFF, (void*)&ifr)) < 0)

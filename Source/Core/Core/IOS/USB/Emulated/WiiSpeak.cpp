@@ -42,7 +42,7 @@ private:
   {
     return Config::Get(Config::MAIN_WII_SPEAK_MICROPHONE);
   }
-  std::string GetCubebStreamName() const override { return "Dolphin Emulated Wii Speak"; }
+  std::string GetCubebStreamName() const override { return "BaijiSteamVR Emulated Wii Speak"; }
   s16 GetVolumeModifier() const override
   {
     return Config::Get(Config::MAIN_WII_SPEAK_VOLUME_MODIFIER);

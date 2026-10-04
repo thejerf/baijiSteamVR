@@ -73,6 +73,48 @@ public:
       if (const auto gamepad = FindSteamInputGamepad())
       {
         m_snapshot = MakeGamepadSnapshot(*gamepad);
+        const auto now = std::chrono::steady_clock::now();
+        if (m_last_sdl_sensor_log.time_since_epoch().count() == 0 ||
+            now - m_last_sdl_sensor_log >= std::chrono::seconds(1))
+        {
+          m_last_sdl_sensor_log = now;
+          const auto& left = m_snapshot.controllers[0];
+          const auto& right = m_snapshot.controllers[1];
+          INFO_LOG_FMT(CONTROLLERINTERFACE,
+                       "SDL gamepad {} mapped input: left[A={} B={} View={} System={} "
+                       "dpad={}/{}/{}/{} trigger={:.2f} stick=({:.2f},{:.2f})] "
+                       "right[A={} B={} X={} Y={} Menu={} System={} trigger={:.2f} "
+                       "squeeze={:.2f} stick=({:.2f},{:.2f})]",
+                       gamepad->GetQualifiedName(), left.primary_button, left.secondary_button,
+                       left.view_button, left.system_button, left.dpad_up, left.dpad_down,
+                       left.dpad_left, left.dpad_right, left.trigger_value, left.thumbstick_x,
+                       left.thumbstick_y, right.primary_button, right.secondary_button,
+                       right.frame_x_button, right.frame_y_button, right.menu_button,
+                       right.system_button, right.trigger_value, right.squeeze_value,
+                       right.thumbstick_x, right.thumbstick_y);
+          INFO_LOG_FMT(CONTROLLERINTERFACE,
+                       "SDL motion input {}: accel[U/D/L/R/F/B]={}/{}/{}/{}/{}/{} "
+                       "values=({:.2f},{:.2f},{:.2f}) gyro[P+/P-/R+/R-/Y+/Y-]={}/{}/{}/{}/{}/{} "
+                       "values=({:.2f},{:.2f},{:.2f})",
+                       gamepad->GetQualifiedName(), gamepad->FindInput("Accel Up") != nullptr,
+                       gamepad->FindInput("Accel Down") != nullptr,
+                       gamepad->FindInput("Accel Left") != nullptr,
+                       gamepad->FindInput("Accel Right") != nullptr,
+                       gamepad->FindInput("Accel Forward") != nullptr,
+                       gamepad->FindInput("Accel Backward") != nullptr,
+                       GetInput(*gamepad, "Accel Right") - GetInput(*gamepad, "Accel Left"),
+                       GetInput(*gamepad, "Accel Backward") - GetInput(*gamepad, "Accel Forward"),
+                       GetInput(*gamepad, "Accel Up") - GetInput(*gamepad, "Accel Down"),
+                       gamepad->FindInput("Gyro Pitch Up") != nullptr,
+                       gamepad->FindInput("Gyro Pitch Down") != nullptr,
+                       gamepad->FindInput("Gyro Roll Left") != nullptr,
+                       gamepad->FindInput("Gyro Roll Right") != nullptr,
+                       gamepad->FindInput("Gyro Yaw Left") != nullptr,
+                       gamepad->FindInput("Gyro Yaw Right") != nullptr,
+                       GetInput(*gamepad, "Gyro Pitch Up") - GetInput(*gamepad, "Gyro Pitch Down"),
+                       GetInput(*gamepad, "Gyro Roll Left") - GetInput(*gamepad, "Gyro Roll Right"),
+                       GetInput(*gamepad, "Gyro Yaw Left") - GetInput(*gamepad, "Gyro Yaw Right"));
+        }
         std::lock_guard lock(m_gamepad_mutex);
         m_steam_input_gamepad = gamepad;
         if (!m_gamepad_logged)
@@ -92,6 +134,11 @@ public:
     {
       std::lock_guard lock(m_gamepad_mutex);
       m_steam_input_gamepad.reset();
+      if (!m_openxr_logged)
+      {
+        INFO_LOG_FMT(CONTROLLERINTERFACE, "OpenXR: Using OpenXR controller actions for input.");
+        m_openxr_logged = true;
+      }
     }
 
     UpdateMotionState(Hand::Left);
@@ -748,6 +795,8 @@ private:
   std::mutex m_gamepad_mutex;
   std::shared_ptr<ciface::Core::Device> m_steam_input_gamepad;
   bool m_gamepad_logged = false;
+  bool m_openxr_logged = false;
+  std::chrono::steady_clock::time_point m_last_sdl_sensor_log{};
   std::array<MotionState, 2> m_motion_state{};
   std::array<VelocityHistory, 2> m_velocity_history{};
 };

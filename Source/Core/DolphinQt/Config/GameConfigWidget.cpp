@@ -263,7 +263,7 @@ void GameConfigWidget::CreateWidgets()
       "settings are disabled when the global graphics backend doesn't "
       "match the game setting.");
 
-  auto* const help_label = new QLabel(tr("These settings override core Dolphin settings."));
+  auto* const help_label = new QLabel(tr("These settings override core BaijiSteamVR settings."));
 
   auto* const help_widget =
       QtUtils::CreateIconWarning(this, QStyle::SP_MessageBoxQuestion, help_label);

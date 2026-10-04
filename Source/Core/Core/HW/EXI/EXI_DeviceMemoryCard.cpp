@@ -205,7 +205,7 @@ void CEXIMemoryCard::SetupGciFolder(const Memcard::HeaderData& header_data)
     {
       // TODO more user friendly abort
       PanicAlertFmtT("{0} is not a directory, failed to move to *.original.\n Verify your "
-                     "write permissions or move the file outside of Dolphin",
+                      "write permissions or move the file outside of BaijiSteamVR",
                      dir_path);
       std::exit(0);
     }

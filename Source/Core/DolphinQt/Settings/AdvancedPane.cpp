@@ -316,7 +316,7 @@ void AdvancedPane::CreateLayout()
          "your current system time."
          "<br><br><dolphin_emphasis>If unsure, leave this unchecked.</dolphin_emphasis>"));
 
-  auto* reset_group = new QGroupBox(tr("Reset Dolphin Settings"));
+  auto* reset_group = new QGroupBox(tr("Reset BaijiSteamVR Settings"));
   reset_group->setLayout(new QVBoxLayout());
   main_layout->addWidget(reset_group);
 
@@ -401,8 +401,8 @@ void AdvancedPane::Update()
 void AdvancedPane::OnResetButtonClicked()
 {
   if (ModalMessageBox::question(
-          this, tr("Reset Dolphin Settings"),
-          tr("Are you sure you want to restore all Dolphin settings to their default "
+          this, tr("Reset BaijiSteamVR Settings"),
+          tr("Are you sure you want to restore all BaijiSteamVR settings to their default "
              "values? This action cannot be undone!\n"
              "All customizations or changes you have made will be lost.\n\n"
              "Do you want to proceed?"),

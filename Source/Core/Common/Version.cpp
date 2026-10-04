@@ -9,7 +9,11 @@
 
 namespace Common
 {
+#ifdef BAIJI_STEAMVR
+#define EMULATOR_NAME "BaijiSteamVR"
+#else
 #define EMULATOR_NAME "Dolphin"
+#endif
 
 #ifdef _DEBUG
 #define BUILD_TYPE_STR "Debug "

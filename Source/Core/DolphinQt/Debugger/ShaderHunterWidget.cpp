@@ -161,7 +161,7 @@ void ShaderHunterWidget::CreateWidgets()
                               static_cast<int>(ShaderHunter::MatchMode::ExactHash));
   m_match_mode_combo->setToolTip(
       tr("Controls both the live Skip/Pink preview and the saved override.\n"
-         "Shader Family matches semantic shader variants and is more resilient to Dolphin "
+          "Shader Family matches semantic shader variants and is more resilient to BaijiSteamVR "
          "shader-generator updates."));
   match_mode_layout->addWidget(m_match_mode_combo);
   layout->addLayout(match_mode_layout);
@@ -858,4 +858,3 @@ void ShaderHunterWidget::SetSelectedTextureHashes(const std::vector<uint64_t>& h
           .arg(exclude_mode ? tr("Exclude Filter(s)") : tr("Include Filter(s)"))
           .arg(hash_list.join(QStringLiteral("\n"))));
 }
-

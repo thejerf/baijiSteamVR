@@ -216,11 +216,12 @@ const std::vector<std::unique_ptr<VideoBackendBase>>& VideoBackendBase::GetAvail
     backends.push_back(std::make_unique<OGL::VideoBackend>());
 #endif
 #ifdef HAS_VULKAN
-#if defined(__APPLE__) || (defined(__ANDROID__) && defined(ENABLE_VR))
+#if defined(__APPLE__) || (defined(__ANDROID__) && defined(ENABLE_VR)) || defined(BAIJI_STEAMVR)
     // Emplace the Vulkan backend at the beginning so it takes precedence over OpenGL.
     // On macOS, we prefer Vulkan over OpenGL due to OpenGL support being deprecated by Apple.
     // On Android VR builds, Vulkan is the preferred default for the direct OpenXR swapchain
-    // path (GLES also supports it now, and remains selectable explicitly).
+    // path (GLES also supports it now, and remains selectable explicitly). BaijiSteamVR also
+    // defaults to Vulkan for its Steam Frame OpenXR presentation path.
     backends.emplace(backends.begin(), std::make_unique<Vulkan::VideoBackend>());
 #else
     backends.push_back(std::make_unique<Vulkan::VideoBackend>());

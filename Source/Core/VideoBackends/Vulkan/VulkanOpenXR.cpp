@@ -253,7 +253,7 @@ static XrResult SafeCreateSession(XrInstance instance, const XrSessionCreateInfo
   {
     ERROR_LOG_FMT(VIDEO,
                   "OpenXR: xrCreateSession CRASHED (exception {:#010x}). "
-                  "The OpenXR runtime may require Vulkan extensions that Dolphin did not enable. "
+                   "The OpenXR runtime may require Vulkan extensions that BaijiSteamVR did not enable. "
                   "Check the 'Required Vulkan instance/device extensions' log lines above.",
                   static_cast<unsigned>(GetExceptionCode()));
     return XR_ERROR_RUNTIME_FAILURE;
@@ -482,13 +482,13 @@ bool VulkanOpenXR::PreQueryVulkanExtensions(VulkanExtensionRequirements& out)
 
       // XR_KHR_vulkan_enable v1 always reports max=1.0.0 (Meta's Oculus runtime quirk),
       // even though the runtime actually supports newer Vulkan. Clamping the instance to
-      // 1.0 there breaks Dolphin's multiview path (a 1.1 feature) and crashes vkCreateDevice.
-      // Treat 1.0.0 as "unknown" so Dolphin keeps its negotiated 1.1/1.2 instance.
+       // 1.0 there breaks BaijiSteamVR's multiview path (a 1.1 feature) and crashes vkCreateDevice.
+       // Treat 1.0.0 as "unknown" so BaijiSteamVR keeps its negotiated 1.1/1.2 instance.
       if (reported_max <= VK_API_VERSION_1_0)
       {
         WARN_LOG_FMT(VIDEO,
                      "OpenXR: Runtime reported max Vulkan 1.0.0 (v1 extension quirk); "
-                     "ignoring and using Dolphin's instance version.");
+                      "ignoring and using BaijiSteamVR's instance version.");
         out.max_api_version = 0;
       }
       else
@@ -692,9 +692,9 @@ bool VulkanOpenXR::CreateSessionVulkan()
                XR_VERSION_MINOR(requirements.maxApiVersionSupported),
                XR_VERSION_PATCH(requirements.maxApiVersionSupported));
 
-  // Log Dolphin's Vulkan API version for comparison.
+  // Log BaijiSteamVR's Vulkan API version for comparison.
   const u32 dolphin_api = g_vulkan_context->GetDeviceInfo().apiVersion;
-  INFO_LOG_FMT(VIDEO, "OpenXR: Dolphin VkPhysicalDevice API version {}.{}.{}",
+  INFO_LOG_FMT(VIDEO, "OpenXR: BaijiSteamVR VkPhysicalDevice API version {}.{}.{}",
                VK_VERSION_MAJOR(dolphin_api), VK_VERSION_MINOR(dolphin_api),
                VK_VERSION_PATCH(dolphin_api));
 

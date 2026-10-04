@@ -973,7 +973,7 @@ static bool RunCodeLocked(const Core::CPUThreadGuard& guard, const ARCode& arcod
 
       default:
         LogInfo("ZCode: Unknown");
-        PanicAlertFmtT("Zero code unknown to Dolphin: {0:08x}", zcode);
+        PanicAlertFmtT("Zero code unknown to BaijiSteamVR: {0:08x}", zcode);
         return false;
       }
 

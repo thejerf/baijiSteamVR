@@ -83,7 +83,7 @@ bool CubebStream::Init()
       INFO_LOG_FMT(AUDIO, "Minimum latency: {} frames", minimum_latency);
 
       return_value =
-          cubeb_stream_init(m_ctx.get(), &m_stream, "Dolphin Audio Output", nullptr, nullptr,
+          cubeb_stream_init(m_ctx.get(), &m_stream, "BaijiSteamVR Audio Output", nullptr, nullptr,
                             nullptr, &params, std::max(BUFFER_SAMPLES, minimum_latency),
                             DataCallback, StateCallback, this) == CUBEB_OK;
     }

@@ -73,13 +73,13 @@ ConvertDialog::ConvertDialog(QList<std::shared_ptr<const UICommon::GameFile>> fi
   auto* const info_text = new QLabel(
       tr("ISO: A simple and robust format which is supported by many programs. It takes up more "
          "space than any other format.\n\n"
-         "GCZ: A basic compressed format which is compatible with most versions of Dolphin and "
+         "GCZ: A basic compressed format which is compatible with most versions of BaijiSteamVR and "
          "some other programs. It can't efficiently compress junk data (unless removed) or "
          "encrypted Wii data.\n\n"
-         "WIA: An advanced compressed format which is compatible with Dolphin 5.0-12188 and later, "
+          "WIA: An advanced compressed format which is compatible with BaijiSteamVR 5.0-12188 and later, "
          "and a few other programs. It can efficiently compress encrypted Wii data, but not junk "
          "data (unless removed).\n\n"
-         "RVZ: An advanced compressed format which is compatible with Dolphin 5.0-12188 and later. "
+          "RVZ: An advanced compressed format which is compatible with BaijiSteamVR 5.0-12188 and later. "
          "It can efficiently compress both junk data and encrypted Wii data."));
   info_text->setWordWrap(true);
   info_text->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
@@ -162,7 +162,7 @@ void ConvertDialog::OnFormatChanged()
       if (!block_size_ok(DiscIO::GCZ_FALLBACK_BLOCK_SIZE))
       {
         ERROR_LOG_FMT(MASTER_LOG, "Failed to find a block size which does not cause problems "
-                                  "when decompressing using an old version of Dolphin");
+                                   "when decompressing using an old version of BaijiSteamVR");
       }
       AddToBlockSizeComboBox(DiscIO::GCZ_FALLBACK_BLOCK_SIZE);
     }
@@ -311,8 +311,8 @@ void ConvertDialog::Convert()
   if (std::ranges::any_of(m_files, &UICommon::GameFile::IsNKit))
   {
     if (!ShowAreYouSureDialog(
-            tr("Dolphin can't convert NKit files to non-NKit files. Converting an NKit file in "
-               "Dolphin will result in another NKit file.\n"
+            tr("BaijiSteamVR can't convert NKit files to non-NKit files. Converting an NKit file in "
+               "BaijiSteamVR will result in another NKit file.\n"
                "\n"
                "If you want to convert an NKit file to a non-NKit file, you can use the same "
                "program as you originally used when converting the file to the NKit format.\n"
@@ -511,7 +511,7 @@ void ConvertDialog::Convert()
       if (!success.get())
       {
         ModalMessageBox::critical(this, tr("Error"),
-                                  tr("Dolphin failed to complete the requested action."));
+                                  tr("BaijiSteamVR failed to complete the requested action."));
         return;
       }
 

@@ -54,9 +54,7 @@ void FreeLookWidget::CreateLayout()
   auto* description =
       new QLabel(tr("Free Look allows for manipulation of the in-game camera. "
                     "Different camera types are available from the dropdown.<br><br>"
-                    "For detailed instructions, "
-                    "<a href=\"https://wiki.dolphin-emu.org/index.php?title=Free_Look\">"
-                    "refer to this page</a>."));
+                    "Use the camera type and movement controls to adjust the view."));
   description->setTextFormat(Qt::RichText);
   description->setWordWrap(true);
   description->setTextInteractionFlags(Qt::TextBrowserInteraction);

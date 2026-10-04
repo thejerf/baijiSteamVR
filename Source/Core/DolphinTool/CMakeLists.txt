@@ -18,6 +18,8 @@ if (WIN32)
     DEBUG_POSTFIX    D
     OUTPUT_NAME      DolphinTool
   )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set_target_properties(dolphin-tool PROPERTIES OUTPUT_NAME baiji-tool)
 endif()
 
 target_link_libraries(dolphin-tool

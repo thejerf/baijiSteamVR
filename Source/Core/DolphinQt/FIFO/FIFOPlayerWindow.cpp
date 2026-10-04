@@ -231,7 +231,7 @@ void FIFOPlayerWindow::AddDescriptions()
 void FIFOPlayerWindow::LoadRecording()
 {
   QString path = DolphinFileDialog::getOpenFileName(this, tr("Open FIFO Log"), QString(),
-                                                    tr("Dolphin FIFO Log (*.dff)"));
+                                                    tr("FIFO Log (*.dff)"));
 
   if (path.isEmpty())
     return;
@@ -242,7 +242,7 @@ void FIFOPlayerWindow::LoadRecording()
 void FIFOPlayerWindow::SaveRecording()
 {
   QString path = DolphinFileDialog::getSaveFileName(this, tr("Save FIFO Log"), QString(),
-                                                    tr("Dolphin FIFO Log (*.dff)"));
+                                                     tr("FIFO Log (*.dff)"));
 
   if (path.isEmpty())
     return;

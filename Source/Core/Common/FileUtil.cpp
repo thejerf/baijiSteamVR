@@ -655,7 +655,7 @@ std::string CreateTempDir()
   return dir;
 #else
   const char* base = getenv("TMPDIR") ?: "/tmp";
-  std::string path = std::string(base) + "/DolphinWii.XXXXXX";
+  std::string path = std::string(base) + "/BaijiWii.XXXXXX";
   if (!mkdtemp(&path[0]))
     return "";
   return path;

@@ -175,7 +175,7 @@ void TraversalClient::HandleServerPacket(TraversalPacket* packet)
     ENetAddress addr = MakeENetAddress(packet->pleaseSendPacket.address);
     if (addr.port != 0)
     {
-      char message[] = "Hello from Dolphin Netplay...";
+      char message[] = "Hello from BaijiSteamVR Netplay...";
       ENetBuffer buf;
       buf.data = message;
       buf.dataLength = sizeof(message) - 1;

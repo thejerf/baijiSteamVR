@@ -35,7 +35,7 @@ CheatWarningWidget::CheatWarningWidget(const std::string& game_id, bool restart_
 void CheatWarningWidget::CreateWidgets()
 {
   m_text = new QLabel();
-  m_config_button = new QPushButton(tr("Configure Dolphin"));
+  m_config_button = new QPushButton(tr("Configure BaijiSteamVR"));
 
   m_config_button->setHidden(true);
 
@@ -62,7 +62,7 @@ void CheatWarningWidget::Update(bool running)
   {
     hide_widget = false;
     hide_config_button = false;
-    m_text->setText(tr("Dolphin's cheat system is currently disabled."));
+    m_text->setText(tr("BaijiSteamVR's cheat system is currently disabled."));
   }
 
   setHidden(hide_widget);

@@ -711,8 +711,8 @@ bool PopulateConfig(GLContext* m_main_gl_context)
     // It also isn't useful as we don't render anything to the default framebuffer.
     // We also try to get a non-msaa fb, so this only happens when forced by the driver.
     PanicAlertFmtT(
-        "The graphics driver is forcibly enabling anti-aliasing for Dolphin. You need to "
-        "turn this off in the graphics driver's settings in order for Dolphin to work.\n\n"
+        "The graphics driver is forcibly enabling anti-aliasing for BaijiSteamVR. You need to "
+        "turn this off in the graphics driver's settings in order for BaijiSteamVR to work.\n\n"
         "(MSAA with {0} samples found on default framebuffer)",
         samples);
     bSuccess = false;

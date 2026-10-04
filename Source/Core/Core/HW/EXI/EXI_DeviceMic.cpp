@@ -114,7 +114,7 @@ void CEXIMic::StreamStart()
     }
 
     if (cubeb_stream_init(m_cubeb_ctx.get(), &m_cubeb_stream,
-                          "Dolphin Emulated GameCube Microphone", nullptr, &params, nullptr,
+                          "BaijiSteamVR Emulated GameCube Microphone", nullptr, &params, nullptr,
                           nullptr, std::max<u32>(buff_size_samples, minimum_latency), DataCallback,
                           state_callback, this) != CUBEB_OK)
     {

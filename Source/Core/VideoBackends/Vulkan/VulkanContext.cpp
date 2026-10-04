@@ -310,9 +310,17 @@ VkInstance VulkanContext::CreateVulkanInstance(
   VkApplicationInfo app_info = {};
   app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
   app_info.pNext = nullptr;
+#ifdef BAIJI_STEAMVR
+  app_info.pApplicationName = "BaijiSteamVR";
+#else
   app_info.pApplicationName = "Dolphin Emulator";
+#endif
   app_info.applicationVersion = VK_MAKE_VERSION(5, 0, 0);
+#ifdef BAIJI_STEAMVR
+  app_info.pEngineName = "BaijiSteamVR";
+#else
   app_info.pEngineName = "Dolphin Emulator";
+#endif
   app_info.engineVersion = VK_MAKE_VERSION(5, 0, 0);
   app_info.apiVersion = getAPIVersion(max_api_version);
 

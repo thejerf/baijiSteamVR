@@ -605,7 +605,7 @@ static bool CheckDeviceAccess(libusb_device* device)
     if (ret == LIBUSB_ERROR_ACCESS)
     {
       ERROR_LOG_FMT(CONTROLLERINTERFACE,
-                    "Dolphin does not have access to this device: Bus {:03d} Device {:03d}: ID "
+                    "BaijiSteamVR does not have access to this device: Bus {:03d} Device {:03d}: ID "
                     "{:04X}:{:04X}.",
                     bus, port, desc.idVendor, desc.idProduct);
     }

@@ -132,7 +132,7 @@ std::string GenerateChangelog(const picojson::array& versions)
     {
       if (!changelog.empty())
         changelog += "<hr>";
-      changelog += "<b>Dolphin " + ver_obj["shortrev"].get<std::string>() + "</b>";
+      changelog += "<b>BaijiSteamVR " + ver_obj["shortrev"].get<std::string>() + "</b>";
       changelog += "<p>" + ver_obj["changelog_html"].get<std::string>() + "</p>";
     }
   }
@@ -142,8 +142,7 @@ std::string GenerateChangelog(const picojson::array& versions)
 
 bool AutoUpdateChecker::SystemSupportsAutoUpdates()
 {
-  // Dolphin-VR-ReduX is maintained as a separate branch and must not offer upstream auto-updates,
-  // which would replace the VR-specific build with incompatible binaries.
+  // BaijiSteamVR is a standalone build with no auto-update service.
   return false;
 }
 
@@ -168,10 +167,10 @@ static std::string GetPlatformID()
 
 static std::string GetUpdateServerUrl()
 {
-  auto server_url = std::getenv("DOLPHIN_UPDATE_SERVER_URL");
+  auto server_url = std::getenv("BAIJI_UPDATE_SERVER_URL");
   if (server_url)
     return server_url;
-  return "https://dolphin-emu.org";
+  return {};
 }
 
 static u32 GetOwnProcessId()

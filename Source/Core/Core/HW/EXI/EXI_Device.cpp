@@ -140,7 +140,7 @@ std::unique_ptr<IEXIDevice> EXIDevice_Create(Core::System& system, const EXIDevi
 #ifdef HAVE_CUBEB
     result = std::make_unique<CEXIMic>(system, channel_num);
 #else
-    PanicAlertFmtT("Dolphin was built with Cubeb disabled. The Microphone device cannot be used.");
+    PanicAlertFmtT("BaijiSteamVR was built with Cubeb disabled. The Microphone device cannot be used.");
     result = std::make_unique<IEXIDevice>(system);
 #endif
     break;

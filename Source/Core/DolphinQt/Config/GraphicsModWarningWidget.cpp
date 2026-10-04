@@ -26,7 +26,7 @@ void GraphicsModWarningWidget::CreateWidgets()
 {
   m_text = new QLabel();
 
-  m_config_button = new QPushButton(tr("Configure Dolphin"));
+  m_config_button = new QPushButton(tr("Configure BaijiSteamVR"));
   m_config_button->setHidden(true);
 
   auto* const layout = new QHBoxLayout{this};

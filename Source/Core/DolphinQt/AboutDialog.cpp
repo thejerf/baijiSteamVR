@@ -14,68 +14,27 @@
 
 AboutDialog::AboutDialog(QWidget* parent) : QDialog(parent)
 {
-  setWindowTitle(tr("About Dolphin"));
-
-  QString branch_str = QString::fromStdString(Common::GetScmBranchStr());
-  const int commits_ahead = Common::GetScmCommitsAheadMaster();
-  if (commits_ahead > 0)
-  {
-    branch_str = tr("%1 (%2)").arg(
-        branch_str,
-        // i18n: A positive number of version control commits made compared to some named branch
-        tr("%1 commit(s) ahead of %2").arg(commits_ahead).arg(QStringLiteral("master")));
-  }
+  setWindowTitle(tr("About BaijiSteamVR"));
 
   const QString text =
       QStringLiteral(R"(
-<p style='font-size:38pt; font-weight:400;'>Dolphin</p>
+<p style='font-size:38pt; font-weight:400;'>BaijiSteamVR</p>
 
-<p style='font-size:18pt;'>%VERSION_STRING%</p>
+<p style='font-size:18pt;'>%VERSION%</p>
 
-<p style='font-size: small;'>
-%BRANCH%<br>
-%REVISION%<br><br>
-%QT_VERSION%
+<p>
+BaijiSteamVR is a free and open-source GameCube and Wii emulator.
 </p>
 
 <p>
-%CHECK_FOR_UPDATES%: <a href='https://dolphin-emu.org/download'>dolphin-emu.org/download</a>
+<a href='https://github.com/thejerf/baijiSteamVR'>BaijiSteamVR project page</a>
 </p>
 
 <p>
-%ABOUT_DOLPHIN%
-</p>
-
-<p>
-%GAMES_YOU_OWN%
-</p>
-
-<p>
-<a href='https://github.com/dolphin-emu/dolphin/blob/master/COPYING'>%LICENSE%</a> |
-<a href='https://github.com/dolphin-emu/dolphin/graphs/contributors'>%AUTHORS%</a> |
-<a href='https://forums.dolphin-emu.org/'>%SUPPORT%</a>
+Licensed under GPL-2.0-or-later. See COPYING and LICENSES in the installation for license texts.
 )")
-          .replace(QStringLiteral("%VERSION_STRING%"),
-                   QString::fromUtf8(Common::GetScmDescStr().c_str()))
-          .replace(QStringLiteral("%BRANCH%"),
-                   // i18n: "Branch" means the version control term, not a literal tree branch.
-                   tr("Branch: %1").arg(branch_str))
-          .replace(QStringLiteral("%REVISION%"),
-                   tr("Revision: %1").arg(QString::fromUtf8(Common::GetScmRevGitStr().c_str())))
-          .replace(QStringLiteral("%QT_VERSION%"),
-                   tr("Using Qt %1").arg(QStringLiteral(QT_VERSION_STR)))
-          .replace(QStringLiteral("%CHECK_FOR_UPDATES%"), tr("Check for updates"))
-          .replace(QStringLiteral("%ABOUT_DOLPHIN%"),
-                   // i18n: The word "free" in the standard phrase "free and open source"
-                   // is "free" as in "freedom" - it refers to certain properties of the
-                   // software's license, not the software's price. (It is true that Dolphin
-                   // can be downloaded at no cost, but that's not what this message says.)
-                   tr("Dolphin is a free and open-source GameCube and Wii emulator."))
-          .replace(QStringLiteral("%GAMES_YOU_OWN%"),
-                   tr("This software should not be used to play games you do not legally own."))
-          .replace(QStringLiteral("%LICENSE%"), tr("License"))
-          .replace(QStringLiteral("%AUTHORS%"), tr("Authors"))
-          .replace(QStringLiteral("%SUPPORT%"), tr("Support"));
+          .replace(QStringLiteral("%VERSION%"),
+                   QString::fromUtf8(Common::GetScmDescStr().c_str()));
 
   QLabel* text_label = new QLabel(text);
   text_label->setTextInteractionFlags(Qt::TextBrowserInteraction);
@@ -88,8 +47,8 @@ AboutDialog::AboutDialog(QWidget* parent) : QDialog(parent)
               // in your translation, please use the type of curly quotes that's appropriate for
               // your language. If you aren't sure which type is appropriate, see
               // https://en.wikipedia.org/wiki/Quotation_mark#Specific_language_features
-              tr("\u00A9 2003-2024+ Dolphin Team. \u201cGameCube\u201d and \u201cWii\u201d are "
-                 "trademarks of Nintendo. Dolphin is not affiliated with Nintendo in any way.")));
+               tr("\u00A9 2003-2024+ Dolphin Team. \u201cGameCube\u201d and \u201cWii\u201d are "
+                  "trademarks of Nintendo. BaijiSteamVR is not affiliated with Nintendo.")));
 
   QLabel* logo = new QLabel();
   logo->setPixmap(Resources::GetAppIcon().pixmap(200, 200));

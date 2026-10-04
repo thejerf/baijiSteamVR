@@ -548,9 +548,17 @@ bool OpenXRManager::CreateInstance(const std::vector<const char*>& extra_extensi
                XR_VERSION_PATCH(requested_api_version));
 
   XrApplicationInfo app_info{};
+#ifdef BAIJI_STEAMVR
+  std::strncpy(app_info.applicationName, "BaijiSteamVR", XR_MAX_APPLICATION_NAME_SIZE - 1);
+#else
   std::strncpy(app_info.applicationName, "Dolphin Emulator", XR_MAX_APPLICATION_NAME_SIZE - 1);
+#endif
   app_info.applicationVersion = 1;
+#ifdef BAIJI_STEAMVR
+  std::strncpy(app_info.engineName, "BaijiSteamVR", XR_MAX_ENGINE_NAME_SIZE - 1);
+#else
   std::strncpy(app_info.engineName, "Dolphin", XR_MAX_ENGINE_NAME_SIZE - 1);
+#endif
   app_info.engineVersion = 1;
   app_info.apiVersion = requested_api_version;
 
@@ -1548,9 +1556,17 @@ bool OpenXRManager::InitializeInputActions()
   }
 
   XrActionSetCreateInfo action_set_info{XR_TYPE_ACTION_SET_CREATE_INFO};
+#ifdef BAIJI_STEAMVR
+  CopyOpenXRName(action_set_info.actionSetName, XR_MAX_ACTION_SET_NAME_SIZE, "baiji_input");
+#else
   CopyOpenXRName(action_set_info.actionSetName, XR_MAX_ACTION_SET_NAME_SIZE, "dolphin_input");
+#endif
   CopyOpenXRName(action_set_info.localizedActionSetName, XR_MAX_LOCALIZED_ACTION_SET_NAME_SIZE,
+#ifdef BAIJI_STEAMVR
+                 "BaijiSteamVR Input");
+#else
                  "Dolphin Input");
+#endif
   action_set_info.priority = 0;
 
   XrResult result = xrCreateActionSet(m_instance, &action_set_info, &m_input_action_set);
@@ -2021,7 +2037,11 @@ bool OpenXRManager::InitializeInputActions()
                         "grip");
   }
 
+#ifdef BAIJI_STEAMVR
+  INFO_LOG_FMT(OPENXR, "OpenXR: Input action system initialized — action set 'baiji_input', "
+#else
   INFO_LOG_FMT(OPENXR, "OpenXR: Input action system initialized — action set 'dolphin_input', "
+#endif
                         "spaces created for both hands.");
   return true;
 }
@@ -2194,6 +2214,7 @@ void OpenXRManager::UpdateInputActions()
   }
 
   std::array<Common::VR::OpenXRControllerState, 2> controllers{};
+  std::array<bool, 2> actions_active{};
 
   // Rendering-coupled consumers (Controller Anchor) need poses at the predicted display
   // time so anchored elements stay glued to the rendered frame; pure input consumers (the
@@ -2328,6 +2349,7 @@ void OpenXRManager::UpdateInputActions()
     controller.trigger_button = trigger_click || controller.trigger_value > 0.5f;
     controller.squeeze_button =
         squeeze_click || std::max(controller.squeeze_value, controller.squeeze_force) > 0.5f;
+    actions_active[hand] = action_seen;
     controller.connected = action_seen || controller.aim_pose.valid || controller.grip_pose.valid;
   }
 
@@ -2335,10 +2357,26 @@ void OpenXRManager::UpdateInputActions()
   static uint64_t s_sync_log_counter = 0;
   if ((++s_sync_log_counter % 300) == 1)
   {
+    const auto& left = controllers[0];
+    const auto& right = controllers[1];
     INFO_LOG_FMT(OPENXR,
-                 "OpenXR input: sync={}, focused={}, left_connected={}, right_connected={}",
-                 static_cast<int>(sync_result), m_session_focused.load(),
-                 controllers[0].connected, controllers[1].connected);
+                 "OpenXR input: sync={} focused={} "
+                 "L{{connected={} active={} profile={} buttons=[A={},B={},X={},Y={},menu={},"
+                 "system={},view={},bumper={},dpad={}/{}/{}/{}] trigger={:.2f} squeeze={:.2f} "
+                 "stick=({:.2f},{:.2f})}} "
+                 "R{{connected={} active={} profile={} buttons=[A={},B={},X={},Y={},menu={},"
+                 "system={}] trigger={:.2f} squeeze={:.2f} stick=({:.2f},{:.2f})}}",
+                 static_cast<int>(sync_result), m_session_focused.load(), left.connected,
+                 actions_active[0], PathToString(m_instance, m_logged_interaction_profiles[0]),
+                 left.primary_button, left.secondary_button, left.frame_x_button, left.frame_y_button,
+                 left.menu_button, left.system_button, left.view_button, left.bumper_button,
+                 left.dpad_up, left.dpad_down, left.dpad_left, left.dpad_right,
+                 left.trigger_value, left.squeeze_value, left.thumbstick_x, left.thumbstick_y,
+                 right.connected, actions_active[1],
+                 PathToString(m_instance, m_logged_interaction_profiles[1]), right.primary_button,
+                 right.secondary_button, right.frame_x_button, right.frame_y_button,
+                 right.menu_button, right.system_button, right.trigger_value, right.squeeze_value,
+                 right.thumbstick_x, right.thumbstick_y);
   }
 
   // Provide HMD head orientation for IR pointer reference direction.

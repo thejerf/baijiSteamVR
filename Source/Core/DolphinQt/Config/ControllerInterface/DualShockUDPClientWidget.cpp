@@ -48,10 +48,7 @@ void DualShockUDPClientWidget::CreateWidgets()
 
   auto* description =
       new QLabel(tr("DSU protocol enables the use of input and motion data from compatible "
-                    "sources, like PlayStation, Nintendo Switch and Steam controllers.<br><br>"
-                    "For setup instructions, "
-                    "<a href=\"https://wiki.dolphin-emu.org/index.php?title=DSU_Client\">"
-                    "refer to this page</a>."));
+                    "sources, like PlayStation, Nintendo Switch and Steam controllers."));
   description->setTextFormat(Qt::RichText);
   description->setWordWrap(true);
   description->setTextInteractionFlags(Qt::TextBrowserInteraction);

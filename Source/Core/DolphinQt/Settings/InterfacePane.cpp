@@ -271,7 +271,7 @@ void InterfacePane::UpdateShowDebuggingCheckbox()
       ->setChecked(Settings::Instance().IsDebugModeEnabled());
 
   static constexpr char TR_SHOW_DEBUGGING_UI_DESCRIPTION[] = QT_TR_NOOP(
-      "Shows Dolphin's debugging user interface. This lets you view and modify a game's code and "
+      "Shows BaijiSteamVR's debugging user interface. This lets you view and modify a game's code and "
       "memory contents, set debugging breakpoints, examine network requests, and more."
       "<br><br><dolphin_emphasis>If unsure, leave this unchecked.</dolphin_emphasis>");
   static constexpr char TR_DISABLED_IN_HARDCORE_DESCRIPTION[] =
@@ -320,7 +320,7 @@ void InterfacePane::OnLanguageChanged()
 {
   ModalMessageBox::information(
       this, tr("Restart Required"),
-      tr("You must restart Dolphin in order for the change to take effect."));
+       tr("You must restart BaijiSteamVR in order for the change to take effect."));
 }
 
 void InterfacePane::OnEmulationStateChanged(Core::State state)
@@ -332,17 +332,17 @@ void InterfacePane::OnEmulationStateChanged(Core::State state)
 void InterfacePane::AddDescriptions()
 {
   static constexpr char TR_TITLE_DATABASE_DESCRIPTION[] = QT_TR_NOOP(
-      "Uses Dolphin's database of properly formatted names in the game list's Title column."
+      "Uses BaijiSteamVR's database of properly formatted names in the game list's Title column."
       "<br><br><dolphin_emphasis>If unsure, leave this checked.</dolphin_emphasis>");
   static constexpr char TR_THEME_DESCRIPTION[] =
-      QT_TR_NOOP("Changes the appearance and color of Dolphin's buttons."
+      QT_TR_NOOP("Changes the appearance and color of BaijiSteamVR's buttons."
                  "<br><br><dolphin_emphasis>If unsure, select Clean.</dolphin_emphasis>");
   static constexpr char TR_TOP_WINDOW_DESCRIPTION[] =
       QT_TR_NOOP("Forces the render window to stay on top of other windows and applications."
                  "<br><br><dolphin_emphasis>If unsure, leave this unchecked.</dolphin_emphasis>");
   static constexpr char TR_LANGUAGE_DESCRIPTION[] = QT_TR_NOOP(
-      "Sets the language displayed by Dolphin's user interface."
-      "<br><br>Changes to this setting only take effect once Dolphin is restarted."
+      "Sets the language displayed by BaijiSteamVR's user interface."
+      "<br><br>Changes to this setting only take effect once BaijiSteamVR is restarted."
       "<br><br><dolphin_emphasis>If unsure, select &lt;System Language&gt;.</dolphin_emphasis>");
   static constexpr char TR_FOCUSED_HOTKEYS_DESCRIPTION[] =
       QT_TR_NOOP("Requires the render window to be focused for hotkeys to take effect."
@@ -365,8 +365,8 @@ void InterfacePane::AddDescriptions()
       QT_TR_NOOP("Prompts you to confirm that you want to end emulation when you press Stop."
                  "<br><br><dolphin_emphasis>If unsure, leave this checked.</dolphin_emphasis>");
   static constexpr char TR_USE_PANIC_HANDLERS_DESCRIPTION[] =
-      QT_TR_NOOP("In the event of an error, Dolphin will halt to inform you of the error and "
-                 "present choices on how to proceed. With this option disabled, Dolphin will "
+      QT_TR_NOOP("In the event of an error, BaijiSteamVR will halt to inform you of the error and "
+                 "present choices on how to proceed. With this option disabled, BaijiSteamVR will "
                  "\"ignore\" all errors. Emulation will not be halted and you will not be notified."
                  "<br><br><dolphin_emphasis>If unsure, leave this checked.</dolphin_emphasis>");
   static constexpr char TR_SHOW_ACTIVE_TITLE_DESCRIPTION[] =
@@ -390,7 +390,7 @@ void InterfacePane::AddDescriptions()
       "Shows the mouse cursor at all times."
       "<br><br><dolphin_emphasis>If unsure, select &quot;On Movement&quot;.</dolphin_emphasis>");
   static constexpr char TR_USER_STYLE_DESCRIPTION[] =
-      QT_TR_NOOP("Sets the style of Dolphin's user interface. Any custom styles that you have "
+      QT_TR_NOOP("Sets the style of BaijiSteamVR's user interface. Any custom styles that you have "
                  "added will be presented here, allowing you to switch to them."
                  "<br><br><dolphin_emphasis>If unsure, select (System).</dolphin_emphasis>");
 

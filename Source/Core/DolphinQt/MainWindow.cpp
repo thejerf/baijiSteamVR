@@ -213,18 +213,7 @@ static std::vector<std::string> StringListToStdVector(QStringList list)
 
 static QString GetMainWindowTitle()
 {
-  QString title = QString::fromStdString(Common::GetScmRevStr());
-
-  if (title.startsWith(QStringLiteral("Dolphin ")))
-    title.replace(0, QStringLiteral("Dolphin").size(), QStringLiteral("Dolphin-VR-ReduX"));
-
-  if (title.endsWith(QStringLiteral("-dirty")))
-  {
-    title.chop(QStringLiteral("-dirty").size());
-    title.append(QStringLiteral(" -dirty"));
-  }
-
-  return title;
+  return QStringLiteral("BaijiSteamVR");
 }
 
 MainWindow::MainWindow(Core::System& system, std::unique_ptr<BootParameters> boot_parameters,
@@ -1929,7 +1918,7 @@ void MainWindow::OnPlayRecording()
   }
 
   QString dtm_file = DolphinFileDialog::getOpenFileName(
-      this, tr("Select the Recording File to Play"), QString(), tr("Dolphin TAS Movies (*.dtm)"));
+      this, tr("Select the Recording File to Play"), QString(), tr("BaijiSteamVR TAS Movies (*.dtm)"));
 
   if (dtm_file.isEmpty())
     return;
@@ -2007,7 +1996,7 @@ void MainWindow::OnExportRecording()
   const Core::CPUThreadGuard guard(m_system);
 
   QString dtm_file = DolphinFileDialog::getSaveFileName(
-      this, tr("Save Recording File As"), QString(), tr("Dolphin TAS Movies (*.dtm)"));
+      this, tr("Save Recording File As"), QString(), tr("BaijiSteamVR TAS Movies (*.dtm)"));
   if (!dtm_file.isEmpty())
     m_system.GetMovie().SaveRecording(dtm_file.toStdString());
 }

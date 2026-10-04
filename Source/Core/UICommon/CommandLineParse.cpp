@@ -114,7 +114,7 @@ std::unique_ptr<optparse::OptionParser> CreateParser(ParserOptions options)
     parser->add_option("-l", "--logger").action("store_true").help("Open the logger");
     parser->add_option("-b", "--batch")
         .action("store_true")
-        .help("Run Dolphin without the user interface (Requires --exec or --nand-title)");
+        .help("Run BaijiSteamVR without the user interface (Requires --exec or --nand-title)");
     parser->add_option("-c", "--confirm").action("store_true").help("Set Confirm on Stop");
   }
 
