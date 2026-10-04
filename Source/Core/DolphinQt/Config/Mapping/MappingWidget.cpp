@@ -49,41 +49,52 @@ public:
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     addItem(tr("Unmapped"), QString{});
 
-    const auto& default_device = widget->GetController()->GetDefaultDevice();
-    if (const auto device = g_controller_interface.FindDevice(default_device))
-    {
-      ciface::Core::DeviceQualifier control_device;
-      control_device.FromDevice(device.get());
-
-      const auto add_control = [this, &control_device, &default_device](
-                                   const ciface::Core::Device::Control* control) {
-        if (control->IsHidden())
-          return;
-
-        const auto expression = ciface::MappingCommon::GetExpressionForControl(
-            control->GetName(), control_device, default_device, ciface::MappingCommon::Quote::On);
-        addItem(QString::fromStdString(control->GetName()), QString::fromStdString(expression));
-      };
-
-      if (reference->IsInput())
-      {
-        for (const auto* input : device->Inputs())
-          add_control(input);
-      }
-      else
-      {
-        for (const auto* output : device->Outputs())
-          add_control(output);
-      }
-    }
-
-    connect(widget, &MappingWidget::ConfigChanged, this, [this] { UpdateSelection(); });
-    UpdateSelection();
+    connect(widget, &MappingWidget::ConfigChanged, this, [this, widget] {
+      PopulateControls(widget);
+      UpdateSelection();
+    });
   }
 
   ControlReference* GetControlReference() const { return m_reference; }
 
 private:
+  void PopulateControls(MappingWidget* widget)
+  {
+    if (m_populated || !widget->GetController())
+      return;
+
+    const auto& default_device = widget->GetController()->GetDefaultDevice();
+    const auto device = g_controller_interface.FindDevice(default_device);
+    if (!device)
+      return;
+
+    ciface::Core::DeviceQualifier control_device;
+    control_device.FromDevice(device.get());
+
+    const auto add_control = [this, &control_device, &default_device](
+                                 const ciface::Core::Device::Control* control) {
+      if (control->IsHidden())
+        return;
+
+      const auto expression = ciface::MappingCommon::GetExpressionForControl(
+          control->GetName(), control_device, default_device, ciface::MappingCommon::Quote::On);
+      addItem(QString::fromStdString(control->GetName()), QString::fromStdString(expression));
+    };
+
+    if (m_reference->IsInput())
+    {
+      for (const auto* input : device->Inputs())
+        add_control(input);
+    }
+    else
+    {
+      for (const auto* output : device->Outputs())
+        add_control(output);
+    }
+
+    m_populated = true;
+  }
+
   void UpdateSelection()
   {
     const auto lock = ControllerEmu::EmulatedController::GetStateLock();
@@ -101,6 +112,7 @@ private:
   }
 
   ControlReference* const m_reference;
+  bool m_populated = false;
 };
 }  // namespace
 
