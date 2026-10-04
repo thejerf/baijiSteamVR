@@ -6,12 +6,14 @@
 #include <fmt/core.h>
 
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QSignalBlocker>
 
 #include "DolphinQt/Config/Mapping/IOWindow.h"
 #include "DolphinQt/Config/Mapping/MappingButton.h"
@@ -31,6 +33,76 @@
 #include "InputCommon/ControllerEmu/Setting/NumericSetting.h"
 #include "InputCommon/ControllerEmu/StickGate.h"
 #include "InputCommon/ControllerInterface/ControllerInterface.h"
+#include "InputCommon/ControllerInterface/MappingCommon.h"
+#include "InputCommon/InputConfig.h"
+
+namespace
+{
+class FrameMappingComboBox final : public QComboBox
+{
+public:
+  FrameMappingComboBox(MappingWidget* widget, ControlReference* reference)
+      : QComboBox(widget), m_reference(reference)
+  {
+    setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+    setMinimumContentsLength(18);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    addItem(tr("Unmapped"), QString{});
+
+    const auto& default_device = widget->GetController()->GetDefaultDevice();
+    if (const auto device = g_controller_interface.FindDevice(default_device))
+    {
+      ciface::Core::DeviceQualifier control_device;
+      control_device.FromDevice(device.get());
+
+      const auto add_control = [this, &control_device, &default_device](
+                                   const ciface::Core::Device::Control* control) {
+        if (control->IsHidden())
+          return;
+
+        const auto expression = ciface::MappingCommon::GetExpressionForControl(
+            control->GetName(), control_device, default_device, ciface::MappingCommon::Quote::On);
+        addItem(QString::fromStdString(control->GetName()), QString::fromStdString(expression));
+      };
+
+      if (reference->IsInput())
+      {
+        for (const auto* input : device->Inputs())
+          add_control(input);
+      }
+      else
+      {
+        for (const auto* output : device->Outputs())
+          add_control(output);
+      }
+    }
+
+    connect(widget, &MappingWidget::ConfigChanged, this, [this] { UpdateSelection(); });
+    UpdateSelection();
+  }
+
+  ControlReference* GetControlReference() const { return m_reference; }
+
+private:
+  void UpdateSelection()
+  {
+    const auto lock = ControllerEmu::EmulatedController::GetStateLock();
+    const QString expression = QString::fromStdString(m_reference->GetExpression());
+    QSignalBlocker blocker(this);
+
+    int index = findData(expression);
+    if (index == -1 && !expression.isEmpty())
+    {
+      addItem(tr("Current mapping: %1").arg(expression), expression);
+      index = count() - 1;
+    }
+
+    setCurrentIndex(index);
+  }
+
+  ControlReference* const m_reference;
+};
+}  // namespace
 
 MappingWidget::MappingWidget(MappingWindow* parent) : m_parent(parent)
 {
@@ -403,20 +475,45 @@ void MappingWidget::CreateControl(const ControllerEmu::Control* control, QFormLa
           (is_modifier ? ControlType::ModifierInput : ControlType::NormalInput) :
           ControlType::Output;
 
-  auto* const button = new MappingButton(this, control->control_ref.get(), control_type);
-
-  if (control->control_ref->IsInput())
+  QWidget* mapping_widget = nullptr;
+  if (m_parent->IsFrameControllerMapping())
   {
-    if (m_previous_mapping_button)
+    auto* const combo = new FrameMappingComboBox(this, control->control_ref.get());
+    mapping_widget = combo;
+
+    connect(combo, &QComboBox::currentIndexChanged, this, [this, combo] {
+      auto* const control_reference = combo->GetControlReference();
+      const auto expression = combo->currentData().toString().toStdString();
+      auto* const controller = GetController();
+      {
+        const auto lock = controller->GetStateLock();
+        control_reference->SetExpression(expression);
+        controller->UpdateSingleControlReference(g_controller_interface, control_reference);
+        controller->GetConfig()->GenerateControllerTextures();
+      }
+
+      emit ConfigChanged();
+      GetParent()->Save();
+    });
+  }
+  else
+  {
+    auto* const button = new MappingButton(this, control->control_ref.get(), control_type);
+    mapping_widget = button;
+
+    if (control->control_ref->IsInput())
     {
-      connect(m_previous_mapping_button, &MappingButton::QueueNextButtonMapping,
-              [this, button] { m_parent->QueueInputDetection(button); });
+      if (m_previous_mapping_button)
+      {
+        connect(m_previous_mapping_button, &MappingButton::QueueNextButtonMapping,
+                [this, button] { m_parent->QueueInputDetection(button); });
+      }
+      m_previous_mapping_button = button;
     }
-    m_previous_mapping_button = button;
   }
 
-  button->setMinimumWidth(100);
-  button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  mapping_widget->setMinimumWidth(100);
+  mapping_widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
   const bool translate = control->translate == ControllerEmu::Translatability::Translate;
   const QString translated_name =
@@ -430,12 +527,12 @@ void MappingWidget::CreateControl(const ControllerEmu::Control* control, QFormLa
     auto* const hbox = new QHBoxLayout;
     hbox->setSpacing(0);
     hbox->addWidget(button_indicator);
-    hbox->addWidget(button);
+    hbox->addWidget(mapping_widget);
     layout->addRow(translated_name, hbox);
   }
   else
   {
-    layout->addRow(translated_name, button);
+    layout->addRow(translated_name, mapping_widget);
   }
 }
 

@@ -57,6 +57,7 @@ public:
   bool IsCreateOtherDeviceMappingsEnabled() const;
   bool IsWaitForAlternateMappingsEnabled() const;
   bool IsIterativeMappingEnabled() const;
+  bool IsFrameControllerMapping() const;
   void ShowExtensionMotionTabs(bool show);
   void ActivateExtensionTab();
 
@@ -95,7 +96,6 @@ private:
   void UpdateProfileButtonState();
   void PopulateProfileSelection();
   void UpdateDeviceList();
-  bool IsFrameControllerMapping() const;
 
   void OnDefaultFieldsPressed();
   void OnClearFieldsPressed();

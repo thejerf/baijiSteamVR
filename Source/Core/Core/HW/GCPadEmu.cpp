@@ -191,7 +191,39 @@ void GCPad::LoadDefaults(const ControllerInterface& ciface)
 {
   EmulatedController::LoadDefaults(ciface);
 
-#ifdef ANDROID
+#ifdef ENABLE_VR
+  SetDefaultDevice("OpenXR/0/OpenXR Controller");
+
+  // Baiju's default pad is the Steam Frame controller, not a keyboard.
+  m_buttons->SetControlExpression(0, "`Right Button A`");
+  m_buttons->SetControlExpression(1, "`Right Button B`");
+  m_buttons->SetControlExpression(2, "`Right Button X`");
+  m_buttons->SetControlExpression(3, "`Right Button Y`");
+  m_buttons->SetControlExpression(4, "`Right Button Squeeze`");
+  m_buttons->SetControlExpression(5, "`Right Button Menu`");
+
+  m_main_stick->SetControlExpression(0, "`Left Thumbstick Y+`");
+  m_main_stick->SetControlExpression(1, "`Left Thumbstick Y-`");
+  m_main_stick->SetControlExpression(2, "`Left Thumbstick X-`");
+  m_main_stick->SetControlExpression(3, "`Left Thumbstick X+`");
+
+  m_c_stick->SetControlExpression(0, "`Right Thumbstick Y+`");
+  m_c_stick->SetControlExpression(1, "`Right Thumbstick Y-`");
+  m_c_stick->SetControlExpression(2, "`Right Thumbstick X-`");
+  m_c_stick->SetControlExpression(3, "`Right Thumbstick X+`");
+
+  m_triggers->SetControlExpression(0, "`Left Button Trigger`");
+  m_triggers->SetControlExpression(1, "`Right Button Trigger`");
+  m_triggers->SetControlExpression(2, "`Left Trigger`");
+  m_triggers->SetControlExpression(3, "`Right Trigger`");
+
+  m_dpad->SetControlExpression(0, "`Left D-Pad Up`");
+  m_dpad->SetControlExpression(1, "`Left D-Pad Down`");
+  m_dpad->SetControlExpression(2, "`Left D-Pad Left`");
+  m_dpad->SetControlExpression(3, "`Left D-Pad Right`");
+
+  m_rumble->SetControlExpression(0, "Motor");
+#elif defined(ANDROID)
   // Rumble
   m_rumble->SetControlExpression(0, "`Android/0/Device Sensors:Motor 0`");
 

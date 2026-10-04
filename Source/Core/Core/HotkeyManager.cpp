@@ -456,6 +456,16 @@ void HotkeyManager::LoadDefaults(const ControllerInterface& ciface)
     return fmt::format("@({})", fmt::join(inputs, "+"));
   };
 
+#ifdef ENABLE_VR
+  SetDefaultDevice("OpenXR/0/OpenXR Controller");
+  set_key_expression(HK_OPEN, "`Right Button System`");
+  set_key_expression(HK_PLAY_PAUSE, "`Right Button Menu`");
+  set_key_expression(HK_STOP, "`Left Button View`");
+  set_key_expression(HK_SCREENSHOT, "`Right Button Y`");
+  set_key_expression(HK_VR_RESET_POSITION, "`Left D-Pad Up`");
+  return;
+#endif
+
   // General hotkeys
   set_key_expression(HK_OPEN, hotkey_string({"Ctrl", "O"}));
   set_key_expression(HK_PLAY_PAUSE, "F10");

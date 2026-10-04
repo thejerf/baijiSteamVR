@@ -178,7 +178,22 @@ void Nunchuk::DoState(PointerWrap& p)
 
 void Nunchuk::LoadDefaults()
 {
-#ifndef ANDROID
+#ifdef ENABLE_VR
+  m_stick->SetControlExpression(0, "`Left Thumbstick Y+`");
+  m_stick->SetControlExpression(1, "`Left Thumbstick Y-`");
+  m_stick->SetControlExpression(2, "`Left Thumbstick X-`");
+  m_stick->SetControlExpression(3, "`Left Thumbstick X+`");
+
+  m_buttons->SetControlExpression(0, "`Left Button Squeeze`");
+  m_buttons->SetControlExpression(1, "`Left Trigger`");
+
+  m_imu_accelerometer->SetControlExpression(0, "`Left Raw Accel Up`");
+  m_imu_accelerometer->SetControlExpression(1, "`Left Raw Accel Down`");
+  m_imu_accelerometer->SetControlExpression(2, "`Left Raw Accel Left`");
+  m_imu_accelerometer->SetControlExpression(3, "`Left Raw Accel Right`");
+  m_imu_accelerometer->SetControlExpression(4, "`Left Raw Accel Forward`");
+  m_imu_accelerometer->SetControlExpression(5, "`Left Raw Accel Backward`");
+#elif !defined(ANDROID)
   // Stick
   m_stick->SetControlExpression(0, "W");  // up
   m_stick->SetControlExpression(1, "S");  // down

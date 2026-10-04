@@ -693,7 +693,45 @@ void Wiimote::LoadDefaults(const ControllerInterface& ciface)
 {
   EmulatedController::LoadDefaults(ciface);
 
-#ifdef ANDROID
+#ifdef ENABLE_VR
+  SetDefaultDevice("OpenXR/0/OpenXR Controller");
+
+  m_buttons->SetControlExpression(0, "`Right Button A`");
+  m_buttons->SetControlExpression(1, "`Right Trigger`");
+  m_buttons->SetControlExpression(2, "`Right Button X`");
+  m_buttons->SetControlExpression(3, "`Right Button Y`");
+  m_buttons->SetControlExpression(4, "`Left Button View`");
+  m_buttons->SetControlExpression(5, "`Right Button Menu`");
+  m_buttons->SetControlExpression(6, "`Left Button System`");
+
+  m_dpad->SetControlExpression(0, "`Left D-Pad Up`");
+  m_dpad->SetControlExpression(1, "`Left D-Pad Down`");
+  m_dpad->SetControlExpression(2, "`Left D-Pad Left`");
+  m_dpad->SetControlExpression(3, "`Left D-Pad Right`");
+
+  m_ir->SetControlExpression(0, "`Right Thumbstick Y-`");
+  m_ir->SetControlExpression(1, "`Right Thumbstick Y+`");
+  m_ir->SetControlExpression(2, "`Right Thumbstick X-`");
+  m_ir->SetControlExpression(3, "`Right Thumbstick X+`");
+  m_ir->SetRelativeInput(false);
+
+  for (int i = 0; i < 3; ++i)
+    m_shake->SetControlExpression(i, "`Right Button Squeeze`");
+
+  m_imu_accelerometer->SetControlExpression(0, "`Right Raw Accel Up`");
+  m_imu_accelerometer->SetControlExpression(1, "`Right Raw Accel Down`");
+  m_imu_accelerometer->SetControlExpression(2, "`Right Raw Accel Left`");
+  m_imu_accelerometer->SetControlExpression(3, "`Right Raw Accel Right`");
+  m_imu_accelerometer->SetControlExpression(4, "`Right Raw Accel Forward`");
+  m_imu_accelerometer->SetControlExpression(5, "`Right Raw Accel Backward`");
+  m_imu_gyroscope->SetControlExpression(0, "`Right Raw Gyro Pitch Up`");
+  m_imu_gyroscope->SetControlExpression(1, "`Right Raw Gyro Pitch Down`");
+  m_imu_gyroscope->SetControlExpression(2, "`Right Raw Gyro Roll Left`");
+  m_imu_gyroscope->SetControlExpression(3, "`Right Raw Gyro Roll Right`");
+  m_imu_gyroscope->SetControlExpression(4, "`Right Raw Gyro Yaw Left`");
+  m_imu_gyroscope->SetControlExpression(5, "`Right Raw Gyro Yaw Right`");
+  m_rumble->SetControlExpression(0, "Motor");
+#elif defined(ANDROID)
   // Rumble
   m_rumble->SetControlExpression(0, "`Android/0/Device Sensors:Motor 0`");
 

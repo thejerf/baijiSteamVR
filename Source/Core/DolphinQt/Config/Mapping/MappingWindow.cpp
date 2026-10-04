@@ -80,7 +80,7 @@ namespace
 {
 constexpr const char* STEAM_FRAME_WIIMOTE_DEFAULT_PROFILE = "Steam Frame Wii Remote + Nunchuk.ini";
 constexpr const char* STEAM_FRAME_GCPAD_DEFAULT_PROFILE = "Steam Frame GameCube.ini";
-constexpr const char* OPENXR_HOTKEY_DEFAULT_PROFILE = "Quest.ini";
+constexpr const char* STEAM_FRAME_HOTKEY_DEFAULT_PROFILE = "Steam Frame.ini";
 constexpr const char* OPENXR_CONTROLLER_DEVICE = "OpenXR/0/OpenXR Controller";
 }
 
@@ -656,9 +656,25 @@ void MappingWindow::PopulateProfileSelection()
 {
   m_profiles_combo->clear();
 
+  const auto profile_uses_frame_device = [this](const std::string& path) {
+    if (!IsFrameControllerMapping())
+      return true;
+
+    Common::IniFile profile;
+    if (!profile.Load(path))
+      return false;
+
+    std::string device;
+    return profile.GetOrCreateSection("Profile")->Get("Device", &device, "") &&
+           device == OPENXR_CONTROLLER_DEVICE;
+  };
+
   const std::string profiles_path = m_config->GetUserProfileDirectoryPath();
   for (const auto& filename : Common::DoFileSearch(profiles_path, ".ini"))
   {
+    if (!profile_uses_frame_device(filename))
+      continue;
+
     std::string basename;
     SplitPath(filename, nullptr, &basename, nullptr);
     if (!basename.empty())  // Ignore files with an empty name to avoid multiple problems
@@ -669,9 +685,13 @@ void MappingWindow::PopulateProfileSelection()
 
   for (const auto& filename : Common::DoFileSearch(m_config->GetSysProfileDirectoryPath(), ".ini"))
   {
+    if (!profile_uses_frame_device(filename))
+      continue;
+
     std::string basename;
     SplitPath(filename, nullptr, &basename, nullptr);
-    if (!basename.empty())
+    if (!basename.empty() &&
+        (!IsFrameControllerMapping() || basename.starts_with("Steam Frame")))
     {
       // i18n: "Stock" refers to input profiles included with Dolphin
       m_profiles_combo->addItem(tr("%1 (Stock)").arg(QString::fromStdString(basename)),
@@ -725,7 +745,7 @@ bool MappingWindow::LoadOpenXRDefaultProfile()
     profile_name = STEAM_FRAME_GCPAD_DEFAULT_PROFILE;
     break;
   case Type::MAPPING_HOTKEYS:
-    profile_name = OPENXR_HOTKEY_DEFAULT_PROFILE;
+    profile_name = STEAM_FRAME_HOTKEY_DEFAULT_PROFILE;
     break;
   default:
     return false;
