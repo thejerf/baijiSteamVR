@@ -79,8 +79,8 @@
 
 namespace
 {
-constexpr const char* OPENXR_WIIMOTE_DEFAULT_PROFILE = "OpenXR Wii Remote.ini";
-constexpr const char* OPENXR_GCPAD_DEFAULT_PROFILE = "Quest Touch GameCube.ini";
+constexpr const char* STEAM_FRAME_WIIMOTE_DEFAULT_PROFILE = "Steam Frame Wii Remote + Nunchuk.ini";
+constexpr const char* STEAM_FRAME_GCPAD_DEFAULT_PROFILE = "Steam Frame GameCube.ini";
 constexpr const char* OPENXR_HOTKEY_DEFAULT_PROFILE = "Quest.ini";
 constexpr const char* OPENXR_CONTROLLER_DEVICE = "OpenXR/0/OpenXR Controller";
 }
@@ -171,7 +171,8 @@ void MappingWindow::CreateDevicesLayout()
   m_devices_box = new QGroupBox(tr("Device"));
   m_devices_combo = new QComboBox();
 
-  auto* const options = new QToolButton();
+  m_device_options = new QToolButton();
+  auto* const options = m_device_options;
   // Make it more apparent that this is a menu with more options.
   options->setPopupMode(QToolButton::ToolButtonPopupMode::MenuButtonPopup);
 
@@ -483,17 +484,17 @@ void MappingWindow::OnSelectDevice(int)
 
 bool MappingWindow::IsCreateOtherDeviceMappingsEnabled() const
 {
-  return m_other_device_mappings->isChecked();
+  return !IsFrameControllerMapping() && m_other_device_mappings->isChecked();
 }
 
 bool MappingWindow::IsWaitForAlternateMappingsEnabled() const
 {
-  return m_wait_for_alternate_mappings->isChecked();
+  return !IsFrameControllerMapping() && m_wait_for_alternate_mappings->isChecked();
 }
 
 bool MappingWindow::IsIterativeMappingEnabled() const
 {
-  return m_iterative_mapping->isChecked();
+  return !IsFrameControllerMapping() && m_iterative_mapping->isChecked();
 }
 
 void MappingWindow::RefreshDevices()
@@ -513,35 +514,62 @@ void MappingWindow::UpdateDeviceList()
 
   m_devices_combo->clear();
 
-  for (const auto& name : g_controller_interface.GetAllDeviceStrings())
+  if (IsFrameControllerMapping())
   {
-    const auto qname = QString::fromStdString(name);
-    m_devices_combo->addItem(qname, qname);
-  }
+    const auto fixed_device = QString::fromLatin1(OPENXR_CONTROLLER_DEVICE);
+    m_devices_combo->addItem(tr("Steam Frame Controller"), fixed_device);
+    m_devices_combo->setCurrentIndex(0);
+    m_devices_combo->setEnabled(false);
+    m_device_options->hide();
 
-  const auto default_device = m_controller->GetDefaultDevice().ToString();
-
-  if (!default_device.empty())
-  {
-    const auto default_device_index =
-        m_devices_combo->findText(QString::fromStdString(default_device));
-
-    if (default_device_index != -1)
+    if (m_controller->GetDefaultDevice().ToString() != OPENXR_CONTROLLER_DEVICE)
     {
-      m_devices_combo->setCurrentIndex(default_device_index);
+      m_controller->SetDefaultDevice(OPENXR_CONTROLLER_DEVICE);
+      m_controller->UpdateReferences(g_controller_interface);
     }
-    else
+  }
+  else
+  {
+    m_devices_combo->setEnabled(true);
+    m_device_options->show();
+
+    for (const auto& name : g_controller_interface.GetAllDeviceStrings())
     {
-      // Selected device is not currently attached.
-      m_devices_combo->insertSeparator(m_devices_combo->count());
-      const auto qname = QString::fromStdString(default_device);
-      m_devices_combo->addItem(QLatin1Char{'['} + tr("disconnected") + QStringLiteral("] ") + qname,
-                               qname);
-      m_devices_combo->setCurrentIndex(m_devices_combo->count() - 1);
+      const auto qname = QString::fromStdString(name);
+      m_devices_combo->addItem(qname, qname);
+    }
+
+    const auto default_device = m_controller->GetDefaultDevice().ToString();
+
+    if (!default_device.empty())
+    {
+      const auto default_device_index =
+          m_devices_combo->findText(QString::fromStdString(default_device));
+
+      if (default_device_index != -1)
+      {
+        m_devices_combo->setCurrentIndex(default_device_index);
+      }
+      else
+      {
+        // Selected device is not currently attached.
+        m_devices_combo->insertSeparator(m_devices_combo->count());
+        const auto qname = QString::fromStdString(default_device);
+        m_devices_combo->addItem(QLatin1Char{'['} + tr("disconnected") + QStringLiteral("] ") +
+                                     qname,
+                                 qname);
+        m_devices_combo->setCurrentIndex(m_devices_combo->count() - 1);
+      }
     }
   }
 
   UpdateOpenXRConfigButtonVisibility();
+}
+
+bool MappingWindow::IsFrameControllerMapping() const
+{
+  return m_mapping_type == Type::MAPPING_WIIMOTE_EMU || m_mapping_type == Type::MAPPING_GCPAD ||
+         m_mapping_type == Type::MAPPING_HOTKEYS;
 }
 
 void MappingWindow::UpdateOpenXRConfigButtonVisibility()
@@ -729,10 +757,10 @@ bool MappingWindow::LoadOpenXRDefaultProfile()
   switch (m_mapping_type)
   {
   case Type::MAPPING_WIIMOTE_EMU:
-    profile_name = OPENXR_WIIMOTE_DEFAULT_PROFILE;
+    profile_name = STEAM_FRAME_WIIMOTE_DEFAULT_PROFILE;
     break;
   case Type::MAPPING_GCPAD:
-    profile_name = OPENXR_GCPAD_DEFAULT_PROFILE;
+    profile_name = STEAM_FRAME_GCPAD_DEFAULT_PROFILE;
     break;
   case Type::MAPPING_HOTKEYS:
     profile_name = OPENXR_HOTKEY_DEFAULT_PROFILE;
@@ -741,13 +769,9 @@ bool MappingWindow::LoadOpenXRDefaultProfile()
     return false;
   }
 
-  // Dolphin's built-in defaults target a keyboard or physical pad, which is useless once the
-  // VR controllers are the input device, so "Default" restores the stock OpenXR profile instead.
-  // The Wii Remote has a dedicated OpenXR source: honour that even before a device is selected.
-  const bool openxr_selected =
-      (m_mapping_type == Type::MAPPING_WIIMOTE_EMU && m_is_openxr_wiimote) ||
-      m_controller->GetDefaultDevice().ToString() == OPENXR_CONTROLLER_DEVICE;
-  if (!openxr_selected)
+  // Dolphin's generic defaults target a keyboard or physical pad, so Frame mappings load their
+  // Steam Frame profiles instead.
+  if (!IsFrameControllerMapping())
     return false;
 
   Common::IniFile ini;

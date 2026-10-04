@@ -424,7 +424,9 @@ private:
       case DigitalControl::Secondary:
         return state.secondary_button ? 1.0 : 0.0;
       case DigitalControl::Menu:
-        return state.menu_button ? 1.0 : 0.0;
+        // Keep the old left-menu control name as a hidden alias for Frame's left View button.
+        // Existing hotkey configs used Left Button Menu for Stop.
+        return (m_hand == Hand::Left ? state.view_button : state.menu_button) ? 1.0 : 0.0;
       case DigitalControl::System:
         return state.system_button ? 1.0 : 0.0;
       case DigitalControl::View:

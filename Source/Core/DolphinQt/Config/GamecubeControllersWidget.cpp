@@ -94,6 +94,14 @@ void GamecubeControllersWidget::CreateLayout()
     m_gc_layout->addWidget(gc_label, controller_row, 0);
     m_gc_layout->addWidget(gc_box, controller_row, 1);
     m_gc_layout->addWidget(gc_button, controller_row, 2);
+
+    // Baiju exposes one controller port on the Frame; retain the other ports in core config.
+    if (i != 0)
+    {
+      gc_label->hide();
+      gc_box->hide();
+      gc_button->hide();
+    }
   }
   m_gc_box->setLayout(m_gc_layout);
 

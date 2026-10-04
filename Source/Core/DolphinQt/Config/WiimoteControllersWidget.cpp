@@ -287,6 +287,15 @@ void WiimoteControllersWidget::CreateLayout()
     m_wiimote_layout->addWidget(wm_label, wm_row, 1);
     m_wiimote_layout->addWidget(wm_box, wm_row, 2);
     m_wiimote_layout->addWidget(wm_button, wm_row, 3);
+
+    // Baiju exposes the one controller set on the Frame; keep the other emulation slots in
+    // configuration/core for upstream compatibility, but remove them from this fork's UI.
+    if (i != 0)
+    {
+      wm_label->hide();
+      wm_box->hide();
+      wm_button->hide();
+    }
   }
 
   m_wiimote_layout->addWidget(m_wiimote_real_balance_board, m_wiimote_layout->rowCount(), 1, 1, -1);

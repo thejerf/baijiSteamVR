@@ -97,6 +97,7 @@ private:
   void UpdateProfileButtonState();
   void PopulateProfileSelection();
   void UpdateDeviceList();
+  bool IsFrameControllerMapping() const;
   void UpdateOpenXRConfigButtonVisibility();
 
   void OnDefaultFieldsPressed();
@@ -119,6 +120,7 @@ private:
   QWidget* m_profile_and_reset_container = nullptr;
   QHBoxLayout* m_devices_layout;
   QComboBox* m_devices_combo;
+  QToolButton* m_device_options;
   QLabel* m_openxr_profile_label = nullptr;
   QAction* m_other_device_mappings;
   QAction* m_wait_for_alternate_mappings;
