@@ -53,7 +53,6 @@
 #include "DolphinQt/Config/Mapping/HotkeyVR.h"
 #include "DolphinQt/Config/Mapping/HotkeyWii.h"
 #include "DolphinQt/Config/Mapping/MappingCommon.h"
-#include "DolphinQt/Config/Mapping/OpenXRWiimoteConfigSessionController.h"
 #include "DolphinQt/Config/Mapping/WiimoteEmuExtension.h"
 #include "DolphinQt/Config/Mapping/WiimoteEmuExtensionMotionInput.h"
 #include "DolphinQt/Config/Mapping/WiimoteEmuExtensionMotionSimulation.h"
@@ -116,32 +115,11 @@ MappingWindow::MappingWindow(QWidget* parent, Type type, int port_num)
   const auto lock = GetController()->GetStateLock();
   emit ConfigChanged();
 
-#if defined(ENABLE_VR) && defined(HAS_VULKAN)
-  const bool is_openxr_wiimote_mapper =
-      m_mapping_type == Type::MAPPING_WIIMOTE_EMU && m_is_openxr_wiimote;
-  const bool is_gamecube_mapper = m_mapping_type == Type::MAPPING_GCPAD;
-  const bool is_hotkey_mapper = m_mapping_type == Type::MAPPING_HOTKEYS;
-  if (is_openxr_wiimote_mapper || is_gamecube_mapper || is_hotkey_mapper)
-  {
-    using TargetType = OpenXRWiimoteConfigSessionController::TargetType;
-    const TargetType target_type = is_openxr_wiimote_mapper ?
-                                       TargetType::WiiRemote :
-                                       (is_gamecube_mapper ? TargetType::GameCubeController :
-                                                             TargetType::Hotkeys);
-    m_openxr_config_session_controller =
-        new OpenXRWiimoteConfigSessionController(this, m_port, target_type);
-    if (auto* outer = qobject_cast<QVBoxLayout*>(m_devices_box->layout()))
-      outer->addWidget(m_openxr_config_session_controller->GetButton(), 0);
-    UpdateOpenXRConfigButtonVisibility();
-  }
-#endif
-
 #ifdef ENABLE_VR
   if (m_is_openxr_wiimote)
   {
-    m_openxr_profile_label = new QLabel(
-        tr("OpenXR: not connected\n"
-           "Launch a game or use \"Configure in VR\" to bind VR controller inputs."));
+    m_openxr_profile_label =
+        new QLabel(tr("OpenXR: not connected\nLaunch a game to bind VR controller inputs."));
     m_openxr_profile_label->setWordWrap(true);
     auto* outer = qobject_cast<QVBoxLayout*>(m_devices_box->layout());
     if (outer)
@@ -310,8 +288,6 @@ void MappingWindow::ConnectWidgets()
   connect(&Settings::Instance(), &Settings::DevicesChanged, this, &MappingWindow::ConfigChanged);
   connect(this, &MappingWindow::ConfigChanged, this, &MappingWindow::UpdateDeviceList);
   connect(m_devices_combo, &QComboBox::currentIndexChanged, this, &MappingWindow::OnSelectDevice);
-  connect(m_devices_combo, &QComboBox::currentIndexChanged, this,
-          &MappingWindow::UpdateOpenXRConfigButtonVisibility);
 
   connect(m_reset_clear, &QPushButton::clicked, this, &MappingWindow::OnClearFieldsPressed);
   connect(m_reset_default, &QPushButton::clicked, this, &MappingWindow::OnDefaultFieldsPressed);
@@ -562,26 +538,12 @@ void MappingWindow::UpdateDeviceList()
       }
     }
   }
-
-  UpdateOpenXRConfigButtonVisibility();
 }
 
 bool MappingWindow::IsFrameControllerMapping() const
 {
   return m_mapping_type == Type::MAPPING_WIIMOTE_EMU || m_mapping_type == Type::MAPPING_GCPAD ||
          m_mapping_type == Type::MAPPING_HOTKEYS;
-}
-
-void MappingWindow::UpdateOpenXRConfigButtonVisibility()
-{
-  if (!m_openxr_config_session_controller)
-    return;
-
-  const bool visible =
-      m_mapping_type == Type::MAPPING_WIIMOTE_EMU ||
-      ((m_mapping_type == Type::MAPPING_GCPAD || m_mapping_type == Type::MAPPING_HOTKEYS) &&
-       m_devices_combo->currentData().toString() == QString::fromLatin1(OPENXR_CONTROLLER_DEVICE));
-  m_openxr_config_session_controller->GetButton()->setVisible(visible);
 }
 
 void MappingWindow::SetMappingType(MappingWindow::Type type)
@@ -842,8 +804,7 @@ void MappingWindow::UpdateOpenXRProfileLabel()
   if (!snapshot.runtime_active)
   {
     m_openxr_profile_label->setText(
-        tr("OpenXR: not connected\n"
-           "Launch a game or use \"Configure in VR\" to bind VR controller inputs."));
+        tr("OpenXR: not connected\nLaunch a game to bind VR controller inputs."));
     return;
   }
 
