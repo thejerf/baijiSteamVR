@@ -149,7 +149,7 @@ bool VideoBackend::Initialize(const WindowSystemInfo& wsi)
   // both the instance and device; without them xrCreateSession will crash.
   Vulkan::VulkanExtensionRequirements vr_ext_requirements;
   bool vr_extensions_queried = false;
-  if (g_Config.VRSessionActive())
+  if (g_Config.OpenXRSessionActive())
   {
     vr_extensions_queried = Vulkan::VulkanOpenXR::PreQueryVulkanExtensions(vr_ext_requirements);
     if (!vr_extensions_queried)
@@ -396,10 +396,10 @@ bool VideoBackend::Initialize(const WindowSystemInfo& wsi)
                static_cast<int>(g_ActiveConfig.stereo_mode),
                g_ActiveConfig.VRSessionActive() ? "YES" : "NO",
                g_ActiveConfig.vr_flat_screen ? "YES" : "NO");
-  if (g_ActiveConfig.VRSessionActive())
+  if (g_ActiveConfig.OpenXRSessionActive())
   {
     auto openxr = std::make_unique<Vulkan::VulkanOpenXR>();
-    if (!openxr->Initialize())
+    if (!openxr->Initialize(!g_ActiveConfig.VRSessionActive()))
     {
       WARN_LOG_FMT(VIDEO, "OpenXR initialization failed; continuing without VR.");
     }
@@ -424,7 +424,7 @@ void VideoBackend::Shutdown()
 #ifdef ENABLE_VR
   // Whether VR actually ran this session. Captured before the OpenXR objects are torn down so the
   // persist decision below can tell a VR game stop from a plain non-VR shutdown.
-  const bool vr_active = Vulkan::g_openxr_vk != nullptr;
+  const bool vr_active = Vulkan::g_openxr_vk && !Vulkan::g_openxr_vk->IsInputOnly();
 
   // The OpenXR pacing thread can be inside xrEndFrame(), where the runtime accesses our graphics
   // queue. Stop it before waiting on the Vulkan device: vkDeviceWaitIdle() must not race an

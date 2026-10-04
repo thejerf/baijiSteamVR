@@ -164,8 +164,7 @@ void VideoConfig::Refresh()
   color_correction.fHDRPaperWhiteNits = Config::Get(Config::GFX_CC_HDR_PAPER_WHITE_NITS);
 
   stereo_mode = Config::Get(Config::GFX_STEREO_MODE);
-  const OpenXRPresentationMode vr_presentation_mode =
-      Config::Get(Config::GFX_VR_PRESENTATION_MODE);
+  vr_presentation_mode = Config::Get(Config::GFX_VR_PRESENTATION_MODE);
   bool vr_openxr_enabled = Config::Get(Config::GFX_VR_ENABLE_OPENXR);
   vr_flat_screen = Config::Get(Config::GFX_VR_FLAT_SCREEN);
   vr_stereo_screen = Config::Get(Config::GFX_VR_STEREO_SCREEN);

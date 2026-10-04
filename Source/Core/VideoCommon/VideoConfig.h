@@ -388,12 +388,13 @@ struct VideoConfig final
   // them natively over each eye (like a Fullscreen override) instead of capturing them onto the
   // virtual screen. Downscaled copies always qualify; full-res copies only when blended.
   bool vr_auto_native_efb_effects = true;
-// Render the whole game as a flat mono panel in the VR scene (StereoMode::Off), while the
-// OpenXR session still runs. Used by the "Launch games in VR = off" cinema path on Quest.
-bool vr_flat_screen = false;
-// Render the game using classic SBS stereoscopy and submit it as a stereoscopic virtual screen
-// (two OpenXR quad layers). Bypasses the immersive per-eye reprojection path.
-bool vr_stereo_screen = false;
+  // Render the whole game as a flat mono panel in the VR scene (StereoMode::Off), while the
+  // OpenXR session still runs. Used by the "Launch games in VR = off" cinema path on Quest.
+  bool vr_flat_screen = false;
+  // Render the game using classic SBS stereoscopy and submit it as a stereoscopic virtual screen
+  // (two OpenXR quad layers). Bypasses the immersive per-eye reprojection path.
+  bool vr_stereo_screen = false;
+  OpenXRPresentationMode vr_presentation_mode = OpenXRPresentationMode::Legacy;
 float vr_screen_distance = 1.5f;
   float vr_screen_size = 1.5f;
   float vr_hud_thickness = 0.0f;  // World-space depth (m) spread across a 2D layer's ortho-Z (0 = flat)
@@ -489,12 +490,18 @@ float vr_screen_distance = 1.5f;
     return bPreferVSForLinePointExpansion;
   }
   bool MultisamplingEnabled() const { return iMultisamples > 1; }
-  // True whenever an OpenXR session must run: per-eye stereo (StereoMode::OpenXR), the flat
-  // mono panel path, or the classic-SBS stereoscopic virtual-screen path. Use this for session
-  // lifecycle gates; keep immersive stereo-specific rendering on stereo_mode == OpenXR.
+  // True whenever game content is rendered/presented through OpenXR: immersive stereo, the flat
+  // mono panel path, or the classic-SBS stereoscopic virtual-screen path. Flat Vulkan output can
+  // separately run OpenXR for controller input without switching its renderer or presentation.
   bool VRSessionActive() const
   {
     return stereo_mode == StereoMode::OpenXR || vr_flat_screen || vr_stereo_screen;
+  }
+  // Flat Vulkan output still keeps an OpenXR session alive for Frame controller actions.
+  // The session submits no composition layers, so rendering/presentation stays on the window.
+  bool OpenXRSessionActive() const
+  {
+    return VRSessionActive() || vr_presentation_mode == OpenXRPresentationMode::Vulkan;
   }
   // Hold one head pose for every draw of a game frame, refreshed only at the XFB-copy
   // boundary. Required whenever ImmediateXFB is off: presentation then happens at VI

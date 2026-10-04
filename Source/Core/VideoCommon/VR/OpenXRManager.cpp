@@ -1073,19 +1073,26 @@ void OpenXRManager::StartFrameThread()
   INFO_LOG_FMT(OPENXR, "OpenXR: XR pacing thread started.");
 }
 
+void OpenXRManager::StartInputOnlyFrameThread()
+{
+  m_input_only_frame_thread.store(true, std::memory_order_release);
+  StartFrameThread();
+}
+
 void OpenXRManager::StopFrameThread()
 {
-  if (!m_frame_thread.joinable())
-    return;
-
-  m_frame_thread_should_exit.store(true, std::memory_order_release);
+  if (m_frame_thread.joinable())
   {
-    std::lock_guard<std::mutex> lock(m_publish_mutex);
-    m_publish_cv.notify_all();
+    m_frame_thread_should_exit.store(true, std::memory_order_release);
+    {
+      std::lock_guard<std::mutex> lock(m_publish_mutex);
+      m_publish_cv.notify_all();
+    }
+    m_frame_thread.join();
+    m_frame_thread_running.store(false, std::memory_order_release);
+    INFO_LOG_FMT(OPENXR, "OpenXR: XR pacing thread stopped.");
   }
-  m_frame_thread.join();
-  m_frame_thread_running.store(false, std::memory_order_release);
-  INFO_LOG_FMT(OPENXR, "OpenXR: XR pacing thread stopped.");
+  m_input_only_frame_thread.store(false, std::memory_order_release);
 }
 
 void OpenXRManager::ShutdownSession()
@@ -1291,7 +1298,8 @@ void OpenXRManager::FrameThreadLoop()
 
   while (!m_frame_thread_should_exit.load(std::memory_order_acquire))
   {
-    const bool eager_heartbeat = g_ActiveConfig.vr_eager_heartbeat;
+    const bool eager_heartbeat = m_input_only_frame_thread.load(std::memory_order_acquire) ||
+                                 g_ActiveConfig.vr_eager_heartbeat;
     const u64 cycle_start_us = Common::Timer::NowUs();
     if (!PollEvents())
       break;

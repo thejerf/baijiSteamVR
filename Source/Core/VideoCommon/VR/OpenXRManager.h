@@ -219,6 +219,9 @@ public:
   // Started by SetSwapchain() when UseXRPacingThread is enabled; when inactive, the
   // legacy synchronous flow (Presenter calling Wait/Begin/End inline) applies.
   void StartFrameThread();
+  // Run the XR frame protocol without a graphics swapchain so OpenXR controller actions remain
+  // live while Flat Vulkan mode renders only to its desktop surface.
+  void StartInputOnlyFrameThread();
   void StopFrameThread();
   bool IsFrameThreadActive() const
   {
@@ -637,6 +640,7 @@ private:
   std::thread m_frame_thread;
   std::atomic<bool> m_frame_thread_running{false};
   std::atomic<bool> m_frame_thread_should_exit{false};
+  std::atomic<bool> m_input_only_frame_thread{false};
   std::mutex m_publish_mutex;
   std::condition_variable m_publish_cv;
   PublishedXRFrame m_published_frame;  // guarded by m_publish_mutex
