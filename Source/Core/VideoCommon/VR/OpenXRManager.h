@@ -275,7 +275,10 @@ public:
 
   // Aspect ratio (width / height) of the flat game panel. Set by the presenter each frame
   // before SubmitFlatFrame so the quad's world size matches the game's output.
-  void SetFlatScreenAspect(float aspect) { m_flat_screen_aspect = aspect; }
+  void SetFlatScreenAspect(float aspect)
+  {
+    m_flat_screen_aspect.store(aspect, std::memory_order_relaxed);
+  }
 
   // Build a world-locked XrCompositionLayerQuad from an already-rendered mono swapchain image
   // and submit it via EndFrame(). Distance/size come from vr_screen_distance/vr_screen_size;
@@ -491,9 +494,10 @@ private:
   std::array<XREyeView, 2> GetTrackingAdjustedEyeViews() const;
   void ResetInputActionsState();
   void HandleSessionStateChange(XrSessionState new_state);
-  // World-locked quad pose for the flat panel, in reference space. Captured lazily from the
-  // current head pose and invalidated on recenter.
+  // World-locked quad pose for the flat panel. Refresh from video-thread view data after a
+  // reference-space rebase; serialize readers because input sampling also queries this pose.
   XrPosef GetFlatScreenPose() const;
+  void RefreshFlatScreenPose();
   void CaptureStartupDisplayRefreshRateFromExtension();
   void SetStartupDisplayRefreshRate(float refresh_rate_hz, std::string_view source);
 
@@ -707,9 +711,12 @@ private:
   mutable XrVector3f m_home_position{0.f, 0.f, 0.f};
   std::atomic<bool> m_recenter_requested{false};
 
-  // Flat mono panel state. The quad pose is captured lazily and invalidated on recenter; the
-  // composition layer member gives stable storage across the xrEndFrame call that references it.
-  float m_flat_screen_aspect = 16.0f / 9.0f;
+  // Flat panel state. Reference-space events request a video-thread pose refresh; cached pose
+  // access is synchronized because OpenXR input sampling runs on the pacing thread. The
+  // composition layer member gives stable storage across xrEndFrame calls that reference it.
+  std::atomic<float> m_flat_screen_aspect{16.0f / 9.0f};
+  std::atomic<bool> m_flat_screen_reanchor_pending{false};
+  mutable std::mutex m_flat_screen_pose_mutex;
   mutable bool m_flat_screen_pose_valid = false;
   mutable XrPosef m_flat_screen_pose{{0.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f}};
   XrCompositionLayerQuad m_flat_quad_layer{XR_TYPE_COMPOSITION_LAYER_QUAD};

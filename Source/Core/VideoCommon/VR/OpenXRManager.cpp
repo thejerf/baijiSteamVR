@@ -1193,8 +1193,12 @@ void OpenXRManager::DestroySession()
   m_home_set = false;
   m_home_position = {0.f, 0.f, 0.f};
   m_recenter_requested.store(false, std::memory_order_release);
-  m_flat_screen_pose_valid = false;
-  m_flat_screen_pose = {{0.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f}};
+  m_flat_screen_reanchor_pending.store(false, std::memory_order_release);
+  {
+    std::lock_guard lock(m_flat_screen_pose_mutex);
+    m_flat_screen_pose_valid = false;
+    m_flat_screen_pose = {{0.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f}};
+  }
   m_flat_quad_layer = {XR_TYPE_COMPOSITION_LAYER_QUAD};
   m_controller_anchor_cache_valid = {false, false};
 }
@@ -2434,10 +2438,10 @@ bool OpenXRManager::PollEvents()
                    ReferenceSpaceTypeName(ev.referenceSpaceType),
                    ev.poseValid == XR_TRUE, delta_yaw);
       // The runtime rebased the reference space (system recenter, universe switch,
-      // relocalization). Any cached world-locked pose is expressed in the old frame and is
-      // now stale. Re-place the flat panel in front of the user's current gaze, which is
-      // also what the user expects after a system recenter.
-      m_flat_screen_pose_valid = false;
+      // relocalization). Defer cache invalidation until LocateViews has refreshed m_eye_views
+      // in the new reference-space frame; invalidating here lets the XR thread immediately
+      // recache a pose from the old video-thread view snapshot.
+      m_flat_screen_reanchor_pending.store(true, std::memory_order_release);
       break;
     }
 
@@ -2883,13 +2887,17 @@ bool OpenXRManager::LocateViews()
     m_home_position.y = 0.5f * (m_eye_views[0].pose.position.y + m_eye_views[1].pose.position.y);
     m_home_position.z = 0.5f * (m_eye_views[0].pose.position.z + m_eye_views[1].pose.position.z);
     m_home_set = true;
-    // Re-place the flat panel in front of the newly recentered head pose.
-    m_flat_screen_pose_valid = false;
+    m_flat_screen_reanchor_pending.store(true, std::memory_order_release);
     const float head_yaw = QuaternionYawDegrees(m_eye_views[0].pose.orientation);
     INFO_LOG_FMT(OPENXR,
                  "OpenXR: Recentered home position to ({:.4f},{:.4f},{:.4f}) head_yaw={:.2f}deg.",
                  m_home_position.x, m_home_position.y, m_home_position.z, head_yaw);
   }
+
+  // This runs on the video thread after m_eye_views has been refreshed. Reference-space
+  // change events are polled on the XR pacing thread, so consume their re-anchor request
+  // here rather than racing the screen-pose cache from that thread.
+  RefreshFlatScreenPose();
 
   return true;
 }
@@ -2899,19 +2907,23 @@ void OpenXRManager::RequestRecenter()
   m_recenter_requested.store(true, std::memory_order_release);
 }
 
-XrPosef OpenXRManager::GetFlatScreenPose() const
+void OpenXRManager::RefreshFlatScreenPose()
 {
+  const bool reanchor = m_flat_screen_reanchor_pending.exchange(false, std::memory_order_acq_rel);
+  std::lock_guard lock(m_flat_screen_pose_mutex);
+  if (!reanchor && m_flat_screen_pose_valid)
+    return;
+
   const float distance = g_ActiveConfig.vr_screen_distance;
 
-  // Fall back to a world-origin panel until a real head pose is available. A zero orientation
-  // means xrLocateViews has not produced a valid pose yet; don't cache that.
+  // A zero orientation means xrLocateViews has not produced a valid pose yet; don't cache it.
   const XrQuaternionf& q = m_eye_views[0].pose.orientation;
   const bool have_pose = (q.x != 0.f || q.y != 0.f || q.z != 0.f || q.w != 0.f);
   if (!have_pose)
-    return {{0.f, 0.f, 0.f, 1.f}, {0.f, 0.f, -distance}};
-
-  if (m_flat_screen_pose_valid)
-    return m_flat_screen_pose;
+  {
+    m_flat_screen_pose_valid = false;
+    return;
+  }
 
   // Head center and yaw-only heading, so the panel sits in front of the user, upright and
   // level (no pitch/roll), matching PPSSPP's flat-screen placement.
@@ -2927,7 +2939,15 @@ XrPosef OpenXRManager::GetFlatScreenPose() const
                    center.z - std::cos(yaw) * distance};
   m_flat_screen_pose = pose;
   m_flat_screen_pose_valid = true;
-  return pose;
+}
+
+XrPosef OpenXRManager::GetFlatScreenPose() const
+{
+  std::lock_guard lock(m_flat_screen_pose_mutex);
+  if (m_flat_screen_pose_valid)
+    return m_flat_screen_pose;
+
+  return {{0.f, 0.f, 0.f, 1.f}, {0.f, 0.f, -g_ActiveConfig.vr_screen_distance}};
 }
 
 bool OpenXRManager::SubmitFlatQuadFrame(XrSwapchain swapchain, uint32_t width, uint32_t height)
@@ -2936,8 +2956,9 @@ bool OpenXRManager::SubmitFlatQuadFrame(XrSwapchain swapchain, uint32_t width, u
     return IsFrameThreadActive() ? true : EndFrame({});
 
   const float height_m = g_ActiveConfig.vr_screen_size;
-  const float aspect =
-      m_flat_screen_aspect > 0.f ? m_flat_screen_aspect : static_cast<float>(width) / height;
+  const float configured_aspect = m_flat_screen_aspect.load(std::memory_order_relaxed);
+  const float aspect = configured_aspect > 0.f ? configured_aspect :
+                                                 static_cast<float>(width) / height;
 
   m_flat_quad_layer = {XR_TYPE_COMPOSITION_LAYER_QUAD};
   m_flat_quad_layer.layerFlags = 0;
@@ -2972,8 +2993,9 @@ bool OpenXRManager::SubmitStereoQuadFrame(std::array<XrSwapchain, 2> swapchains,
   }
 
   const float height_m = g_ActiveConfig.vr_screen_size;
-  const float aspect =
-      m_flat_screen_aspect > 0.f ? m_flat_screen_aspect : static_cast<float>(width) / height;
+  const float configured_aspect = m_flat_screen_aspect.load(std::memory_order_relaxed);
+  const float aspect = configured_aspect > 0.f ? configured_aspect :
+                                                 static_cast<float>(width) / height;
   const XrPosef pose = GetFlatScreenPose();
 
   std::array<XrCompositionLayerQuad, 2> quad_layers{};
@@ -3464,7 +3486,8 @@ void OpenXRManager::ComputeVirtualScreenHit(const Common::VR::OpenXRPoseState& a
       return;
 
     const float half_h = std::max(g_ActiveConfig.vr_screen_size * 0.5f, 1e-4f);
-    const float aspect = m_flat_screen_aspect > 0.0f ? m_flat_screen_aspect : (16.0f / 9.0f);
+    const float configured_aspect = m_flat_screen_aspect.load(std::memory_order_relaxed);
+    const float aspect = configured_aspect > 0.0f ? configured_aspect : (16.0f / 9.0f);
     const float half_w = half_h * aspect;
     out_hit->valid = true;
     out_hit->u = (p[0] + t * d[0]) / half_w;
