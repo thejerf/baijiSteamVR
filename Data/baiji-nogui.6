@@ -1,0 +1,29 @@
+.Dd October 4, 2026
+.Dt BAIJI-NOGUI 6
+.Os
+.Sh NAME
+.Nm baiji-nogui
+.Nd headless GameCube and Wii emulator
+.Sh SYNOPSIS
+.Nm
+.Op Fl hv
+.Op Fl e Ar file
+.Sh DESCRIPTION
+.Nm
+runs BaijiSteamVR without a graphical user interface.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl e Ar file , Fl Fl exec= Ns Ar file
+Load the specified file.
+.It Fl h , Fl Fl help
+Print a help message.
+.It Fl v , Fl Fl version
+Print version and exit.
+.El
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa $HOME/.local/share/baiji
+Default application data directory.
+.It Pa $HOME/.config/baiji
+Default configuration directory.
+.El

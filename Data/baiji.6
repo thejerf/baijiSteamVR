@@ -1,0 +1,48 @@
+.Dd October 4, 2026
+.Dt BAIJI 6
+.Os
+.Sh NAME
+.Nm baiji
+.Nd GameCube and Wii emulator for Steam Frame
+.Sh SYNOPSIS
+.Nm
+.Op Fl bdhl
+.Op Fl a Ar audio
+.Op Fl c Ar str
+.Op Fl e Ar file
+.Op Fl m Ar file
+.Op Fl u Ar path
+.Op Fl v Ar video
+.Sh DESCRIPTION
+.Nm
+is a GameCube and Wii emulator with a graphical user interface.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl a Ar audio , Fl Fl audio_emulation= Ns Ar audio
+Select low-level or high-level audio emulation.
+.It Fl b , Fl Fl batch
+Run without the user interface.
+.It Fl c Ar text , Fl Fl confirm= Ns Ar text
+Set confirmation on stop.
+.It Fl d , Fl Fl debugger
+Open the debugger.
+.It Fl e Ar file , Fl Fl exec= Ns Ar file
+Load the specified file.
+.It Fl h , Fl Fl help
+Print a help message.
+.It Fl l , Fl Fl logger
+Open the logger.
+.It Fl m Ar file , Fl Fl movie= Ns Ar file
+Play a movie file.
+.It Fl u Ar path , Fl Fl user= Ns Ar path
+Set the user folder path.
+.It Fl v , Fl Fl video_backend= Ns Ar video
+Select a video backend.
+.El
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa $HOME/.local/share/baiji
+Default application data directory.
+.It Pa $HOME/.config/baiji
+Default configuration directory.
+.El

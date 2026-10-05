@@ -1,0 +1,28 @@
+FROM docker.io/library/ubuntu:26.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    ninja-build \
+    meson \
+    git \
+    ccache \
+    pkgconf \
+    python3 \
+    gettext \
+    file \
+    curl \
+    ca-certificates \
+    gcc-aarch64-linux-gnu \
+    g++-aarch64-linux-gnu \
+    binutils-aarch64-linux-gnu \
+    && rm -rf /var/lib/apt/lists/*
+
+# Wrapper so CMake can execute aarch64 try_run binaries under qemu if needed.
+RUN printf '#!/bin/sh\nexec /usr/bin/qemu-aarch64-static "$@"\n' \
+    > /usr/local/bin/qemu-aarch64-wrapper && chmod +x /usr/local/bin/qemu-aarch64-wrapper
+
+ENV QEMU_LD_PREFIX=/sysroot
+ENV CCACHE_DIR=/run/ccache
+WORKDIR /work
