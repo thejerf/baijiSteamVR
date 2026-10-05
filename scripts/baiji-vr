@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BAIJI_ROOT="${BAIJI_ROOT:-$HOME/baiju}"
+LOG_DIR="$HOME/.local/share/baiji/Logs"
+mkdir -p "$LOG_DIR" "$HOME/.config/baiji" "$HOME/.cache/baiji"
+
+export DISPLAY="${BAIJI_DISPLAY:-${DISPLAY:-:2}}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+export XR_RUNTIME_JSON="${XR_RUNTIME_JSON:-/opt/steamvr/steamxr_linuxarm64.json}"
+export LD_LIBRARY_PATH="$BAIJI_ROOT/lib/baiji"
+export QT_PLUGIN_PATH="$BAIJI_ROOT/lib/baiji/plugins"
+export QT_QPA_PLATFORM_PLUGIN_PATH="$BAIJI_ROOT/lib/baiji/plugins/platforms"
+export QT_QPA_PLATFORM=xcb
+unset WAYLAND_DISPLAY
+
+for auth in /run/user/1000/nested_plasma/xauth_*; do
+  if [[ -f "$auth" ]]; then
+    export XAUTHORITY="$auth"
+  fi
+done
+
+if [[ -f "$HOME/.config/baiji/debug-logging" ]]; then
+  exec "$BAIJI_ROOT/bin/baiji" \
+    -C Logger.Options.WriteToFile=True \
+    -C Logger.Options.Verbosity=5 \
+    -C Logger.Logs.Video=True \
+    -C Logger.Logs.OpenXR=True \
+    -C Logger.Logs.CI=True \
+    "$@" >>"$LOG_DIR/baiji-launcher.log" 2>&1
+fi
+
+exec "$BAIJI_ROOT/bin/baiji" "$@" >>"$LOG_DIR/baiji-launcher.log" 2>&1

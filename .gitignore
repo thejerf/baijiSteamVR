@@ -51,6 +51,9 @@ vulkan_pipeline_failures_latest/
 vulkan_pipeline_failures_latest2/
 quest_first_mv_vs.glsl
 quest_mv_vs.glsl
+legacy/
+hostpid/
+patches/
 
 /state/
 /dist/*

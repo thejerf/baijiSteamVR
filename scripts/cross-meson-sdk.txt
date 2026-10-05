@@ -1,0 +1,16 @@
+[binaries]
+c = 'aarch64-linux-gnu-gcc'
+cpp = 'aarch64-linux-gnu-g++'
+ar = 'aarch64-linux-gnu-ar'
+strip = 'aarch64-linux-gnu-strip'
+pkgconfig = 'pkg-config'
+
+[properties]
+sys_root = '/sysroot'
+pkg_config_libdir = '/sysroot/usr/lib/aarch64-linux-gnu/pkgconfig:/sysroot/usr/lib/pkgconfig:/sysroot/usr/share/pkgconfig'
+
+[host_machine]
+system = 'linux'
+cpu_family = 'aarch64'
+cpu = 'cortex-x4'
+endian = 'little'
