@@ -46,8 +46,6 @@ EnhancementsWidget::EnhancementsWidget(GraphicsPane* gfx_pane)
   connect(gfx_pane, &GraphicsPane::UseGPUTextureDecodingChanged, this, [this] {
     m_arbitrary_mipmap_detection->setEnabled(!ReadSetting(Config::GFX_ENABLE_GPU_TEXTURE_DECODING));
   });
-  connect(&Settings::Instance(), &Settings::ConfigChanged, this,
-          &EnhancementsWidget::UpdateStereoscopyAvailability);
 }
 
 constexpr int ANISO_1x = std::to_underlying(AnisotropicFilteringMode::Force1x);
@@ -209,37 +207,7 @@ void EnhancementsWidget::CreateWidgets()
   enhancements_layout->addWidget(m_hdr, row, 1, 1, -1);
   ++row;
 
-  // Stereoscopy
-  m_stereoscopy_box = new QGroupBox(tr("Stereoscopy"));
-  auto* stereoscopy_layout = new QGridLayout();
-  m_stereoscopy_box->setLayout(stereoscopy_layout);
-
-  m_3d_depth = new ConfigFloatSlider(0, Config::GFX_STEREO_DEPTH_MAXIMUM, Config::GFX_STEREO_DEPTH,
-                                     1.0f, m_game_layer);
-  m_3d_convergence = new ConfigFloatSlider(0, Config::GFX_STEREO_CONVERGENCE_MAXIMUM,
-                                           Config::GFX_STEREO_CONVERGENCE, 0.01f, m_game_layer);
-  m_3d_depth_value = new QLabel();
-  m_3d_convergence_value = new QLabel();
-
-  m_3d_swap_eyes = new ConfigBool(tr("Swap Eyes"), Config::GFX_STEREO_SWAP_EYES, m_game_layer);
-
-  m_3d_per_eye_resolution = new ConfigBool(
-      tr("Use Full Resolution Per Eye"), Config::GFX_STEREO_PER_EYE_RESOLUTION_FULL, m_game_layer);
-
-  stereoscopy_layout->addWidget(new ConfigFloatLabel(tr("Depth:"), m_3d_depth), 0, 0);
-  stereoscopy_layout->addWidget(m_3d_depth, 0, 1);
-  stereoscopy_layout->addWidget(m_3d_depth_value, 0, 2);
-  stereoscopy_layout->addWidget(new ConfigFloatLabel(tr("Convergence:"), m_3d_convergence), 1, 0);
-  stereoscopy_layout->addWidget(m_3d_convergence, 1, 1);
-  stereoscopy_layout->addWidget(m_3d_convergence_value, 1, 2);
-  stereoscopy_layout->addWidget(m_3d_swap_eyes, 2, 0);
-  stereoscopy_layout->addWidget(m_3d_per_eye_resolution, 3, 0);
-
-  m_3d_depth_value->setText(QString::asprintf("%.0f", m_3d_depth->GetValue()));
-  m_3d_convergence_value->setText(QString::asprintf("%.2f", m_3d_convergence->GetValue()));
-
   main_layout->addWidget(enhancements_box);
-  main_layout->addWidget(m_stereoscopy_box);
   main_layout->addStretch();
 
   setLayout(main_layout);
@@ -254,12 +222,6 @@ void EnhancementsWidget::ConnectWidgets()
           &EnhancementsWidget::ConfigureColorCorrection);
   connect(m_configure_post_processing_effect, &QPushButton::clicked, this,
           &EnhancementsWidget::ConfigurePostProcessingShader);
-
-  connect(m_3d_depth, &ConfigFloatSlider::valueChanged, this,
-          [this] { m_3d_depth_value->setText(QString::asprintf("%.0f", m_3d_depth->GetValue())); });
-  connect(m_3d_convergence, &ConfigFloatSlider::valueChanged, this, [this] {
-    m_3d_convergence_value->setText(QString::asprintf("%.2f", m_3d_convergence->GetValue()));
-  });
 }
 
 template <typename T>
@@ -334,8 +296,6 @@ void EnhancementsWidget::OnBackendChanged()
   m_configure_color_correction->setEnabled(g_backend_info.bSupportsPostProcessing);
   m_hdr->setEnabled(g_backend_info.bSupportsHDROutput);
 
-  UpdateStereoscopyAvailability();
-
   // PostProcessing
   const bool supports_postprocessing = g_backend_info.bSupportsPostProcessing;
   if (!supports_postprocessing)
@@ -354,18 +314,6 @@ void EnhancementsWidget::OnBackendChanged()
   }
 
   UpdateAntialiasingOptions();
-}
-
-void EnhancementsWidget::UpdateStereoscopyAvailability()
-{
-  const bool supports_stereoscopy = g_backend_info.bSupportsGeometryShaders;
-  const bool openxr_enabled = Config::Get(Config::GFX_VR_ENABLE_OPENXR);
-  const bool stereo_screen = Config::Get(Config::GFX_VR_PRESENTATION_MODE) ==
-                                 OpenXRPresentationMode::StereoScreen ||
-                             (Config::Get(Config::GFX_VR_PRESENTATION_MODE) ==
-                                  OpenXRPresentationMode::Legacy &&
-                              Config::Get(Config::GFX_VR_STEREO_SCREEN));
-  m_stereoscopy_box->setEnabled(supports_stereoscopy && (!openxr_enabled || stereo_screen));
 }
 
 void EnhancementsWidget::ShaderChanged()
@@ -402,7 +350,6 @@ void EnhancementsWidget::OnConfigChanged()
   // being global.
   m_texture_filtering_combo->setEnabled(ReadSetting(Config::GFX_HACK_FAST_TEXTURE_SAMPLING));
   m_arbitrary_mipmap_detection->setEnabled(!ReadSetting(Config::GFX_ENABLE_GPU_TEXTURE_DECODING));
-  UpdateStereoscopyAvailability();
   UpdateAntialiasingOptions();
 
   // Needs to update after deleting a key for 3d settings.
@@ -524,20 +471,6 @@ void EnhancementsWidget::AddDescriptions()
                  "detail.<br><br>Disabling fog will break some games which rely on proper fog "
                  "emulation.<br><br><dolphin_emphasis>If unsure, leave this "
                  "unchecked.</dolphin_emphasis>");
-  static const char TR_3D_DEPTH_DESCRIPTION[] = QT_TR_NOOP(
-      "Controls the separation distance between the virtual cameras.<br><br>A higher "
-      "value creates a stronger feeling of depth while a lower value is more comfortable.");
-  static const char TR_3D_CONVERGENCE_DESCRIPTION[] = QT_TR_NOOP(
-      "Controls the distance of the convergence plane. This is the distance at which "
-      "virtual objects will appear to be in front of the screen.<br><br>A higher value creates "
-      "stronger out-of-screen effects while a lower value is more comfortable.");
-  static const char TR_3D_SWAP_EYES_DESCRIPTION[] = QT_TR_NOOP(
-      "Swaps the left and right eye. Most useful in side-by-side stereoscopy "
-      "mode.<br><br><dolphin_emphasis>If unsure, leave this unchecked.</dolphin_emphasis>");
-  static const char TR_3D_PER_EYE_RESOLUTION_DESCRIPTION[] =
-      QT_TR_NOOP("Whether each eye gets full or half image resolution when using side-by-side "
-                 "or above-and-below 3D."
-                 "<br><br><dolphin_emphasis>If unsure, leave this unchecked.</dolphin_emphasis>");
   static const char TR_FORCE_24BIT_DESCRIPTION[] = QT_TR_NOOP(
       "Forces the game to render the RGB color channels in 24-bit, thereby increasing "
       "quality by reducing color banding.<br><br>Has no impact on performance and causes "
@@ -598,16 +531,6 @@ void EnhancementsWidget::AddDescriptions()
   m_arbitrary_mipmap_detection->SetDescription(tr(TR_ARBITRARY_MIPMAP_DETECTION_DESCRIPTION));
 
   m_hdr->SetDescription(tr(TR_HDR_DESCRIPTION));
-
-  m_3d_depth->SetTitle(tr("Depth"));
-  m_3d_depth->SetDescription(tr(TR_3D_DEPTH_DESCRIPTION));
-
-  m_3d_convergence->SetTitle(tr("Convergence"));
-  m_3d_convergence->SetDescription(tr(TR_3D_CONVERGENCE_DESCRIPTION));
-
-  m_3d_per_eye_resolution->SetDescription(tr(TR_3D_PER_EYE_RESOLUTION_DESCRIPTION));
-
-  m_3d_swap_eyes->SetDescription(tr(TR_3D_SWAP_EYES_DESCRIPTION));
 }
 
 void EnhancementsWidget::ConfigureColorCorrection()

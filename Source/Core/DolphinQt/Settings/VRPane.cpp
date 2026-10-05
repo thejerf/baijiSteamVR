@@ -53,6 +53,8 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
   auto* openxr_group = new QGroupBox(tr("OpenXR"));
   auto* openxr_layout = new QGridLayout;
   openxr_group->setLayout(openxr_layout);
+  auto* stereo_screen_group = new QGroupBox(tr("Stereo 3D Screen"), general_tab);
+  auto* stereo_screen_layout = new QGridLayout(stereo_screen_group);
   auto* camera_group = new QGroupBox(tr("Camera"));
   auto* camera_layout = new QGridLayout;
   camera_group->setLayout(camera_layout);
@@ -124,6 +126,12 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
       Config::GFX_VR_STEREO_SEPARATION_MIN, Config::GFX_VR_STEREO_SEPARATION_MAX,
       Config::GFX_VR_STEREO_SEPARATION, Config::GFX_VR_STEREO_SEPARATION_STEP);
   m_stereo_separation_value = new QLabel();
+  m_stereo_depth = new ConfigFloatSlider(0.0f, Config::GFX_STEREO_DEPTH_MAXIMUM,
+                                         Config::GFX_STEREO_DEPTH, 1.0f);
+  m_stereo_depth_value = new QLabel();
+  m_stereo_convergence = new ConfigFloatSlider(0.0f, Config::GFX_STEREO_CONVERGENCE_MAXIMUM,
+                                               Config::GFX_STEREO_CONVERGENCE, 0.01f);
+  m_stereo_convergence_value = new QLabel();
   m_enable_lean_back_angle =
       new ConfigBool(tr("Lean Back Angle (deg)"), Config::GFX_VR_ENABLE_LEAN_BACK_ANGLE);
   m_enable_lean_back_angle->setToolTip(
@@ -219,6 +227,29 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
   openxr_layout->addWidget(m_stereo_separation, 2, 1);
   openxr_layout->addWidget(m_stereo_separation_value, 2, 2);
 
+  stereo_screen_layout->addWidget(new ConfigFloatLabel(tr("Depth:"), m_stereo_depth), 0, 0);
+  stereo_screen_layout->addWidget(m_stereo_depth, 0, 1);
+  stereo_screen_layout->addWidget(m_stereo_depth_value, 0, 2);
+  stereo_screen_layout->addWidget(new ConfigFloatLabel(tr("Convergence:"), m_stereo_convergence),
+                                  1, 0);
+  stereo_screen_layout->addWidget(m_stereo_convergence, 1, 1);
+  stereo_screen_layout->addWidget(m_stereo_convergence_value, 1, 2);
+
+  const auto is_stereo_screen_selected = [] {
+    const OpenXRPresentationMode mode = Config::Get(Config::GFX_VR_PRESENTATION_MODE);
+    return mode == OpenXRPresentationMode::StereoScreen ||
+           (mode == OpenXRPresentationMode::Legacy &&
+            Config::Get(Config::GFX_VR_ENABLE_OPENXR) &&
+            !Config::Get(Config::GFX_VR_FLAT_SCREEN) &&
+            Config::Get(Config::GFX_VR_STEREO_SCREEN));
+  };
+  const auto update_stereo_screen_visibility = [stereo_screen_group, is_stereo_screen_selected] {
+    stereo_screen_group->setVisible(is_stereo_screen_selected());
+  };
+  connect(m_presentation_mode, &QComboBox::currentIndexChanged, this,
+          [update_stereo_screen_visibility](int) { update_stereo_screen_visibility(); });
+  connect(&Settings::Instance(), &Settings::ConfigChanged, this, update_stereo_screen_visibility);
+
 #ifndef BAIJI_STEAMVR
   m_mirror_view = new ConfigChoiceMap<OpenXRMirrorView>(
       {{tr("Both Eyes"), OpenXRMirrorView::BothEyes},
@@ -264,6 +295,16 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
             m_stereo_separation_value->setText(
                 stereo_separation_text(m_stereo_separation->GetValue()));
           });
+  m_stereo_depth_value->setText(QString::asprintf("%.0f", m_stereo_depth->GetValue()));
+  connect(m_stereo_depth, &ConfigFloatSlider::valueChanged, this, [this] {
+    m_stereo_depth_value->setText(QString::asprintf("%.0f", m_stereo_depth->GetValue()));
+  });
+  m_stereo_convergence_value->setText(
+      QString::asprintf("%.2f", m_stereo_convergence->GetValue()));
+  connect(m_stereo_convergence, &ConfigFloatSlider::valueChanged, this, [this] {
+    m_stereo_convergence_value->setText(
+        QString::asprintf("%.2f", m_stereo_convergence->GetValue()));
+  });
   m_lean_back_angle_value->setText(QString::asprintf("%.1f", m_lean_back_angle->GetValue()));
   connect(m_lean_back_angle, &ConfigFloatSlider::valueChanged, this, [this] {
     m_lean_back_angle_value->setText(QString::asprintf("%.1f", m_lean_back_angle->GetValue()));
@@ -489,6 +530,8 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
   connect(m_hud_thickness, &ConfigFloatSlider::valueChanged, this, update_hud_thickness_label);
 
   general_layout->addWidget(openxr_group);
+  general_layout->addWidget(stereo_screen_group);
+  update_stereo_screen_visibility();
   general_layout->addWidget(camera_group);
   general_layout->addWidget(virtual_screen_group);
   general_layout->addWidget(rendering_group);
@@ -720,9 +763,9 @@ void VRPane::AddDescriptions()
       "<br><br>This setting only affects the Vulkan backend and requires restarting emulation."
       "<br><br><dolphin_emphasis>If unsure on Quest, leave this checked.</dolphin_emphasis>");
   static constexpr char TR_UNITS_PER_METER_DESCRIPTION[] = QT_TR_NOOP(
-      "Sets game-world units per real meter. Higher values make the virtual world smaller and "
-      "increase effective stereo depth relative to game geometry; lower values make it larger "
-      "and reduce depth."
+      "Sets game-world units per real meter. Default: 1.0. Higher values make the virtual world "
+      "smaller and increase effective stereo depth relative to game geometry; lower values make it "
+      "larger and reduce depth."
       "<br><br>Use Stereo Separation to adjust depth without changing world scale.");
   static constexpr char TR_STEREO_SEPARATION_DESCRIPTION[] = QT_TR_NOOP(
       "Scales the virtual left/right eye offset while leaving world scale and head movement "
@@ -763,7 +806,17 @@ void VRPane::AddDescriptions()
       "<br><br>Disable for games that rely on full-screen EFB effects that don't work with a virtual screen.");
   static constexpr char TR_SCREEN_DISTANCE_DESCRIPTION[] = QT_TR_NOOP(
       "Distance in meters to the virtual screen used for 2D content (menus, FMV, HUD)."
+      "<br><br>Default: 2.0 m."
       "<br><br>The screen is fixed in space like a TV — it stays in place when you turn your head.");
+  static constexpr char TR_STEREO_DEPTH_DESCRIPTION[] = QT_TR_NOOP(
+      "Controls the separation distance between the virtual cameras. Default: 20."
+      "<br><br>A higher value creates a stronger feeling of depth while a lower value is more "
+      "comfortable.");
+  static constexpr char TR_STEREO_CONVERGENCE_DESCRIPTION[] = QT_TR_NOOP(
+      "Controls the distance of the convergence plane. Default: 20. This is the distance at which "
+      "virtual objects will appear to be in front of the screen."
+      "<br><br>A higher value creates stronger out-of-screen effects while a lower value is more "
+      "comfortable.");
   static constexpr char TR_SCREEN_SIZE_DESCRIPTION[] = QT_TR_NOOP(
       "Height in meters of the virtual screen used for 2D content."
       "<br><br>Larger values make the screen bigger, smaller values make it more compact.");
@@ -901,6 +954,8 @@ void VRPane::AddDescriptions()
   m_reference_space_mode->SetDescription(tr(TR_REFERENCE_SPACE_MODE_DESCRIPTION));
   m_tracking_mode->SetDescription(tr(TR_TRACKING_MODE_DESCRIPTION));
   m_units_per_meter->SetDescription(tr(TR_UNITS_PER_METER_DESCRIPTION));
+  m_stereo_depth->SetDescription(tr(TR_STEREO_DEPTH_DESCRIPTION));
+  m_stereo_convergence->SetDescription(tr(TR_STEREO_CONVERGENCE_DESCRIPTION));
   m_stereo_separation->SetDescription(tr(TR_STEREO_SEPARATION_DESCRIPTION));
   m_lean_back_angle->SetDescription(tr(TR_LEAN_BACK_ANGLE_DESCRIPTION));
   m_camera_forward->SetDescription(tr(TR_CAMERA_FORWARD_DESCRIPTION));
@@ -961,6 +1016,9 @@ void VRPane::ResetGeneralSettings()
                            Config::GFX_VR_TRACKING_MODE.GetDefaultValue());
   Config::SetBaseOrCurrent(Config::GFX_VR_UNITS_PER_METER,
                            Config::GFX_VR_UNITS_PER_METER.GetDefaultValue());
+  Config::SetBaseOrCurrent(Config::GFX_STEREO_DEPTH, Config::GFX_STEREO_DEPTH.GetDefaultValue());
+  Config::SetBaseOrCurrent(Config::GFX_STEREO_CONVERGENCE,
+                           Config::GFX_STEREO_CONVERGENCE.GetDefaultValue());
   Config::SetBaseOrCurrent(Config::GFX_VR_STEREO_SEPARATION,
                            Config::GFX_VR_STEREO_SEPARATION.GetDefaultValue());
   Config::SetBaseOrCurrent(Config::GFX_VR_ENABLE_LEAN_BACK_ANGLE,

@@ -11,7 +11,6 @@ class ConfigComplexChoice;
 class ConfigStringChoice;
 class ConfigFloatSlider;
 class GraphicsPane;
-class QGroupBox;
 class QPushButton;
 class QLabel;
 class ToolTipPushButton;
@@ -38,7 +37,6 @@ private:
   void AddDescriptions();
 
   void OnBackendChanged();
-  void UpdateStereoscopyAvailability();
   void UpdateAntialiasingOptions();
   void LoadPostProcessingShaders();
   void ShaderChanged();
@@ -63,15 +61,6 @@ private:
   ConfigBool* m_disable_copy_filter;
   ConfigBool* m_arbitrary_mipmap_detection;
   ConfigBool* m_hdr;
-
-  // Stereoscopy
-  QGroupBox* m_stereoscopy_box;
-  ConfigFloatSlider* m_3d_depth;
-  QLabel* m_3d_depth_value;
-  ConfigFloatSlider* m_3d_convergence;
-  QLabel* m_3d_convergence_value;
-  ConfigBool* m_3d_swap_eyes;
-  ConfigBool* m_3d_per_eye_resolution;
 
   Config::Layer* m_game_layer = nullptr;
 };

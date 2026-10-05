@@ -373,7 +373,8 @@ void VRConfigWidget::CreateWidgets()
       },
       ConfigFloatSlider::ScaleMode::Exponential);
   units_per_meter->setToolTip(
-      tr("Sets game-world units per real meter. Higher values make the world smaller and "
+      tr("Default: 1.0. Sets game-world units per real meter. "
+         "Higher values make the world smaller and "
          "increase effective stereo depth relative to game geometry; lower values make it "
          "larger and reduce depth. Use Stereo Separation to adjust depth without changing "
          "world scale."));
@@ -438,10 +439,15 @@ void VRConfigWidget::CreateWidgets()
   virtual_screen_layout->addWidget(
       make_bool(tr("Auto-Exclude EFB Effects"), Config::GFX_VR_AUTO_NATIVE_EFB_EFFECTS), 2, 0, 1,
       3);
-  add_float(virtual_screen_layout, 3, tr("Screen Distance (m):"),
-            Config::GFX_VR_SCREEN_DISTANCE_MIN, Config::GFX_VR_SCREEN_DISTANCE_MAX,
-            Config::GFX_VR_SCREEN_DISTANCE, Config::GFX_VR_SCREEN_DISTANCE_STEP,
-            [](float value) { return QString::asprintf("%.1f", value); });
+  auto* screen_distance = add_float(
+      virtual_screen_layout, 3, tr("Screen Distance (m):"), Config::GFX_VR_SCREEN_DISTANCE_MIN,
+      Config::GFX_VR_SCREEN_DISTANCE_MAX, Config::GFX_VR_SCREEN_DISTANCE,
+      Config::GFX_VR_SCREEN_DISTANCE_STEP,
+      [](float value) { return QString::asprintf("%.1f", value); });
+  screen_distance->setToolTip(
+      tr("Default: 2.0 m. Distance in meters to the virtual screen used for 2D content (menus, "
+         "FMV, and HUD). The screen is fixed in space like a TV; it stays in place when you turn "
+         "your head."));
   add_float(virtual_screen_layout, 4, tr("Screen Size (m):"), Config::GFX_VR_SCREEN_SIZE_MIN,
             Config::GFX_VR_SCREEN_SIZE_MAX, Config::GFX_VR_SCREEN_SIZE,
             Config::GFX_VR_SCREEN_SIZE_STEP,

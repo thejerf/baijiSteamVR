@@ -2,13 +2,15 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-ENGINE="${ENGINE:-podman}"
+ENGINE="${ENGINE:-docker}"
 INSTALL_PREFIX="${INSTALL_PREFIX:-/home/steamos/baiji}"
 BUILD_DIR="$PWD/state/build-baiji"
 STAGE_DIR="$PWD/state/stage-frame"
 SDK="$PWD/state/flatpak-home/.local/share/flatpak/runtime/org.kde.Sdk/aarch64/6.10/active/files"
 SDK_INCLUDE_OVERLAY="$PWD/state/sdk-overlay/usr/include"
 IMAGE="localhost/baijisteamvr-cross:latest"
+IMAGE_STAMP="$PWD/state/cross-sdk-image-$ENGINE.sha256"
+IMAGE_CONFIGURATION_HASH="$(sha256sum Containerfile.cross | cut -d ' ' -f 1)"
 
 mkdir -p "$BUILD_DIR" state/ccache-cross-sdk "$STAGE_DIR" dist
 if [[ ! -d "$SDK" ]]; then
@@ -33,8 +35,10 @@ mkdir -p "$CCACHE_DIR"
 
 EXTRA_FLAGS="-O3 -mcpu=cortex-x4 -I/sysroot/include -DXR_USE_GRAPHICS_API_OPENGL"
 
-if ! "$ENGINE" image exists "$IMAGE"; then
+if ! "$ENGINE" image exists "$IMAGE" || [[ ! -f "$IMAGE_STAMP" ]] ||
+   [[ "$(<"$IMAGE_STAMP")" != "$IMAGE_CONFIGURATION_HASH" ]]; then
   "$ENGINE" build --platform linux/amd64 -f Containerfile.cross -t "$IMAGE" .
+  printf '%s\n' "$IMAGE_CONFIGURATION_HASH" > "$IMAGE_STAMP"
 fi
 
 "$ENGINE" run --rm --platform linux/amd64 \
@@ -48,7 +52,6 @@ fi
   -v "$BUILD_DIR:/work/build:Z" \
   -v "$PWD/state/ccache-cross-sdk:/run/ccache:Z" \
   -v "$STAGE_DIR:/work/stage:Z" \
-  -v /usr/bin/qemu-aarch64-static:/usr/bin/qemu-aarch64-static:ro \
   -e CCACHE_DIR=/run/ccache \
   -e LD_LIBRARY_PATH=/sysroot/lib/aarch64-linux-gnu \
   -e INSTALL_PREFIX="$INSTALL_PREFIX" \

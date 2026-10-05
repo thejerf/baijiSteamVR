@@ -103,9 +103,9 @@ documented when snapshots are available.
 ## Build and Install From an x86_64 Linux Machine
 
 This is the maintained way to build a Steam Frame version. The host needs
-Git, Podman (the default container engine) or Docker, and
-`qemu-aarch64-static` available at `/usr/bin/qemu-aarch64-static`. It also
-needs the AArch64 KDE SDK in the checkout.
+Git and Docker (the script's default container engine) or Podman. It also
+needs the AArch64 KDE SDK in the checkout. QEMU's AArch64 emulator is
+installed in the build image, so the host does not need to provide it.
 
 1. Turn on Developer Mode on the Frame and enable SSH access. Configure an
    SSH host alias on your Linux machine (replace the example address with
@@ -126,26 +126,21 @@ needs the AArch64 KDE SDK in the checkout.
    ```bash
    git clone --recurse-submodules https://github.com/thejerf/baijiSteamVR.git
    cd baijiSteamVR
-   mkdir -p state/flatpak-home/.local/share/flatpak
-   FLATPAK_USER_DIR="$PWD/state/flatpak-home/.local/share/flatpak" \
-     flatpak remote-add --user --if-not-exists flathub \
-     https://dl.flathub.org/repo/flathub.flatpakrepo
-   FLATPAK_USER_DIR="$PWD/state/flatpak-home/.local/share/flatpak" \
-     flatpak install --user --arch=aarch64 flathub org.kde.Sdk//6.10
-   INSTALL_PREFIX=/home/steamos/baiji ./scripts/compile-cross-sdk.sh
+   ./scripts/compile-cross-sdk.sh
    ./scripts/deploy-frame.sh frame
    ssh frame "steamos-add-to-steam ./baiji/bin/baiji"
    ```
 
-   If using Docker instead of Podman, prefix the build command with
-   `ENGINE=docker`.
+   If using Podman instead of Docker, prefix the build command with
+   `ENGINE=podman`. These instructions build the current checkout rather
+   than a packaged release, so the code may be unstable.
 
    The build stages the Frame-compatible files under
    `state/stage-frame/home/steamos/baiji` before transferring them. The
    deploy script installs Baiji's executables, private libraries, and data
    under `~/baiji`.
 
-5. On the Frame, launch `~/baiji/bin/baiji-vr` from a Desktop terminal, or
+3. On the Frame, launch `~/baiji/bin/baiji-vr` from a Desktop terminal, or
    add that path as a non-Steam game to launch it from Big
    Picture. Add legally dumped game images through Baiji's open dialog or configure the
    game search paths in Baiji.
@@ -158,12 +153,6 @@ know about ARM-based Mac OS machines.
 
 # Known Quirks
 
-* If you choose to emulate in Flat Mode, your controllers will be in
-  laser mode when you click "play". You *must* be in gamepad mode to
-  actually play the game. A dialog will come up to remind you but it
-  is still easy to forget... I panicked several times during
-  development that I had broken controller support but it was just
-  that I had forgotten to switch.
 * In Stereoscopic 3D mode, stopping the emulation (default the "View"
   button, the button on top of the left controller) pops up a dialog
   box in the QT environment asking you if you want to stop
@@ -174,6 +163,13 @@ know about ARM-based Mac OS machines.
   game or the QT UI. You can select the QT UI from the list of running
   windows on the left, then click "Yes", and emulation will stop and
   control return to the main UI.
+* You may need to recenter once to align the pointer in Stereoscopic
+  3D mode.
+* If you choose to emulate in Flat Mode, your controllers will be in
+  laser mode when you click "play". You *must* be in gamepad mode to
+  actually play the game. I panicked several times during
+  development that I had broken controller support but it was just
+  that I had forgotten to switch.
 * I believe this is the case in core Dolphin as well, but the main UI
   is mostly frozen during emulation. But only mostly. Still, best just
   to treat it as frozen until you stop the emulation.
