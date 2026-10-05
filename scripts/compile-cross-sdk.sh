@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
+if [[ "$SCRIPT_DIR" == "${BASH_SOURCE[0]}" ]]; then
+  SCRIPT_DIR=.
+fi
+case "$SCRIPT_DIR" in
+  /*) cd "$SCRIPT_DIR/.." ;;
+  *) cd "./$SCRIPT_DIR/.." ;;
+esac
 ENGINE=podman
 INSTALL_PREFIX="${INSTALL_PREFIX:-/home/steamos/baiji}"
 BUILD_DIR="$PWD/state/build-baiji"
@@ -11,13 +18,27 @@ SDK_OVERLAY="$PWD/state/sdk-overlay"
 SDK_INCLUDE_OVERLAY="$SDK_OVERLAY/usr/include"
 IMAGE="localhost/baijisteamvr-cross:latest"
 IMAGE_STAMP="$PWD/state/cross-sdk-image-$ENGINE.sha256"
-IMAGE_CONFIGURATION_HASH="$(sha256sum Containerfile.cross | cut -d ' ' -f 1)"
 
-mkdir -p "$BUILD_DIR" state/ccache-cross-sdk "$STAGE_DIR" dist
+PREFLIGHT_ERRORS=()
+for required_command in podman flatpak sha256sum cut mkdir ln cp; do
+  if ! command -v "$required_command" >/dev/null 2>&1; then
+    PREFLIGHT_ERRORS+=("Required command '$required_command' was not found in PATH.")
+  fi
+done
 if [[ ! -d "$SDK" ]]; then
-  echo "Missing AArch64/KDE SDK sysroot: $SDK" >&2
+  PREFLIGHT_ERRORS+=("Missing AArch64/KDE SDK sysroot: $SDK")
+fi
+if [[ ! -f Containerfile.cross ]]; then
+  PREFLIGHT_ERRORS+=("Missing cross-build container definition: $PWD/Containerfile.cross")
+fi
+if (( ${#PREFLIGHT_ERRORS[@]} > 0 )); then
+  printf 'Error: %s\n' "${PREFLIGHT_ERRORS[@]}" >&2
+  printf 'Aborting cross-SDK build after %d preflight error(s).\n' "${#PREFLIGHT_ERRORS[@]}" >&2
   exit 1
 fi
+
+IMAGE_CONFIGURATION_HASH="$(sha256sum Containerfile.cross | cut -d ' ' -f 1)"
+mkdir -p "$BUILD_DIR" state/ccache-cross-sdk "$STAGE_DIR" dist
 
 # Build one complete sysroot view instead of mounting child directories under the read-only SDK
 # mount. Podman/runc cannot reliably create those nested mountpoints in a read-only parent mount.
@@ -85,21 +106,76 @@ fi
     set -euo pipefail
     export PATH=\"/usr/lib/ccache:\$PATH\"
     mkdir -p /usr/lib/aarch64-linux-gnu
-    for target_lib in /sysroot/usr/lib/aarch64-linux-gnu/*; do
+    if [[ ! -e /usr/mkspecs ]]; then
+      ln -s /sysroot/usr/mkspecs /usr/mkspecs
+    fi
+    for sdk_header in /sysroot/usr/include/Qt*; do
+      [[ -e \"\$sdk_header\" ]] || continue
+      sdk_header_name=\${sdk_header##*/}
+      if [[ ! -e \"/usr/include/\$sdk_header_name\" ]]; then
+        ln -s \"\$sdk_header\" \"/usr/include/\$sdk_header_name\"
+      fi
+    done
+    for target_lib in /sysroot/lib/aarch64-linux-gnu/* /sysroot/usr/lib/aarch64-linux-gnu/*; do
       [[ -e \"\$target_lib\" ]] || continue
       target_lib_name=\${target_lib##*/}
       [[ "\$target_lib_name" == libexec ]] && continue
       if [[ ! -e \"/usr/lib/aarch64-linux-gnu/\$target_lib_name\" ]]; then
-        ln -s \"\$target_lib\" \"/usr/lib/aarch64-linux-gnu/\$target_lib_name\"
+        ln -sfn \"\$target_lib\" \"/usr/lib/aarch64-linux-gnu/\$target_lib_name\"
       fi
     done
-    for qt_tool in qtpaths androiddeployqt androidtestrunner qmake python3.13; do
-      if [[ ! -e \"/usr/bin/\$qt_tool\" && -e \"/sysroot/usr/bin/\$qt_tool\" ]]; then
-        ln -s \"/sysroot/usr/bin/\$qt_tool\" \"/usr/bin/\$qt_tool\"
+    for sdk_tool in /sysroot/usr/bin/*; do
+      [[ -x \"\$sdk_tool\" ]] || continue
+      sdk_tool_name=\${sdk_tool##*/}
+      if [[ ! -e \"/usr/bin/\$sdk_tool_name\" ]]; then
+        ln -s /usr/local/bin/qemu-aarch64-wrapper \"/usr/bin/\$sdk_tool_name\"
+      fi
+    done
+    mkdir -p /usr/lib/libexec
+    for sdk_tool in /sysroot/usr/lib/libexec/*; do
+      [[ -x \"\$sdk_tool\" ]] || continue
+      sdk_tool_name=\${sdk_tool##*/}
+      if [[ ! -e \"/usr/lib/libexec/\$sdk_tool_name\" ]]; then
+        ln -s /usr/local/bin/qemu-aarch64-wrapper \"/usr/lib/libexec/\$sdk_tool_name\"
+      fi
+    done
+    for sdk_tool in /sysroot/usr/lib/aarch64-linux-gnu/libexec/kf6/*; do
+      [[ -x \"\$sdk_tool\" ]] || continue
+      sdk_tool_name=\${sdk_tool##*/}
+      if [[ ! -e \"/usr/lib/aarch64-linux-gnu/libexec/kf6/\$sdk_tool_name\" ]]; then
+        mkdir -p /usr/lib/aarch64-linux-gnu/libexec/kf6
+        ln -s /usr/local/bin/qemu-aarch64-wrapper \"/usr/lib/aarch64-linux-gnu/libexec/kf6/\$sdk_tool_name\"
       fi
     done
     ln -sfn /sysroot/lib/ld-linux-aarch64.so.1 /lib/ld-linux-aarch64.so.1
-    bash /work/project/scripts/prepare-cross-sdk-qemu-tools.sh
+    LIBEVDEV_VERSION=1.13.4
+    LIBEVDEV_SOURCE_HASH=0cfa48d1dddac26988ae9ce16282eff97683f1adcd3f5d4312f86d714565d890
+    LIBEVDEV_DIR=/work/build/_deps/libevdev
+    LIBEVDEV_ARCHIVE=\$LIBEVDEV_DIR/libevdev-\$LIBEVDEV_VERSION.tar.gz
+    LIBEVDEV_SOURCE_DIR=\$LIBEVDEV_DIR/src/libevdev-libevdev-\$LIBEVDEV_VERSION
+    LIBEVDEV_BUILD_DIR=\$LIBEVDEV_DIR/build
+    LIBEVDEV_INSTALL_DIR=\$LIBEVDEV_DIR/install
+    LIBEVDEV_SOURCE_URL=https://gitlab.freedesktop.org/libevdev/libevdev/-/archive/libevdev-\$LIBEVDEV_VERSION/libevdev-libevdev-\$LIBEVDEV_VERSION.tar.gz
+    mkdir -p \$LIBEVDEV_DIR/src
+    if [[ ! -f \$LIBEVDEV_ARCHIVE ]] || ! printf '%s  %s\\n' \$LIBEVDEV_SOURCE_HASH \$LIBEVDEV_ARCHIVE | sha256sum --check --status; then
+      curl --fail --location --retry 3 \$LIBEVDEV_SOURCE_URL --output \$LIBEVDEV_ARCHIVE
+    fi
+    printf '%s  %s\\n' \$LIBEVDEV_SOURCE_HASH \$LIBEVDEV_ARCHIVE | sha256sum --check
+    if [[ ! -f \$LIBEVDEV_SOURCE_DIR/meson.build ]]; then
+      tar --extract --gzip --file \$LIBEVDEV_ARCHIVE --directory \$LIBEVDEV_DIR/src
+    fi
+    if [[ ! -f \$LIBEVDEV_BUILD_DIR/build.ninja ]]; then
+      meson setup \$LIBEVDEV_BUILD_DIR \$LIBEVDEV_SOURCE_DIR \\
+        --cross-file /work/project/scripts/cross-meson-sdk.txt \\
+        --prefix \$LIBEVDEV_INSTALL_DIR \\
+        --libdir lib/aarch64-linux-gnu \\
+        -Ddefault_library=static \\
+        -Dtests=disabled \\
+        -Dtools=disabled \\
+        -Ddocumentation=disabled
+    fi
+    meson compile -C \$LIBEVDEV_BUILD_DIR
+    meson install -C \$LIBEVDEV_BUILD_DIR
     cmake -S /work/project -B /work/build -G Ninja \
       -DCMAKE_TOOLCHAIN_FILE=/work/project/scripts/cross-toolchain-sdk.cmake \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -107,6 +183,8 @@ fi
       -DCMAKE_CXX_FLAGS=\"$EXTRA_FLAGS\" \
       -DCMAKE_C_COMPILER_LAUNCHER=ccache \
       -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+      -DLIBEVDEV_INCLUDE_DIR=/work/build/_deps/libevdev/install/include/libevdev-1.0 \
+      -DLIBEVDEV_LIBRARY=/work/build/_deps/libevdev/install/lib/aarch64-linux-gnu/libevdev.a \
       -DENABLE_LTO=ON \
       -DENABLE_ALSA=OFF \
       -DENABLE_SDL=ON \
@@ -126,11 +204,12 @@ fi
       -DDISTRIBUTOR=BaijiSteamVR \
       -Ddatadir=\"$INSTALL_PREFIX/share/baiji\" \
       -DCMAKE_INSTALL_PREFIX=\"$INSTALL_PREFIX\" \
-      -DCMAKE_EXE_LINKER_FLAGS='-L/sysroot/lib/aarch64-linux-gnu -L/sysroot/usr/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/usr/lib/aarch64-linux-gnu' \
-      -DCMAKE_SHARED_LINKER_FLAGS='-L/sysroot/lib/aarch64-linux-gnu -L/sysroot/usr/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/usr/lib/aarch64-linux-gnu' \
-      -DCMAKE_MODULE_LINKER_FLAGS='-L/sysroot/lib/aarch64-linux-gnu -L/sysroot/usr/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/usr/lib/aarch64-linux-gnu'
+      -DCMAKE_EXE_LINKER_FLAGS='-L/sysroot/lib/aarch64-linux-gnu -L/sysroot/lib/aarch64-linux-gnu/pulseaudio -L/sysroot/usr/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/lib/aarch64-linux-gnu/pulseaudio -Wl,-rpath-link,/sysroot/usr/lib/aarch64-linux-gnu' \
+      -DCMAKE_SHARED_LINKER_FLAGS='-L/sysroot/lib/aarch64-linux-gnu -L/sysroot/lib/aarch64-linux-gnu/pulseaudio -L/sysroot/usr/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/lib/aarch64-linux-gnu/pulseaudio -Wl,-rpath-link,/sysroot/usr/lib/aarch64-linux-gnu' \
+      -DCMAKE_MODULE_LINKER_FLAGS='-L/sysroot/lib/aarch64-linux-gnu -L/sysroot/lib/aarch64-linux-gnu/pulseaudio -L/sysroot/usr/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/lib/aarch64-linux-gnu/pulseaudio -Wl,-rpath-link,/sysroot/usr/lib/aarch64-linux-gnu'
     cmake --build /work/build --target dolphin-emu dolphin-nogui dolphin-tool -j12
     DESTDIR=/work/stage cmake --install /work/build
+    install -D -m 644 /work/build/_deps/libevdev/src/libevdev-libevdev-1.13.4/COPYING /work/stage\$INSTALL_PREFIX/share/baiji/licenses/libevdev-COPYING
 
     PLUGIN_ROOT=\"/work/stage\$INSTALL_PREFIX/lib/baiji/plugins\"
     for plugin in \

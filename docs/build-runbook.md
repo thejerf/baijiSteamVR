@@ -67,9 +67,16 @@ performance overlays, and core-dump debugging:
 ## Local build notes
 
 - The cross-SDK build uses Podman.
+- Before creating build state, `compile-cross-sdk.sh` checks for Podman, Flatpak, its
+  host utilities, the container definition, and the installed SDK sysroot. It reports
+  all missing prerequisites before aborting.
 - The cross-build image includes `qemu-user`; no host QEMU executable is required or
   bind-mounted. The build helper tracks the `Containerfile.cross` hash and rebuilds the
   image when its configuration changes.
+- The SDK does not include libevdev development files, so the build script downloads the
+  checksum-pinned libevdev 1.13.4 source, cross-builds a static AArch64 library against
+  the SDK sysroot, and keeps the evdev controller backend enabled. Its license is
+  included in the staged application data.
 - The SDK overlay is mounted as one sysroot view; avoid adding nested binds beneath the
   read-only SDK mount, which Podman/runc cannot create on some systems.
 - `scripts/fix-submodules.sh` is for a fresh checkout only. Review its actions before
