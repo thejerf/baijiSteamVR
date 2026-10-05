@@ -688,7 +688,46 @@ if(ENABLE_VR)
   set(BUILD_CONFORMANCE_TESTS OFF CACHE BOOL "" FORCE)
   set(BUILD_SDK_TESTS OFF CACHE BOOL "" FORCE)
   set(DYNAMIC_LOADER OFF CACHE BOOL "" FORCE)
-  add_subdirectory(Externals/OpenXR "${CMAKE_BINARY_DIR}/Externals/OpenXR" EXCLUDE_FROM_ALL)
+
+  # Keep the Khronos SDK submodule pinned upstream and apply Baiji's narrow
+  # no-exceptions loader compatibility patch to a binary-tree copy. This also
+  # works when the checked-out source tree is read-only.
+  set(OPENXR_PATCHED_SOURCE_DIR "${CMAKE_BINARY_DIR}/OpenXR-patched-source")
+  file(REMOVE_RECURSE "${OPENXR_PATCHED_SOURCE_DIR}")
+  file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/Externals/OpenXR/"
+       DESTINATION "${OPENXR_PATCHED_SOURCE_DIR}"
+       PATTERN ".git" EXCLUDE)
+  find_program(OPENXR_PATCH_GIT_EXECUTABLE git)
+  if(NOT OPENXR_PATCH_GIT_EXECUTABLE)
+    message(FATAL_ERROR "Git is required to prepare the OpenXR SDK.")
+  endif()
+  set(OPENXR_COMPATIBILITY_PATCH
+      "${CMAKE_CURRENT_SOURCE_DIR}/CMake/OpenXR-Loader-Exceptions.patch")
+  execute_process(
+    COMMAND "${OPENXR_PATCH_GIT_EXECUTABLE}" -C "${OPENXR_PATCHED_SOURCE_DIR}" apply
+            --unidiff-zero --check "${OPENXR_COMPATIBILITY_PATCH}"
+    RESULT_VARIABLE OPENXR_PATCH_CHECK_RESULT
+    OUTPUT_VARIABLE OPENXR_PATCH_CHECK_OUTPUT
+    ERROR_VARIABLE OPENXR_PATCH_CHECK_ERROR)
+  if(NOT OPENXR_PATCH_CHECK_RESULT EQUAL 0)
+    message(FATAL_ERROR
+      "OpenXR compatibility patch does not match the pinned SDK.\n"
+      "${OPENXR_PATCH_CHECK_OUTPUT}\n${OPENXR_PATCH_CHECK_ERROR}")
+  endif()
+  execute_process(
+    COMMAND "${OPENXR_PATCH_GIT_EXECUTABLE}" -C "${OPENXR_PATCHED_SOURCE_DIR}" apply
+            --unidiff-zero "${OPENXR_COMPATIBILITY_PATCH}"
+    RESULT_VARIABLE OPENXR_PATCH_APPLY_RESULT
+    OUTPUT_VARIABLE OPENXR_PATCH_APPLY_OUTPUT
+    ERROR_VARIABLE OPENXR_PATCH_APPLY_ERROR)
+  if(NOT OPENXR_PATCH_APPLY_RESULT EQUAL 0)
+    message(FATAL_ERROR
+      "Could not apply OpenXR compatibility patch.\n"
+      "${OPENXR_PATCH_APPLY_OUTPUT}\n${OPENXR_PATCH_APPLY_ERROR}")
+  endif()
+
+  add_subdirectory("${OPENXR_PATCHED_SOURCE_DIR}" "${CMAKE_BINARY_DIR}/Externals/OpenXR"
+                   EXCLUDE_FROM_ALL)
 endif()
 
 if(NOT (WIN32 AND _M_ARM_64))
