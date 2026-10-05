@@ -339,6 +339,8 @@ add_executable(dolphin-emu
   NetPlay/PadMappingDialog.h
   NANDRepairDialog.cpp
   NANDRepairDialog.h
+  FrameFlatModeInputWarningDialog.cpp
+  FrameFlatModeInputWarningDialog.h
   NKitWarningDialog.cpp
   NKitWarningDialog.h
   QtUtils/AnalyticsPrompt.cpp

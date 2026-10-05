@@ -45,6 +45,7 @@
 #include "Core/BootManager.h"
 #include "Core/CommonTitles.h"
 #include "Core/Config/AchievementSettings.h"
+#include "Core/Config/GraphicsSettings.h"
 #include "Core/Config/MainSettings.h"
 #include "Core/Config/NetplaySettings.h"
 #include "Core/Config/UISettings.h"
@@ -94,6 +95,7 @@
 #include "DolphinQt/EmulatedUSB/LogitechMicWindow.h"
 #include "DolphinQt/EmulatedUSB/WiiSpeakWindow.h"
 #include "DolphinQt/FIFO/FIFOPlayerWindow.h"
+#include "DolphinQt/FrameFlatModeInputWarningDialog.h"
 #include "DolphinQt/GCMemcardManager.h"
 #include "DolphinQt/GameList/GameList.h"
 #include "DolphinQt/Host.h"
@@ -132,6 +134,7 @@
 #include "UICommon/UICommon.h"
 
 #include "VideoCommon/NetPlayChatUI.h"
+#include "VideoCommon/VideoConfig.h"
 
 #ifdef HAVE_XRANDR
 #include "UICommon/X11Utils.h"
@@ -1207,6 +1210,16 @@ void MainWindow::StartGame(std::unique_ptr<BootParameters>&& parameters)
     HideRenderWidget();
     return;
   }
+
+#ifdef BAIJI_STEAMVR
+  const OpenXRPresentationMode presentation_mode = Config::Get(Config::GFX_VR_PRESENTATION_MODE);
+  if (presentation_mode == OpenXRPresentationMode::Vulkan ||
+      (presentation_mode == OpenXRPresentationMode::Legacy &&
+       !Config::Get(Config::GFX_VR_ENABLE_OPENXR)))
+  {
+    FrameFlatModeInputWarningDialog::ShowUnlessDisabled(this);
+  }
+#endif
 
 #ifdef USE_DISCORD_PRESENCE
   if (!NetPlay::IsNetPlayRunning())
