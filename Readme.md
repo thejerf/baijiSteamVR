@@ -151,6 +151,20 @@ you an "emulation-based" toolchain, where it runs a native ARM
 toolchain on an x86 CPU, decline that. It was miserably slow. I don't
 know about ARM-based Mac OS machines.
 
+# Ownership
+
+I see a number of other people are working on similar forks. Honestly,
+I don't really care to own this. All I want is the stereoscopic 3D,
+even if you pursue VR being another option, because of the ability to
+manipulate the stereoscopic 3D settings as I have them in this repo
+and the utility I think that will have. (Skies of Arcadia is seriously
+eye-crossing if you don't turn down the 3D.) Have a look at the
+reconfigured UI for the VR panel in this branch and how it allows you
+to select the various options. If anyone wants to have their AI look
+over my patch stream, break it down by feature, and incorporate it
+into your project, that's great. You can have the branding too if you
+like. I don't care.
+
 # Known Quirks
 
 * In Stereoscopic 3D mode, stopping the emulation (default the "View"
