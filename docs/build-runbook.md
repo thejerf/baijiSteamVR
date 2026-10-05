@@ -13,6 +13,8 @@ The old Flatpak application build and deployment scripts are archived in
   paths to a Frame (`frame` by default); it never deletes or replaces old binaries.
 - `state/flatpak-home/.../org.kde.Sdk/aarch64/6.10/active/files` — existing KDE SDK
   sysroot used for compilation and Qt plugin/library collection.
+- `state/sdk-overlay/` — generated read-only sysroot view combining SDK paths expected
+  under `/usr` without changing the installed SDK.
 - `state/build-baiji/`, `state/ccache-cross-sdk/`, and `state/stage-frame/` — local
   ignored build, cache, and staged install.
 - `Data/` and `Source/` — project sources, artwork, desktop entry, and man pages.
@@ -64,7 +66,12 @@ performance overlays, and core-dump debugging:
 
 ## Local build notes
 
-- The cross-SDK build uses Podman by default; set `ENGINE=docker` when using Docker.
+- The cross-SDK build uses Docker by default; set `ENGINE=podman` to use Podman.
+- The cross-build image includes `qemu-user`; no host QEMU executable is required or
+  bind-mounted. The build helper tracks the `Containerfile.cross` hash per engine and
+  rebuilds the image when its configuration changes.
+- The SDK overlay is mounted as one sysroot view; avoid adding nested binds beneath the
+  read-only SDK mount, which Podman/runc cannot create on some systems.
 - `scripts/fix-submodules.sh` is for a fresh checkout only. Review its actions before
   running it, especially when any submodule worktree is modified.
 - Preserve local changes in OpenXR, Qt, and fmt submodules; do not reset them.

@@ -20,9 +20,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     binutils-aarch64-linux-gnu \
     && rm -rf /var/lib/apt/lists/*
 
-# Wrapper so CMake can execute aarch64 try_run binaries under qemu if needed.
-RUN printf '#!/bin/sh\nexec /usr/bin/qemu-aarch64 "$@"\n' \
+# Wrapper for CMake try_run and AArch64 SDK tools imported from Qt CMake packages.
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    'if [ "$0" = "/usr/local/bin/qemu-aarch64-wrapper" ]; then' \
+    '  exec /usr/bin/qemu-aarch64 "$@"' \
+    'fi' \
+    'case "$0" in' \
+    '  /usr/bin/*) target="/sysroot/usr/bin/${0##*/}" ;;' \
+    '  /usr/lib/libexec/*) target="/sysroot/usr/lib/libexec/${0##*/}" ;;' \
+    '  /usr/lib/aarch64-linux-gnu/libexec/kf6/*) target="/sysroot/usr/lib/aarch64-linux-gnu/libexec/kf6/${0##*/}" ;;' \
+    '  *) exec /usr/bin/qemu-aarch64 "$@" ;;' \
+    'esac' \
+    'exec /usr/bin/qemu-aarch64 "$target" "$@"' \
     > /usr/local/bin/qemu-aarch64-wrapper && chmod +x /usr/local/bin/qemu-aarch64-wrapper
+
+# The KDE SDK's glibc linker scripts use absolute AArch64 library paths.
+RUN ln -sfn /sysroot/usr/lib/aarch64-linux-gnu/libm.so.6 \
+      /usr/lib/aarch64-linux-gnu/libm.so.6 && \
+    ln -sfn /sysroot/usr/lib/aarch64-linux-gnu/libmvec.so.1 \
+      /usr/lib/aarch64-linux-gnu/libmvec.so.1
+
+# Qt package exports also check their installed plugin paths during configuration.
+RUN ln -sfn /sysroot/usr/lib/plugins /usr/lib/plugins
 
 ENV QEMU_LD_PREFIX=/sysroot
 ENV CCACHE_DIR=/run/ccache

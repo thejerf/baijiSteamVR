@@ -7,7 +7,8 @@ INSTALL_PREFIX="${INSTALL_PREFIX:-/home/steamos/baiji}"
 BUILD_DIR="$PWD/state/build-baiji"
 STAGE_DIR="$PWD/state/stage-frame"
 SDK="$PWD/state/flatpak-home/.local/share/flatpak/runtime/org.kde.Sdk/aarch64/6.10/active/files"
-SDK_INCLUDE_OVERLAY="$PWD/state/sdk-overlay/usr/include"
+SDK_OVERLAY="$PWD/state/sdk-overlay"
+SDK_INCLUDE_OVERLAY="$SDK_OVERLAY/usr/include"
 IMAGE="localhost/baijisteamvr-cross:latest"
 IMAGE_STAMP="$PWD/state/cross-sdk-image-$ENGINE.sha256"
 IMAGE_CONFIGURATION_HASH="$(sha256sum Containerfile.cross | cut -d ' ' -f 1)"
@@ -18,9 +19,16 @@ if [[ ! -d "$SDK" ]]; then
   exit 1
 fi
 
-# The KDE SDK stores headers at /include, while its Qt CMake exports expect
-# /usr/include. Build a local read-only symlink overlay without modifying the SDK.
-mkdir -p "$SDK_INCLUDE_OVERLAY"
+# Build one complete sysroot view instead of mounting child directories under the read-only SDK
+# mount. Podman/runc cannot reliably create those nested mountpoints in a read-only parent mount.
+mkdir -p "$SDK_INCLUDE_OVERLAY" "$SDK_OVERLAY/usr/lib"
+for entry in "$SDK"/*; do
+  [[ -e "$entry" ]] || continue
+  name="${entry##*/}"
+  [[ "$name" == usr ]] && continue
+  ln -sfn "/sdk/$name" "$SDK_OVERLAY/$name"
+done
+
 for header in "$SDK/include"/*; do
   [[ -e "$header" ]] || continue
   name="${header##*/}"
@@ -29,6 +37,27 @@ done
 if [[ -d "$SDK/usr/include/libevdev-1.0" ]]; then
   cp -a "$SDK/usr/include/libevdev-1.0" "$SDK_INCLUDE_OVERLAY/"
 fi
+
+for entry in "$SDK/usr"/*; do
+  [[ -e "$entry" ]] || continue
+  name="${entry##*/}"
+  case "$name" in
+    bin|include|lib|mkspecs) continue ;;
+  esac
+  ln -sfn "/sdk/usr/$name" "$SDK_OVERLAY/usr/$name"
+done
+for entry in "$SDK/usr/lib"/*; do
+  [[ -e "$entry" ]] || continue
+  name="${entry##*/}"
+  case "$name" in
+    libexec|plugins) continue ;;
+  esac
+  ln -sfn "/sdk/usr/lib/$name" "$SDK_OVERLAY/usr/lib/$name"
+done
+ln -sfn /sdk/bin "$SDK_OVERLAY/usr/bin"
+ln -sfn /sdk/mkspecs "$SDK_OVERLAY/usr/mkspecs"
+ln -sfn /sdk/lib/libexec "$SDK_OVERLAY/usr/lib/libexec"
+ln -sfn /sdk/lib/plugins "$SDK_OVERLAY/usr/lib/plugins"
 
 export CCACHE_DIR="$PWD/state/ccache-cross-sdk"
 mkdir -p "$CCACHE_DIR"
@@ -43,12 +72,8 @@ fi
 
 "$ENGINE" run --rm --platform linux/amd64 \
   -v "$PWD:/work/project:ro,Z" \
-  -v "$SDK:/sysroot:ro,Z" \
-  -v "$SDK/bin:/sysroot/usr/bin:ro,Z" \
-  -v "$SDK/lib/libexec:/sysroot/usr/lib/libexec:ro,Z" \
-  -v "$SDK/lib/plugins:/sysroot/usr/lib/plugins:ro,Z" \
-  -v "$SDK/mkspecs:/sysroot/usr/mkspecs:ro,Z" \
-  -v "$SDK_INCLUDE_OVERLAY:/sysroot/usr/include:ro,Z" \
+  -v "$SDK:/sdk:ro,Z" \
+  -v "$SDK_OVERLAY:/sysroot:ro,Z" \
   -v "$BUILD_DIR:/work/build:Z" \
   -v "$PWD/state/ccache-cross-sdk:/run/ccache:Z" \
   -v "$STAGE_DIR:/work/stage:Z" \
@@ -59,6 +84,22 @@ fi
   bash -c "
     set -euo pipefail
     export PATH=\"/usr/lib/ccache:\$PATH\"
+    mkdir -p /usr/lib/aarch64-linux-gnu
+    for target_lib in /sysroot/usr/lib/aarch64-linux-gnu/*; do
+      [[ -e \"\$target_lib\" ]] || continue
+      target_lib_name=\${target_lib##*/}
+      [[ "\$target_lib_name" == libexec ]] && continue
+      if [[ ! -e \"/usr/lib/aarch64-linux-gnu/\$target_lib_name\" ]]; then
+        ln -s \"\$target_lib\" \"/usr/lib/aarch64-linux-gnu/\$target_lib_name\"
+      fi
+    done
+    for qt_tool in qtpaths androiddeployqt androidtestrunner qmake python3.13; do
+      if [[ ! -e \"/usr/bin/\$qt_tool\" && -e \"/sysroot/usr/bin/\$qt_tool\" ]]; then
+        ln -s \"/sysroot/usr/bin/\$qt_tool\" \"/usr/bin/\$qt_tool\"
+      fi
+    done
+    ln -sfn /sysroot/lib/ld-linux-aarch64.so.1 /lib/ld-linux-aarch64.so.1
+    bash /work/project/scripts/prepare-cross-sdk-qemu-tools.sh
     cmake -S /work/project -B /work/build -G Ninja \
       -DCMAKE_TOOLCHAIN_FILE=/work/project/scripts/cross-toolchain-sdk.cmake \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -85,9 +126,9 @@ fi
       -DDISTRIBUTOR=BaijiSteamVR \
       -Ddatadir=\"$INSTALL_PREFIX/share/baiji\" \
       -DCMAKE_INSTALL_PREFIX=\"$INSTALL_PREFIX\" \
-      -DCMAKE_EXE_LINKER_FLAGS='-L/sysroot/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/lib/aarch64-linux-gnu' \
-      -DCMAKE_SHARED_LINKER_FLAGS='-L/sysroot/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/lib/aarch64-linux-gnu' \
-      -DCMAKE_MODULE_LINKER_FLAGS='-L/sysroot/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/lib/aarch64-linux-gnu'
+      -DCMAKE_EXE_LINKER_FLAGS='-L/sysroot/lib/aarch64-linux-gnu -L/sysroot/usr/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/usr/lib/aarch64-linux-gnu' \
+      -DCMAKE_SHARED_LINKER_FLAGS='-L/sysroot/lib/aarch64-linux-gnu -L/sysroot/usr/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/usr/lib/aarch64-linux-gnu' \
+      -DCMAKE_MODULE_LINKER_FLAGS='-L/sysroot/lib/aarch64-linux-gnu -L/sysroot/usr/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/lib/aarch64-linux-gnu -Wl,-rpath-link,/sysroot/usr/lib/aarch64-linux-gnu'
     cmake --build /work/build --target dolphin-emu dolphin-nogui dolphin-tool -j12
     DESTDIR=/work/stage cmake --install /work/build
 
