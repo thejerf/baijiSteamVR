@@ -120,6 +120,10 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
                                             Config::GFX_VR_UNITS_PER_METER_STEP, nullptr,
                                             ConfigFloatSlider::ScaleMode::Exponential);
   m_units_per_meter_value = new QLabel();
+  m_stereo_separation = new ConfigFloatSlider(
+      Config::GFX_VR_STEREO_SEPARATION_MIN, Config::GFX_VR_STEREO_SEPARATION_MAX,
+      Config::GFX_VR_STEREO_SEPARATION, Config::GFX_VR_STEREO_SEPARATION_STEP);
+  m_stereo_separation_value = new QLabel();
   m_enable_lean_back_angle =
       new ConfigBool(tr("Lean Back Angle (deg)"), Config::GFX_VR_ENABLE_LEAN_BACK_ANGLE);
   m_enable_lean_back_angle->setToolTip(
@@ -210,6 +214,10 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
   openxr_layout->addWidget(new ConfigFloatLabel(tr("Units per Meter:"), m_units_per_meter), 1, 0);
   openxr_layout->addWidget(m_units_per_meter, 1, 1);
   openxr_layout->addWidget(m_units_per_meter_value, 1, 2);
+  openxr_layout->addWidget(
+      new ConfigFloatLabel(tr("Stereo Separation (%):"), m_stereo_separation), 2, 0);
+  openxr_layout->addWidget(m_stereo_separation, 2, 1);
+  openxr_layout->addWidget(m_stereo_separation_value, 2, 2);
 
 #ifndef BAIJI_STEAMVR
   m_mirror_view = new ConfigChoiceMap<OpenXRMirrorView>(
@@ -218,8 +226,8 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
        {tr("Right Eye"), OpenXRMirrorView::RightEye},
        {tr("None"), OpenXRMirrorView::None}},
       Config::GFX_VR_MIRROR_VIEW);
-  openxr_layout->addWidget(new QLabel(tr("Desktop Mirror View:")), 2, 0);
-  openxr_layout->addWidget(m_mirror_view, 2, 1, 1, 2);
+  openxr_layout->addWidget(new QLabel(tr("Desktop Mirror View:")), 4, 0);
+  openxr_layout->addWidget(m_mirror_view, 4, 1, 1, 2);
 #endif
 
   camera_layout->addWidget(m_enable_lean_back_angle, 0, 0);
@@ -245,6 +253,16 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
   connect(m_units_per_meter, &ConfigFloatSlider::valueChanged, this,
           [this, units_per_meter_text] {
             m_units_per_meter_value->setText(units_per_meter_text(m_units_per_meter->GetValue()));
+          });
+  const auto stereo_separation_text = [](float value) {
+    return QString::asprintf("%.0f%%", value);
+  };
+  m_stereo_separation_value->setText(
+      stereo_separation_text(m_stereo_separation->GetValue()));
+  connect(m_stereo_separation, &ConfigFloatSlider::valueChanged, this,
+          [this, stereo_separation_text] {
+            m_stereo_separation_value->setText(
+                stereo_separation_text(m_stereo_separation->GetValue()));
           });
   m_lean_back_angle_value->setText(QString::asprintf("%.1f", m_lean_back_angle->GetValue()));
   connect(m_lean_back_angle, &ConfigFloatSlider::valueChanged, this, [this] {
@@ -702,9 +720,17 @@ void VRPane::AddDescriptions()
       "<br><br>This setting only affects the Vulkan backend and requires restarting emulation."
       "<br><br><dolphin_emphasis>If unsure on Quest, leave this checked.</dolphin_emphasis>");
   static constexpr char TR_UNITS_PER_METER_DESCRIPTION[] = QT_TR_NOOP(
-      "Sets how many game world units correspond to one real-world meter."
-      "<br><br>Higher values increase stereo scale and make the world appear smaller."
-      "<br><br>Lower values decrease stereo scale and make the world appear larger.");
+      "Sets game-world units per real meter. Higher values make the virtual world smaller and "
+      "increase effective stereo depth relative to game geometry; lower values make it larger "
+      "and reduce depth."
+      "<br><br>Use Stereo Separation to adjust depth without changing world scale.");
+  static constexpr char TR_STEREO_SEPARATION_DESCRIPTION[] = QT_TR_NOOP(
+      "Scales the virtual left/right eye offset while leaving world scale and head movement "
+      "unchanged. 100% preserves the current OpenXR eye spacing; lower values reduce stereo "
+      "depth and 0% approaches mono. Lower separation may make strong near-field pop-out easier "
+      "to fuse and may ease eye strain, but comfort varies. Higher values increase depth and "
+      "may increase strain. This affects Immersive VR; Stereo 3D Screen uses the Stereoscopic "
+      "Depth setting instead.");
   static constexpr char TR_REFERENCE_SPACE_MODE_DESCRIPTION[] = QT_TR_NOOP(
        "Selects how BaijiSteamVR sets the default VR position when OpenXR starts."
        "<br><br>LOCAL uses OpenXR <code>LOCAL</code> space and keeps the current behavior: "
@@ -875,6 +901,7 @@ void VRPane::AddDescriptions()
   m_reference_space_mode->SetDescription(tr(TR_REFERENCE_SPACE_MODE_DESCRIPTION));
   m_tracking_mode->SetDescription(tr(TR_TRACKING_MODE_DESCRIPTION));
   m_units_per_meter->SetDescription(tr(TR_UNITS_PER_METER_DESCRIPTION));
+  m_stereo_separation->SetDescription(tr(TR_STEREO_SEPARATION_DESCRIPTION));
   m_lean_back_angle->SetDescription(tr(TR_LEAN_BACK_ANGLE_DESCRIPTION));
   m_camera_forward->SetDescription(tr(TR_CAMERA_FORWARD_DESCRIPTION));
   m_camera_height->SetDescription(tr(TR_CAMERA_HEIGHT_DESCRIPTION));
@@ -934,6 +961,8 @@ void VRPane::ResetGeneralSettings()
                            Config::GFX_VR_TRACKING_MODE.GetDefaultValue());
   Config::SetBaseOrCurrent(Config::GFX_VR_UNITS_PER_METER,
                            Config::GFX_VR_UNITS_PER_METER.GetDefaultValue());
+  Config::SetBaseOrCurrent(Config::GFX_VR_STEREO_SEPARATION,
+                           Config::GFX_VR_STEREO_SEPARATION.GetDefaultValue());
   Config::SetBaseOrCurrent(Config::GFX_VR_ENABLE_LEAN_BACK_ANGLE,
                            Config::GFX_VR_ENABLE_LEAN_BACK_ANGLE.GetDefaultValue());
   Config::SetBaseOrCurrent(Config::GFX_VR_LEAN_BACK_ANGLE,

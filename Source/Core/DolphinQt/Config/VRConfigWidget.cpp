@@ -363,7 +363,7 @@ void VRConfigWidget::CreateWidgets()
   });
   openxr_layout->addWidget(new QLabel(tr("Presentation Mode:")), 0, 0);
   openxr_layout->addWidget(presentation_mode, 0, 1, 1, 2);
-  add_float(
+  auto* units_per_meter = add_float(
       openxr_layout, 1, tr("Units per Meter:"), Config::GFX_VR_UNITS_PER_METER_MIN,
       Config::GFX_VR_UNITS_PER_METER_MAX, Config::GFX_VR_UNITS_PER_METER,
       Config::GFX_VR_UNITS_PER_METER_STEP,
@@ -372,6 +372,23 @@ void VRConfigWidget::CreateWidgets()
                                  value);
       },
       ConfigFloatSlider::ScaleMode::Exponential);
+  units_per_meter->setToolTip(
+      tr("Sets game-world units per real meter. Higher values make the world smaller and "
+         "increase effective stereo depth relative to game geometry; lower values make it "
+         "larger and reduce depth. Use Stereo Separation to adjust depth without changing "
+         "world scale."));
+  auto* stereo_separation = add_float(
+      openxr_layout, 2, tr("Stereo Separation (%):"),
+      Config::GFX_VR_STEREO_SEPARATION_MIN, Config::GFX_VR_STEREO_SEPARATION_MAX,
+      Config::GFX_VR_STEREO_SEPARATION, Config::GFX_VR_STEREO_SEPARATION_STEP,
+      [](float value) { return QString::asprintf("%.0f%%", value); });
+  stereo_separation->setToolTip(
+      tr("Scales the virtual left/right eye offset while leaving world scale and head movement "
+         "unchanged. 100% preserves the current OpenXR eye spacing; lower values reduce stereo "
+         "depth and 0% approaches mono. Lower separation may make strong near-field pop-out "
+         "easier to fuse and may ease eye strain, but comfort varies. Higher values increase "
+         "depth and may increase strain. This affects Immersive VR; Stereo 3D Screen uses the "
+         "Stereoscopic Depth setting instead."));
 
 #ifndef BAIJI_STEAMVR
   auto* mirror_view = mark_default(new ConfigChoiceMap<OpenXRMirrorView>(
@@ -380,8 +397,8 @@ void VRConfigWidget::CreateWidgets()
        {tr("Right Eye"), OpenXRMirrorView::RightEye},
        {tr("None"), OpenXRMirrorView::None}},
       Config::GFX_VR_MIRROR_VIEW, layer, m_global_layer.get()));
-  openxr_layout->addWidget(new QLabel(tr("Desktop Mirror View:")), 2, 0);
-  openxr_layout->addWidget(mirror_view, 2, 1, 1, 2);
+  openxr_layout->addWidget(new QLabel(tr("Desktop Mirror View:")), 3, 0);
+  openxr_layout->addWidget(mirror_view, 3, 1, 1, 2);
 #endif
   auto* camera_group = new QGroupBox(tr("Camera"));
   auto* camera_layout = new QGridLayout(camera_group);

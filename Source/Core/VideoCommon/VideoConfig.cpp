@@ -220,6 +220,10 @@ void VideoConfig::Refresh()
   vr_units_per_meter = std::clamp(Config::Get(Config::GFX_VR_UNITS_PER_METER),
                                   Config::GFX_VR_UNITS_PER_METER_MIN,
                                   Config::GFX_VR_UNITS_PER_METER_MAX);
+  vr_stereo_separation =
+      std::clamp(Config::Get(Config::GFX_VR_STEREO_SEPARATION),
+                 Config::GFX_VR_STEREO_SEPARATION_MIN,
+                 Config::GFX_VR_STEREO_SEPARATION_MAX) * 0.01f;
   vr_enable_lean_back_angle = Config::Get(Config::GFX_VR_ENABLE_LEAN_BACK_ANGLE);
   vr_lean_back_angle = std::clamp(Config::Get(Config::GFX_VR_LEAN_BACK_ANGLE),
                                   Config::GFX_VR_LEAN_BACK_ANGLE_MIN,
@@ -437,6 +441,7 @@ void CheckForConfigChanges()
   const auto old_post_processing_shader = g_ActiveConfig.sPostProcessingShader;
   const auto old_hdr = g_ActiveConfig.bHDR;
   const float old_vr_units_per_meter = g_ActiveConfig.vr_units_per_meter;
+  const float old_vr_stereo_separation = g_ActiveConfig.vr_stereo_separation;
   const float old_vr_screen_distance = g_ActiveConfig.vr_screen_distance;
   const float old_vr_screen_size = g_ActiveConfig.vr_screen_size;
   const float old_vr_head_locked_curvature = g_ActiveConfig.vr_head_locked_curvature;
@@ -449,6 +454,7 @@ void CheckForConfigChanges()
   g_vertex_manager->OnConfigChange();
 
   if (old_vr_units_per_meter != g_ActiveConfig.vr_units_per_meter ||
+      old_vr_stereo_separation != g_ActiveConfig.vr_stereo_separation ||
       old_vr_screen_distance != g_ActiveConfig.vr_screen_distance ||
       old_vr_screen_size != g_ActiveConfig.vr_screen_size ||
       old_vr_head_locked_curvature != g_ActiveConfig.vr_head_locked_curvature)

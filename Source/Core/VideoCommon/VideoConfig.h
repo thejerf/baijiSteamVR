@@ -365,6 +365,7 @@ struct VideoConfig final
   bool bStereoSwapEyes = false;
   bool bStereoEFBMonoDepth = false;
   float vr_units_per_meter = 1.0f;
+  float vr_stereo_separation = 1.0f;
   bool vr_enable_lean_back_angle = true;
   float vr_lean_back_angle = 0.0f;
   bool vr_enable_camera_forward = true;

@@ -43,6 +43,8 @@ private:
   ConfigChoiceMap<OpenXRTrackingMode>* m_tracking_mode = nullptr;
   ConfigFloatSlider* m_units_per_meter = nullptr;
   QLabel* m_units_per_meter_value = nullptr;
+  ConfigFloatSlider* m_stereo_separation = nullptr;
+  QLabel* m_stereo_separation_value = nullptr;
   ConfigBool* m_enable_lean_back_angle = nullptr;
   ConfigFloatSlider* m_lean_back_angle = nullptr;
   QLabel* m_lean_back_angle_value = nullptr;

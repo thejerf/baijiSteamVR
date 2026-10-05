@@ -161,6 +161,7 @@ static void ClearAppliedVRSettings()
   ClearAppliedVRSetting("StereoScreen", Config::GFX_VR_STEREO_SCREEN);
   ClearAppliedVRSetting("PresentationMode", Config::GFX_VR_PRESENTATION_MODE);
   ClearAppliedVRSetting("UnitsPerMeter", Config::GFX_VR_UNITS_PER_METER);
+  ClearAppliedVRSetting("StereoSeparation", Config::GFX_VR_STEREO_SEPARATION);
   ClearAppliedVRSetting("EnableLeanBackAngle", Config::GFX_VR_ENABLE_LEAN_BACK_ANGLE);
   ClearAppliedVRSetting("LeanBackAngle", Config::GFX_VR_LEAN_BACK_ANGLE);
   ClearAppliedVRSetting("EnableCameraForward", Config::GFX_VR_ENABLE_CAMERA_FORWARD);
@@ -242,6 +243,7 @@ static void ApplyGameVRConfigOverrides(std::string_view game_id, std::optional<u
   ApplyVRSetting(values, "StereoScreen", Config::GFX_VR_STEREO_SCREEN);
   ApplyVRSetting(values, "PresentationMode", Config::GFX_VR_PRESENTATION_MODE);
   ApplyVRSetting(values, "UnitsPerMeter", Config::GFX_VR_UNITS_PER_METER);
+  ApplyVRSetting(values, "StereoSeparation", Config::GFX_VR_STEREO_SEPARATION);
   ApplyVRSetting(values, "EnableLeanBackAngle", Config::GFX_VR_ENABLE_LEAN_BACK_ANGLE);
   ApplyVRSetting(values, "LeanBackAngle", Config::GFX_VR_LEAN_BACK_ANGLE);
   ApplyVRSetting(values, "EnableCameraForward", Config::GFX_VR_ENABLE_CAMERA_FORWARD);

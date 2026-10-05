@@ -3627,6 +3627,13 @@ void OpenXRManager::GetEyeProjectionRowsImpl(
           0.0f;
 
   const std::array<XREyeView, 2> eye_views = GetTrackingAdjustedEyeViews();
+  const float eye_center_x =
+      0.5f * (eye_views[0].pose.position.x + eye_views[1].pose.position.x);
+  const float eye_center_y =
+      0.5f * (eye_views[0].pose.position.y + eye_views[1].pose.position.y);
+  const float eye_center_z =
+      0.5f * (eye_views[0].pose.position.z + eye_views[1].pose.position.z);
+  const float eye_offset_scale = s * g_ActiveConfig.vr_stereo_separation;
 
   for (uint32_t eye = 0; eye < 2; ++eye)
   {
@@ -3718,11 +3725,14 @@ void OpenXRManager::GetEyeProjectionRowsImpl(
     const float c1y = m11 * p1y + m12 * p1z;
     const float c1z = m21 * p1y + m22 * p1z;
 
-    // Eye position relative to home, in game units.
-    // Includes both IPD offset (per-eye) and head positional tracking (shared).
-    float ex = (eye_pos_xr.x - m_home_position.x) * s;
-    float ey = (eye_pos_xr.y - m_home_position.y) * s;
-    float ez = (eye_pos_xr.z - m_home_position.z) * s;
+    // Keep head translation and world scale unchanged while independently scaling only the
+    // per-eye offset around the head center.
+    float ex = (eye_center_x - m_home_position.x) * s +
+               (eye_pos_xr.x - eye_center_x) * eye_offset_scale;
+    float ey = (eye_center_y - m_home_position.y) * s +
+               (eye_pos_xr.y - eye_center_y) * eye_offset_scale;
+    float ez = (eye_center_z - m_home_position.z) * s +
+               (eye_pos_xr.z - eye_center_z) * eye_offset_scale;
     if (camera_height_units != 0.0f)
       ey += camera_height_units;
     if (camera_forward_units != 0.0f)
@@ -3816,8 +3826,9 @@ void OpenXRManager::GetRawEyeProjectionRows(
     const float dy = eye_pos_xr.y - hy;
     const float dz = eye_pos_xr.z - hz;
 
-    const float local_ex = (rt00 * dx + rt01 * dy + rt02 * dz) * s;
-    const float local_ey = (rt10 * dx + rt11 * dy + rt12 * dz) * s;
+    const float eye_offset_scale = s * g_ActiveConfig.vr_stereo_separation;
+    const float local_ex = (rt00 * dx + rt01 * dy + rt02 * dz) * eye_offset_scale;
+    const float local_ey = (rt10 * dx + rt11 * dy + rt12 * dz) * eye_offset_scale;
 
     // W component using raw (unrotated) P rows and head-local eye offset
     const float pw0 = -(p0x * local_ex + p0z * 0.0f);  // p0z * local_ez ≈ 0
