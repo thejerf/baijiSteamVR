@@ -249,7 +249,12 @@ public:
     explicit ScopedVideoFrameHandoff(OpenXRManager* mgr) : m_mgr(mgr)
     {
       if (m_mgr)
+      {
+#ifdef BAIJI_STEAMVR
+        m_handoff_lock = std::unique_lock<std::mutex>(m_mgr->m_video_handoff_mutex);
+#endif
         m_mgr->BeginVideoFrameHandoff();
+      }
     }
     ~ScopedVideoFrameHandoff()
     {
@@ -261,6 +266,9 @@ public:
 
   private:
     OpenXRManager* m_mgr;
+#ifdef BAIJI_STEAMVR
+    std::unique_lock<std::mutex> m_handoff_lock;
+#endif
   };
 
   // xrLocateViews — fills m_eye_views with the predicted head pose for each eye.
@@ -647,6 +655,11 @@ private:
   uint64_t m_publish_serial = 0;       // guarded by m_publish_mutex
   // >0 while the video thread is mid release-images/publish-poses (see handoff helpers).
   std::atomic<int> m_video_handoff_active{0};
+  // Frame: exclude xrEndFrame from the whole stereo image handoff. The atomic
+  // flag alone has a check-to-submit race, allowing a new left image and old right
+  // image to be selected together. Lock order: handoff -> publish or graphics queue;
+  // neither publish nor graphics queue may be held while taking this lock.
+  std::mutex m_video_handoff_mutex;
 
   // OpenXR input action set used to expose VR controller input to Dolphin's
   // regular controller mapping UI.

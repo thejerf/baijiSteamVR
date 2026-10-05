@@ -1392,6 +1392,13 @@ void OpenXRManager::FrameThreadLoop()
       }
     }
 
+#ifdef BAIJI_STEAMVR
+    // Checking the flag below is not mutual exclusion: a video handoff can start
+    // after that check but before xrEndFrame. Keep both eye releases and their
+    // metadata publish indivisible with respect to the runtime's image selection.
+    std::unique_lock handoff_lock(m_video_handoff_mutex);
+#endif
+
     // Never submit while the video thread is swapping the front swapchain image and
     // publishing its matching pose — landing in that window submits the new image with
     // the old pose (backwards ATW warp = a previously shown frame flashes). Bounded so
@@ -1448,6 +1455,9 @@ void OpenXRManager::FrameThreadLoop()
 
     EndFrameDetached(m_frame_state.predictedDisplayTime, GetActiveBlendMode(), submit_content,
                      layers);
+#ifdef BAIJI_STEAMVR
+    handoff_lock.unlock();
+#endif
     const u64 t4 = Common::Timer::NowUs();
     endframe_ema_us = endframe_ema_us * 0.8 + static_cast<double>(t4 - t3) * 0.2;
     last_cycle_us = t4 - cycle_start_us;

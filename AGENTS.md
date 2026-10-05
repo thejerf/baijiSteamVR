@@ -22,18 +22,28 @@
   in `GraphicsSettings.cpp` and loaded in `VideoConfig.cpp`. `true` is Eager (submit
   each HMD refresh, reusing the last frame); `false` is Lazy (pace submissions to game
   frames so PC runtime motion smoothing can engage).
-- Frame hitch investigation: `~/.config/baiji/frame-timing` enables buffered CSV
-  captures in Baiji's Logs directory; analyze with `scripts/analyze-frame-timing.py`.
-  The 2026-10-04 SMG2 baseline showed cheap XR calls/queue locks, no gameplay shader
-  compilation, GPU fence waits up to 8 ms, and intentional XR content waits up to
-  15 ms. The pacing loop now removes Baiji's content wait. Its
-  comparison capture had steadier XR cycles but more repeated published content;
-  the user initially reported possibly smoother motion despite worse Steam statistics.
-  With recording/logging off, the user confirmed a significant subjective improvement
-  and requested committing it. Long GPU waits were predominantly staging-texture
-  readbacks; 1x internal resolution also improved the remaining hitches. Keep 120 Hz
-  for comparison; the user has already investigated refresh-rate mismatch.
-  Desktop mirroring is forced off in Baiji and its Qt options are hidden.
+- Steam Frame presentation fixes (SMG2, 2026-10-04): the XR pacing loop does not
+  wait for new game content after `xrWaitFrame`; that removed a significant source
+  of hitching. StereoScreen also batches both Vulkan eye blits, waits once for GPU
+  completion, releases both images, then publishes the quad layers. Submitted but
+  unfinished eye writes produced conspicuous doubling/stale-image hiccups on Frame;
+  the completed-pair handoff resolved them in headset testing at 2x/120 Hz. Keep
+  this completion wait even when timeline semaphores are enabled. It trades some
+  CPU/GPU overlap for correct image delivery. `PresentBackbuffer` already advances
+  frame resources; the stereo submit must not advance them again.
+- `m_video_handoff_mutex` excludes `xrEndFrame` from the video's blit/completion/
+  release/publish transaction. The previous atomic flag had a check-to-submit race.
+  Keep the handoff -> publish/graphics-queue lock order; never take the handoff
+  lock while holding either of those other locks. Do not hold the graphics-queue
+  lock during the GPU-completion wait.
+- Investigation evidence: 16699 XFB copies showed no detected gameplay source,
+  GPU-submit, XR display-time reversal, or eye-ID mismatch, while CPU-side handoff
+  locking alone did not cure doubling. SteamVR motion smoothing was already
+  ForceOff (`motionSmoothingOverride=2`); reprojection counts did not establish
+  temporal blending. GPU readbacks accounted for long waits and 1x improved the
+  remaining isolated drops. Keep 120 Hz for comparison; refresh-rate mismatch was
+  already investigated. Temporary timing/order captures and analyzers were removed
+  after the fix. Desktop mirroring is forced off and its Qt options are hidden.
 - Frame controller changes span `Common/VR/OpenXRInputState.h`,
   `InputCommon/ControllerInterface/OpenXR/OpenXR.cpp`, Vulkan/OpenXR session setup,
   the Qt mapping UI, and `Data/Sys/Profiles/`. For Frame controllers, Flat Vulkan

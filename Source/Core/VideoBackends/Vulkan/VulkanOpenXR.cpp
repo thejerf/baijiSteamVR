@@ -1448,6 +1448,16 @@ void VulkanOpenXR::ReleaseEyeTexture(uint32_t eye_index)
   if (!m_image_acquired[eye_index])
     return;
 
+#ifdef BAIJI_STEAMVR
+  if (g_ActiveConfig.vr_stereo_screen && g_ActiveConfig.stereo_mode == StereoMode::SBS)
+  {
+    // Frame StereoScreen: render both eyes before giving either image back.
+    // SubmitStereoFlatFrame finishes their shared GPU work and releases the pair.
+    StateTracker::GetInstance()->EndRenderPass();
+    return;
+  }
+#endif
+
 #if defined(ANDROID)
   // End any active render pass so the eye image is no longer bound for rendering.
   // We defer the Vulkan submit/xrReleaseSwapchainImage pairing until SubmitFrame()
@@ -1465,8 +1475,8 @@ void VulkanOpenXR::ReleaseEyeTexture(uint32_t eye_index)
   // device creation, so this path used to drain the GPU per eye as a workaround
   // (serializing CPU/GPU/compositor every frame). Keep the drain only as a fallback for
   // VD/Quest-class runtimes when the feature could not be enabled — it is a property of
-  // the runtime's strictness, not of which projection path is active (SteamVR never
-  // needed it).
+  // the runtime's strictness, not of which projection path is active. Frame's
+  // completed-pair StereoScreen handoff is handled above instead.
   StateTracker::GetInstance()->EndRenderPass();
   const bool wait_for_completion =
       !g_vulkan_context->SupportsTimelineSemaphores() && VR::g_openxr &&
@@ -1734,7 +1744,46 @@ bool VulkanOpenXR::SubmitStereoFlatFrame()
 {
   ASSERT(VR::g_openxr != nullptr);
 
-#if defined(ANDROID)
+#if defined(BAIJI_STEAMVR)
+  if (m_image_acquired[0] || m_image_acquired[1])
+  {
+    const bool have_pair = m_image_acquired[0] && m_image_acquired[1];
+    StateTracker::GetInstance()->EndRenderPass();
+
+    // Submitted writes alone left visible doubled/stale images on Steam Frame.
+    // Finish BOTH eye blits before releasing either image to the runtime. Wait
+    // once for the pair, rather than draining the GPU separately for each eye.
+    // Keep this completion wait even when timeline semaphores are enabled.
+    // PresentBackbuffer already advances frame resources, so do not advance them
+    // a second time here.
+    const bool submitted = g_command_buffer_mgr->SubmitCommandBuffer(false, true);
+    StateTracker::GetInstance()->InvalidateCachedState();
+    if (!submitted)
+      return false;
+
+    bool released = true;
+    {
+      auto queue_lock = AcquireGraphicsQueueLock();
+      XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+      for (uint32_t eye = 0; eye < 2; ++eye)
+      {
+        if (!m_image_acquired[eye])
+          continue;
+        const XrResult result =
+            xrReleaseSwapchainImage(m_eye_swapchains[eye].swapchain, &release_info);
+        if (XR_FAILED(result))
+        {
+          WARN_LOG_FMT(VIDEO, "OpenXR: completed stereo eye {} release failed ({}).", eye,
+                       static_cast<int>(result));
+          released = false;
+        }
+        m_image_acquired[eye] = false;
+      }
+    }
+    if (!have_pair || !released)
+      return false;
+  }
+#elif defined(ANDROID)
   // On Android the per-eye ReleaseEyeTexture only ends the render pass; the command-buffer
   // submit and xrReleaseSwapchainImage are deferred to submit time. End the render pass once,
   // submit the accumulated command buffer, then release both eye images synchronously.
