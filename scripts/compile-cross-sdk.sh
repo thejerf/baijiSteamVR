@@ -2,7 +2,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-ENGINE="${ENGINE:-docker}"
+ENGINE=podman
 INSTALL_PREFIX="${INSTALL_PREFIX:-/home/steamos/baiji}"
 BUILD_DIR="$PWD/state/build-baiji"
 STAGE_DIR="$PWD/state/stage-frame"

@@ -64,9 +64,9 @@
   or user-data paths inside Baiji config are suspicious and must not be followed.
 - Frame build: from the repository root run
   `INSTALL_PREFIX=/home/steamos/baiju ./scripts/compile-cross-sdk.sh`, then
-  `./scripts/deploy-frame.sh frame`. The build uses Podman by default (`ENGINE=docker`
-  selects Docker), needs the existing SDK under `state/`, reuses the image if already
-  built, and stages to `state/stage-frame/`. Its persistent build/cache are
+  `./scripts/deploy-frame.sh frame`. The build uses Podman, needs the existing SDK under
+  `state/`, rebuilds the image when `Containerfile.cross` changes, and stages to
+  `state/stage-frame/`. Its persistent build/cache are
   `state/build-baiji/` and `state/ccache-cross-sdk/`. It configures
   `ENABLE_TESTS=OFF`; this is not a test build.
 - `scripts/compile.sh [native|aarch64] [target...]` is the general container build

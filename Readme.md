@@ -103,7 +103,7 @@ documented when snapshots are available.
 ## Build and Install From an x86_64 Linux Machine
 
 This is the maintained way to build a Steam Frame version. The host needs
-Git and Docker (the script's default container engine) or Podman. It also
+Git and Podman. It also
 needs the AArch64 KDE SDK in the checkout. QEMU's AArch64 emulator is
 installed in the build image, so the host does not need to provide it.
 
@@ -131,9 +131,8 @@ installed in the build image, so the host does not need to provide it.
    ssh frame "steamos-add-to-steam ./baiji/bin/baiji"
    ```
 
-   If using Podman instead of Docker, prefix the build command with
-   `ENGINE=podman`. These instructions build the current checkout rather
-   than a packaged release, so the code may be unstable.
+   These instructions build the current checkout rather than a packaged
+   release, so the code may be unstable.
 
    The build stages the Frame-compatible files under
    `state/stage-frame/home/steamos/baiji` before transferring them. The

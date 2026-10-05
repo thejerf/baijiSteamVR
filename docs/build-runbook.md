@@ -66,10 +66,10 @@ performance overlays, and core-dump debugging:
 
 ## Local build notes
 
-- The cross-SDK build uses Docker by default; set `ENGINE=podman` to use Podman.
+- The cross-SDK build uses Podman.
 - The cross-build image includes `qemu-user`; no host QEMU executable is required or
-  bind-mounted. The build helper tracks the `Containerfile.cross` hash per engine and
-  rebuilds the image when its configuration changes.
+  bind-mounted. The build helper tracks the `Containerfile.cross` hash and rebuilds the
+  image when its configuration changes.
 - The SDK overlay is mounted as one sysroot view; avoid adding nested binds beneath the
   read-only SDK mount, which Podman/runc cannot create on some systems.
 - `scripts/fix-submodules.sh` is for a fresh checkout only. Review its actions before
