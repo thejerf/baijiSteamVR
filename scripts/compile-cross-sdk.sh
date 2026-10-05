@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 ENGINE="${ENGINE:-podman}"
-INSTALL_PREFIX="${INSTALL_PREFIX:-/home/steamos/baiju}"
+INSTALL_PREFIX="${INSTALL_PREFIX:-/home/steamos/baiji}"
 BUILD_DIR="$PWD/state/build-baiji"
 STAGE_DIR="$PWD/state/stage-frame"
 SDK="$PWD/state/flatpak-home/.local/share/flatpak/runtime/org.kde.Sdk/aarch64/6.10/active/files"

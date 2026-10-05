@@ -1,282 +1,459 @@
-# Dolphin - A GameCube and Wii Emulator
-
-[Homepage](https://dolphin-emu.org/) | [Project Site](https://github.com/dolphin-emu/dolphin) | [Buildbot](https://dolphin.ci/) | [Forums](https://forums.dolphin-emu.org/) | [Wiki](https://wiki.dolphin-emu.org/) | [GitHub Wiki](https://github.com/dolphin-emu/dolphin/wiki) | [Issue Tracker](https://bugs.dolphin-emu.org/projects/emulator/issues) | [Coding Style](https://github.com/dolphin-emu/dolphin/blob/master/Contributing.md) | [Transifex Page](https://app.transifex.com/dolphinemu/dolphin-emu/dashboard/) | [Analytics](https://mon.dolphin-emu.org/)
-
-Dolphin is an emulator for running GameCube and Wii games on Windows,
-Linux, macOS, and recent Android devices. It's licensed under the terms
-of the GNU General Public License, version 2 or later (GPLv2+).
-
-This fork adds OpenXR support to Dolphin so users can play in VR on Windows,
-desktop Linux, and standalone Meta Quest headsets, and was developed with the
-use of AI tools.
-
-- **Windows** — VR runs on the Direct3D 11, Direct3D 12, Vulkan, and OpenGL
-  backends with any OpenXR runtime (SteamVR, Oculus/Meta Link, VDXR, etc.).
-- **Linux** — VR runs on the Vulkan and OpenGL backends and requires a working
-  system OpenXR runtime such as Monado or SteamVR.
-- **Meta Quest** — a standalone Android build (Quest 2, Quest 3, Quest 3S, and
-  Quest Pro) renders natively in the headset on the Vulkan and OpenGL ES
-  backends, with OpenXR controller support.
-
-Please read the [FAQ](https://dolphin-emu.org/docs/faq/) before using Dolphin.
-
-## System Requirements
-
-### Desktop
-
-- OS
-  - Windows (10 1903 or higher).
-  - Linux.
-  - macOS (11.0 Big Sur or higher).
-  - Unix-like systems other than Linux are not officially supported but might work.
-- Processor
-  - A CPU with SSE2 support.
-  - A modern CPU (3 GHz and Dual Core, not older than 2008) is highly recommended.
-- Graphics
-  - A reasonably modern graphics card (Direct3D 11.1 / OpenGL 3.3).
-  - A graphics card that supports Direct3D 11.1 / OpenGL 4.4 is recommended.
-
-### Android
-
-- OS
-  - Android (5.0 Lollipop or higher).
-- Processor
-  - A processor with support for 64-bit applications (either ARMv8 or x86-64).
-- Graphics
-  - A graphics processor that supports OpenGL ES 3.0 or higher. Performance varies heavily with [driver quality](https://dolphin-emu.org/blog/2013/09/26/dolphin-emulator-and-opengl-drivers-hall-fameshame/).
-  - A graphics processor that supports standard desktop OpenGL features is recommended for best performance.
-
-Dolphin can only be installed on devices that satisfy the above requirements. Attempting to install on an unsupported device will fail and display an error message.
-
-### VR (OpenXR)
-
-- Windows
-  - An OpenXR runtime (SteamVR, Oculus/Meta Link, VDXR, etc.) and a headset it supports.
-  - Direct3D 11, Direct3D 12, Vulkan, or OpenGL backend.
-- Linux
-  - An OpenXR runtime such as Monado or SteamVR.
-  - Vulkan (recommended) or OpenGL backend.
-- Meta Quest
-  - Quest 2, Quest 3, Quest 3S, or Quest Pro, running the standalone `quest` build.
-  - Vulkan or OpenGL ES backend.
-- VR is not supported on macOS.
-
-## Building for Windows
-
-Use the solution file `Source/dolphin-emu.sln` to build Dolphin on Windows.
-Dolphin targets the latest MSVC shipped with Visual Studio or Build Tools.
-Other compilers might be able to build Dolphin on Windows but have not been
-tested and are not recommended to be used. Git and latest Windows SDK must be
-installed when building.
-
-Make sure to pull submodules before building:
-
-```sh
-git submodule update --init --recursive
-```
-
-### Building the OpenXR VR version
-
-To build the VR-enabled version of this fork, OpenXR support must be enabled
-with `-DENABLE_VR=ON`. VR is supported on Windows, desktop Linux, and Android
-(Meta Quest); see the Linux and Android sections below for those platforms.
-
-If you are generating a Visual Studio build with CMake, configure with
-`-DENABLE_VR=ON`:
-
-```sh
-cmake -S . -B Build-vs2022 -G "Visual Studio 17 2022" -A x64 -DENABLE_VR=ON
-```
-
-When using the Visual Studio generator, build the OpenXR loader first:
-
-```sh
-cmake --build Build-vs2022 --config Release --target openxr_loader
-```
-
-Finally, build Dolphin:
-
-```sh
-cmake --build Build-vs2022 --config Release --target dolphin-emu
-```
-
-If you prefer building OpenXR separately first, the repository also includes
-`Externals/OpenXR/build-win64/OPENXR.sln`.
-
-The "Release" solution configuration includes performance optimizations for the best user experience but complicates debugging Dolphin.
-The "Debug" solution configuration is significantly slower, more verbose and less permissive but makes debugging Dolphin easier.
-
-## Building for Linux and macOS
-
-Dolphin requires [CMake](https://cmake.org/) for systems other than Windows.
-You need a recent version of GCC or Clang with decent c++20 support. CMake will
-inform you if your compiler is too old.
-Many libraries are bundled with Dolphin and used if they're not installed on
-your system. CMake will inform you if a bundled library is used or if you need
-to install any missing packages yourself. You may refer to the [wiki](https://github.com/dolphin-emu/dolphin/wiki/Building-for-Linux) for more information.
-
-Make sure to pull submodules before building:
-
-```sh
-git submodule update --init --recursive
-```
-
-### Building the OpenXR VR version on Linux:
-
-OpenXR VR is available on desktop Linux (it is not supported on macOS). It
-requires a working system OpenXR runtime such as Monado or SteamVR, and runs on
-the Vulkan and OpenGL backends. Configure with OpenXR and Vulkan enabled:
-
-```sh
-cmake -S . -B Build -DENABLE_VR=ON -DENABLE_VULKAN=ON
-cmake --build Build --target dolphin-emu -j $(nproc)
-```
-
-OpenGL (GLX) is always built on desktop Linux, so VR remains usable even
-without `-DENABLE_VULKAN=ON`, though Vulkan is recommended.
-
-### macOS Build Steps:
-
-A binary supporting a single architecture can be built using the following steps:
-
-1. `mkdir build`
-2. `cd build`
-3. `cmake ..`
-4. `make -j $(sysctl -n hw.logicalcpu)`
-
-An application bundle will be created in `./Binaries`.
-
-A script is also provided to build universal binaries supporting both x64 and ARM in the same
-application bundle using the following steps:
-
-1. `mkdir build`
-2. `cd build`
-3. `python ../BuildMacOSUniversalBinary.py`
-4. Universal binaries will be available in the `universal` folder
-
-Doing this is more complex as it requires installation of library dependencies for both x64 and ARM (or universal library
-equivalents) and may require specifying additional arguments to point to relevant library locations.
-Execute BuildMacOSUniversalBinary.py --help for more details.
-
-### Linux Global Build Steps:
-
-To install to your system.
-
-1. `mkdir build`
-2. `cd build`
-3. `cmake ..`
-4. `make -j $(nproc)`
-5. `sudo make install`
-
-### Linux Local Build Steps:
-
-Useful for development as root access is not required.
-
-1. `mkdir Build`
-2. `cd Build`
-3. `cmake .. -DLINUX_LOCAL_DEV=true`
-4. `make -j $(nproc)`
-5. `ln -s ../../Data/Sys Binaries/`
-
-### Building with Docker
-
-A `Dockerfile` is provided for a reproducible Linux build environment. Build the image from the repository root:
-
-```sh
-docker build -t dolphinxr:latest .
-```
-
-To produce an installable `.deb` package from the built image and extract it to the host:
-
-```sh
-mkdir -p dist
-docker run --rm -v "$(pwd)/dist:/out" -w /app/dolphinxr/Build dolphinxr:latest \
-  bash -c "cpack -G DEB && cp -v *.deb /out/"
-```
-
-Then install it:
-
-```sh
-sudo apt install ./dist/dolphin-emu-*.deb
-```
-
-### Linux Portable Build Steps:
-
-Can be stored on external storage and used on different Linux systems.
-Or useful for having multiple distinct Dolphin setups for testing/development/TAS.
-
-1. `mkdir Build`
-2. `cd Build`
-3. `cmake .. -DLINUX_LOCAL_DEV=true`
-4. `make -j $(nproc)`
-5. `cp -r ../Data/Sys/ Binaries/`
-6. `touch Binaries/portable.txt`
-
-## Building for Android
-
-These instructions assume familiarity with Android development. If you do not have an
-Android dev environment set up, see [AndroidSetup.md](AndroidSetup.md).
-
-Make sure to pull submodules before building:
-
-```sh
-git submodule update --init --recursive
-```
-
-If using Android Studio, import the Gradle project located in `./Source/Android`.
-
-Android apps are compiled using a build system called Gradle. Dolphin's native component,
-however, is compiled using CMake. The Gradle script will attempt to run a CMake build
-automatically while building the Java code.
-
-### Building the Meta Quest VR version
-
-The Android project has two product flavors on the `device` dimension:
-`standard` (phones and tablets, built with `-DENABLE_VR=OFF`) and `quest`
-(standalone headsets, built with `-DENABLE_VR=ON`). The `quest` flavor is
-arm64-only, installs under the application ID `org.dolphinemu.dolphinemu.quest`
-so it can live alongside a standard install, and declares the OpenXR manifest
-entries required by Quest 2, Quest 3, Quest 3S, and Quest Pro.
-
-Build it with Gradle from `Source/Android`:
-
-```sh
-./gradlew assembleQuestDebug     # or assembleQuestRelease
-```
-
-Helper scripts are also provided for Windows:
-
-```powershell
-.\Source\Android\build-quest.ps1          # debug APK
-.\Source\Android\build-quest-release.ps1  # release APK (needs signing properties)
-```
-
-Install the resulting APK on a headset with adb:
-
-```sh
-adb install -r Source/Android/app/build/outputs/apk/quest/debug/app-quest-debug.apk
-```
-
-VR settings for the headset (launch in VR, resolution scale, reference space,
-controller bindings, and so on) live under the OpenXR section of the in-app
-settings.
-
-## Uninstalling
-
-On Windows, simply remove the extracted directory, unless it was installed with the NSIS installer,
-in which case you can uninstall Dolphin like any other Windows application.
-
-Linux users can run `cat install_manifest.txt | xargs -d '\n' rm` as root from the build directory
-to uninstall Dolphin from their system.
-
-macOS users can simply delete Dolphin.app to uninstall it.
-
-Additionally, you'll want to remove the global user directory if you don't plan on reinstalling Dolphin.
+# Baiji - Steam Frame-specific fork of DolphinXR, a fork of Dolphin
+
+Baiji is an AI-slop fork of
+[dolphinXR](https://github.com/iChris4/dolphinXR/), a "developed with
+the use of AI tools" (straight from their readme) fork of Dolphin.
+
+Baiji may be AI slop but this Readme.md is organic and home-grown by a
+human.
+
+Baiji is intended to be a near-term fork that directly integrates with
+the Steam Frame, removing the complication of trying to figure out how
+to stream VR from a remote computer, deal with VR control schemes,
+etc., and so forth, making a fork of Dolphin that _just works_ in 3D
+on the Steam Frame.
+
+3D? Did I say 3D? Yes, 3D. Core Dolphin has a long-standing feature
+called [stereoscopic
+3D](https://wiki.dolphin-emu.org/index.php?title=Stereoscopic_3D_Setup),
+which allows the running of Dolphin on a 3D monitor or with 3D
+glasses. However the hardware is specialized and the setup was not VR
+aware, so a default Dolphin install can only run flat on a virtual
+screen.
+
+The primary purpose of this fork is to make this stereoscopic 3D Just
+Work™. I can't show what this looks like in a static shot on GitHub,
+but if you can cross your eyes, here's [Super Mario Galaxy 2 in
+stereoscopic 3D on
+YouTube](https://www.youtube.com/watch?v=XmgdqCL2toE). I found a
+normal phone a pretty good way to view that with cross-eyes; getting
+the sizing right on a desktop is pretty challenging.
+
+In principle it is as easy as installing Baiji, getting a legal file
+Dolphin can read as a Wii game, and starting the ROM. Baiji should
+come up with a sensible Steam Frame controller mapping for a WiiMote +
+Nunchunk, in stereoscopic 3D, with sensible performance settings
+(which includes "precompiling shaders" before startup, though you may
+see some initial stutters as the cache is built out), and be off to
+the races. In practice, this is the work of a long weekend and I've
+tested a whopping 4 games, only one from the Gamecube, and one of
+which had an early crash with at least one of the development
+version.
+
+So don't expect miracles.
+
+But I figured this had gotten to the point where more eyes was the
+better way to go.
+
+A ["Baiji" is a possibly-extinct subspecies of
+dolphin](https://en.wikipedia.org/wiki/Baiji). Most dolphin species
+have clumsy, branding-unfriendly names like "Hector's Dolphin". Baiji
+is a nice snappy name. Baiji are also possibly extinct, which
+represents the fact I don't necessarily expect this to be a long-term
+fork of the Dolphin project. I expect that someday, they will
+incorporate the major features of this project into the
+mainline, and that will mark the end of this fork. However, due to
+their completely rational and justifiable policy about AI, it may take
+some time because they can not and will not just pick this code up.
+
+I also aspire to demonstrate the utility for any emulator of any 3D
+system of building a native Steam Frame build that Just Works™ with
+similar stereoscopic 3D, until someday the release of Baiji is looked
+back as the harbinger of when running the Emustation or similar
+install script doesn't just install a bunch of flat emulators but
+installs 3D-aware emulators for all the 3D systems. Especially the
+3DS, because as the only native 3D commercial gaming system that will
+not have the issues with eye-twisting things like text behind other 3D
+objects and stuff.
+
+I aspire to see the Steam Frame become considered
+_the_ definitive way to emulate 3D-based systems because of the additional
+3D experience it can offer, out of the box, such that anyone can use
+it without trying to get widely disparate enviromnents and libraries
+and streaming and everything set up. Perhaps even, dare I think it,
+that this use case becomes considered one of the definitive reasons to
+get a Steam Frame. Vive le matériel libre.
+
+# Features
+
+* Steam Frame-centric default settings, including mappings and such.
+* Integrated Stereoscopic 3D, including some new settings not in the
+  original 3D support of use in VR.
+* Retained the VR work from the dolphinXR branch, selectable in a
+  drop-down.
+* Also retained flat mode, where at least the default Steam Frame
+  configurations can be of some use.
+* Controller configuration that works in the Steam Frame UI.
+
+# Installation And Startup
+
+Unfortunately, as far as I can tell, it is not currently possible to
+release this as a Flatpak, because Flatpak software can not get to the
+VR infrastructure. I expect this to change over time, but who knows
+when.
+
+Snapshots are not available yet. For now, install by building from source
+with the instructions below.
+
+## Install From Snapshot (Not Available Yet)
+
+There are no published snapshots to install yet. This option will be
+documented when snapshots are available.
+
+## Build and Install From an x86_64 Linux Machine
+
+This is the maintained way to build a Steam Frame version. The host needs
+Git, Podman (the default container engine) or Docker, and
+`qemu-aarch64-static` available at `/usr/bin/qemu-aarch64-static`. It also
+needs the AArch64 KDE SDK in the checkout.
+
+1. Turn on Developer Mode on the Frame and enable SSH access. Configure an
+   SSH host alias on your Linux machine (replace the example address with
+   the Frame's IP address):
+
+   ```sshconfig
+   Host frame
+       HostName 192.168.1.123
+       User steamos
+   ```
+
+   Verify the connection with `ssh frame`. If you use a different alias,
+   pass it instead of `frame` in the deploy command below.
+
+2. Clone baiji, set up some necessary cross-compilation code, build,
+   and deploy:
+
+   ```bash
+   git clone --recurse-submodules https://github.com/thejerf/baijiSteamVR.git
+   cd baijiSteamVR
+   mkdir -p state/flatpak-home/.local/share/flatpak
+   FLATPAK_USER_DIR="$PWD/state/flatpak-home/.local/share/flatpak" \
+     flatpak remote-add --user --if-not-exists flathub \
+     https://dl.flathub.org/repo/flathub.flatpakrepo
+   FLATPAK_USER_DIR="$PWD/state/flatpak-home/.local/share/flatpak" \
+     flatpak install --user --arch=aarch64 flathub org.kde.Sdk//6.10
+   INSTALL_PREFIX=/home/steamos/baiji ./scripts/compile-cross-sdk.sh
+   ./scripts/deploy-frame.sh frame
+   ssh frame "steamos-add-to-steam ./baiji/bin/baiji"
+   ```
+
+   If using Docker instead of Podman, prefix the build command with
+   `ENGINE=docker`.
+
+   The build stages the Frame-compatible files under
+   `state/stage-frame/home/steamos/baiji` before transferring them. The
+   deploy script installs Baiji's executables, private libraries, and data
+   under `~/baiji`.
+
+5. On the Frame, launch `~/baiji/bin/baiji-vr` from a Desktop terminal, or
+   add that path as a non-Steam game to launch it from Big
+   Picture. Add legally dumped game images through Baiji's open dialog or configure the
+   game search paths in Baiji.
+
+I don't use Windows but any ol' AI can probably adapt this to a
+Windows or MacOS build process pretty easily. If an AI offers to build
+you an "emulation-based" toolchain, where it runs a native ARM
+toolchain on an x86 CPU, decline that. It was miserably slow. I don't
+know about ARM-based Mac OS machines.
+
+# Known Quirks
+
+* If you choose to emulate in Flat Mode, your controllers will be in
+  laser mode when you click "play". You *must* be in gamepad mode to
+  actually play the game. A dialog will come up to remind you but it
+  is still easy to forget... I panicked several times during
+  development that I had broken controller support but it was just
+  that I had forgotten to switch.
+* In Stereoscopic 3D mode, stopping the emulation (default the "View"
+  button, the button on top of the left controller) pops up a dialog
+  box in the QT environment asking you if you want to stop
+  emulation. The user experience is that emulation just freezes and
+  there is no indication of this. You must hit the Steam button to
+  pull up the Steam UI, and then, it seems to be random whether it
+  shows the default Steam OS controls for stopping or resuming the
+  game or the QT UI. You can select the QT UI from the list of running
+  windows on the left, then click "Yes", and emulation will stop and
+  control return to the main UI.
+* I believe this is the case in core Dolphin as well, but the main UI
+  is mostly frozen during emulation. But only mostly. Still, best just
+  to treat it as frozen until you stop the emulation.
+* I left the "immersive VR" work in from the dolphinXR branch if you
+  want to play with it, but in my opinionated opinion, there isn't
+  much juice in that squeeze. The games are broken enough in
+  stereoscopic 3D; trying to turn them into full VR is just
+  crazy. Maybe, by sheer luck, there will be some handful of games
+  where it produces some sort of experience, but it won't be
+  many. Still, it's an experience if nothing else. Though it's
+  rather broken on Steam Frame at the moment, as any game that puts a
+  polygon over the entire screen tends to just opaquely block it
+  out. I suspect that's a Steam Frame-specific quirk, but I don't know.
+
+# The Usual Fake FAQs
+
+Most FAQs aren't really "frequently asked", they're just made up
+things the developer expects to be asked. This list is no different.
+
+## Why Are Issues Closed On This Repo?
+
+My dear friend gamer. I'm very happy to see you. I hope this
+repository brings you fun and joy.
+
+But can I level with you?
+
+I didn't do this work so I could spend the next several months
+addressing issues like _When I Jam The Wii Virtual Console "Ocarina Of
+Time" Into Baiji, Equipping The Boomerang Makes Link's Head
+Disappear Unless I Am Standing On My Head In Real Life_.
+
+This is shared in a spirit of fun... and that includes me, having fun,
+bulding something together with the community, not volunteering to be
+personally responsible for getting Baiji running on every Steam Frame
+in the world.
+
+Moreover, the truth is, this is a very complicated repo to make issues
+into: 
+
+* This project is not competent to address emulation issues inside
+  of Dolphin.
+  
+  Making emulation changes is an extremely complicated and
+  frought process; what fixes one issue in a game breaks hundreds of
+  other games. If there is an emulation issue in Baiji, the simple, but
+  harsh truth is, it's going to stay there.
+  
+  The upstream Dolphin team has the skills, the testing
+  infrastructure, the decades of awareness, and the community to make
+  changes. Even with the mighty power of
+  *AI*... AI... Ai... ai... i... I do not have the skills, the testing
+  infrastructure, or the community. So the best thing is just not to
+  start accepting issues that are not going to go anywhere anyhow.
+
+  The only exception is that some blessed soul may make a PR that does
+  an upstream pull from the Dolphin project. That I may be able to
+  accept. But that's the only emulation fix this project is likely to
+  make.
+
+* No Wii or Gamecube game was designed to run this way. They will do
+  weird things. They will put all their action into stuff that is
+  very, very out-of-frame for the TV that is virtually impossible to
+  focus on. The entire UI will sit in a 2D plane that is somehow
+  behind the action visually, yet sitting on top of it.
+  
+  No game quirk of this nature is in scope for Baiji (or Dolphin, for
+  that matter). "Fixing" this would require someone to directly modify
+  the ROM as a fan patch; there's nothing much the emulator can do
+  about it. Some games are going to be like Super Mario Galaxy -
+  quirky, but ultimately quite enhanced by the 3D. Some games will
+  probably be rendered unplayable. Many games will be in between. All
+  you can do is try them.
+
+* The only things that are really "Baiji" about this project are the
+  utilization of OpenXR to implement the stereoscopic 3D, a few
+  additional controls for the stereoscopic 3D, and the
+  specialization of the UI to the Steam Frame.
+  
+  Basically everything else is out-of-scope. Immersive VR is part of
+  the dolphinXR project. Which, as I write this, is still under
+  development and I am now at least a week behind them, which means
+  it's not an accurate representation of their current state. If that
+  project asks me to remove the immersive VR from this one, I will
+  comply. If someone does a tested PR, we can pull it in.
+  
+Really, the only useful things to the project are PRs, not bug
+reports. 
+
+So, on that topic...
+
+## How Do I Fix A Bug?
+
+This is VERY IMPORTANT: In an era of AI, the value you bring to a PR
+submitted to any project *IS NOT THE CODE*. Code is not free, but its
+value is rapidly dropping.
+
+The value you bring is [in the
+*TESTING*](https://jerf.org/iri/post/2026/what_value_code_in_ai_era/).
+
+Code used to have some value. Most of that value is gone. Not quite
+all, but most. What Baiji and other products need is *TESTING*. Both
+for quality, and for the user experience.
+
+I have an AI too. I too can run a prompt that says "make a Minecraft
+clone, make no mistakes, kthxbye". The result will be superficially
+playable, but not even remotely fun or good.
+
+It may seem like I'm not actually answering the question in the
+heading, but the answer is, the way you fix a bug is to set up your
+coding environment, you can use whatever you like to fix something,
+but then you need to test it. It is *WORSE THAN USELESS* for you to
+type a prompt into your AI and immediately rush to submit it as a
+PR. I would literally _rather not have that PR at all_.
+
+What I need is for you to _test_ your PRs.
+
+If you create a PR, and you test it, you have something that may be of
+value to the project.
+
+Once you have a tested branch in your local repo(s), the AI can walk
+you through the process of creating a PR if you don't already
+know. The PR prompt will hopefull guide you in this as well, but
+please tell us all what testing you have done on your PR.
+
+That doesn't mean you need to have tested every possible interaction
+with every possible feature on every possible game. Goodness knows
+Baiji's work doesn't even remotely rise to that standard either! But
+it is very helpful to know what testing has and has not been done, so
+we can know what to look out for, and others may know to make their
+own PRs against your PR. Do not be shy to say "I haven't tested this
+with X". The space of "all possible Wii and Gamecube games" is
+huge.
+
+Because the true value of a PR is testing, note that _testing_ someone
+else's PR can be as valuable or even more valuable than coming up with
+one of your own. Before starting a PR check the PR tab and see if
+there's anything either close to your work or is what you'd have
+made. If so, please join with that PR rather than source a new
+one by building that PR yourself and running it on your local Steam
+Frame. There is nothing as valuable as the _second_ pair of eyes on a
+PR!
+
+## Why Not A Flatpak?
+
+As near as I can tell, it is currently *impossible* to get to VR from
+a flatpak, and the reason why can only be fixed by Valve.
+
+To get to VR, you need to open a Unix socket to the VR server. The VR
+server has some validation on the incoming PID and possibly some other
+checks that flatpaks can't pass. The AI and tried some hacking around
+but I was focused on getting this to work at all and didn't bang on
+this too hard.
+
+A successful Flatpak PR that proves me wrong is one I'd accept with gusto.
+
+This also, unfortunately, suggests that until this is fixed, it may
+not be a great idea to try to pack this with Emustation or
+anything. If they disagree I have no objection, but I would suggest
+that at least as I write this, this project is not necessarily ready
+for that sort of prime time.
+
+## Why Did You Rename This Project? Are You Trying To Steal Credit Or Something?
+
+No, this is actually out of politeness to the Dolphin project, and I
+believe in accordance with their wishes. The name of the project isn't
+just about the name of the executable or the title screen that comes
+up when you run it. It's about who is standing behind it and who is
+responsible for it.
+
+The Dolphin team is not behind this project. In particular that means,
+if the pieces break, you own them, maybe I have a bit of
+responsibility for them, but the Dolphin team has no responsibility
+whatsoever. Not even the polite one of at least listening to your
+problem. The correct solution for the Dolphin project, if anyone
+doeesn't pick up what I have repeatedly tried to lay down, and files a
+bug with them, or starts a forum thread about bugs in Baiji, or
+anything else like that, is to immediately close it/lock it, and scold
+you a bit for putting it in the wrong place.
+
+Renaming this project is part of a statement that says, if you have a
+problem with Baiji, you do not go to the Dolphin forum for support any
+more than you'd go there for support with LibreOffice.
+
+Anyone who distributes a very modified version of an open source
+project, especially if like me the _know_ upstream can not and will
+not take their patches as-is, _should_ rename the project.
+
+Me trying to steal credit would look like me trying to erase all signs
+of the Dolphin heritage out of the executable entirely.
+
+Instead: I am a mere minnow next to the awesome Dolphin project. I am standing
+on the shoulder of their giantness, and to a lesser but still
+significant extent, on the work of the dolphinXR fork. I am
+deeply appreciative and while I want to help the Steam Frame, this is
+a mere trivial "one long weekend" gloss on top of the
+who-knows-how-many person-centuries of work the Dolphin project
+represents. Do not overestimate my "contribution". Nothing in this
+paragraph is a joke or even slightly sarcastic.
+
+On that note, if I've screwed up licensing or if anyone from the
+Dolphin project has opinions about the details around how I've done
+this, I am very open to change, correction, PRs on this matter,
+etc. This is a sign of me trying to do it very correctly and
+carefully, not carelessly, and not to steal credit.
+
+## What PRs Would Be Nice?
+
+Here's my current wishlist:
+
+* As mentioned, some way of distributing an unmodified Flatpak, BUT
+  isn't super, super hacky. Remember, you can't really run a script on
+  the outside; this has to work with "flatpak run" to be a "real"
+  flatpak. I'd rather just distribute this as-is than
+  distribute a Flakpak almost certain to break in the near
+  future. This may require changes from Valve.
+* An uninstall script that gets all the little config tidbits left
+  lying around the home directory, in case the user tires of Baiji.
+* If it becomes clear the core Dolphin project is keying in on support
+  that may obsolete this project, especially direct support for
+  stereoscopic 3D in an OpenXR environment, a migration script to move
+  configuration and saved games into a target Dolphin installation.
+* A UI accessible in stereoscopic 3D mode that allows real-time
+  modification of the stereo settings, and committing them to
+  game-specific configuration.
+  
+  When I wrote the bit about how important testing is, this is the PR
+  I had in mind. It is easy to put together a garbage UI. For
+  instance, it is tempting to make the various numbers a slider. But
+  if _all_ you can do is slide them, it is very difficult to build a
+  slider that is accurate. The especially tend to jerk at the very
+  end just as you are releasing the button, and trying to make very
+  small angular adjustments to change a value is not easy. Something
+  like "point at the control and use thumbstick to adjust" may help,
+  but then you need documentation the user can use to figure that out
+  in realtime as they use it.
+  
+  Also bear in mind that once a stereoscopic 3D frame is rendered,
+  it's just two flat images. Modifications must be run on live
+  games, because once a frame is rendered it's locked in.
+  
+  Another interesting thing to play around with in such a dialog is a
+  cull plane for the near frame. I haven't played with this long but
+  eye strain is a real issue, and it may be preferable to cull things
+  that are too near than to let users try to see them. It can also be
+  used as a test that the user needs to reduce the stereo or something.
+* I also don't know if this is technically possible, but I would be
+  interested in seeing if there is some sensible way to offer a slider
+  that just pushes everything _back_, away from the user, in case a
+  game takes place largely in the near frame, but without distorting
+  the game in any other way by compensating in the camera
+  matrix, or, at least, distorting it minimally. Or forward, as the
+  case may be, though "back, out of the part of the 3D space that
+  causes eye strain/pain" seems like the more important use case.
+* Any bug fixes in the UI, of course.
+* A PR to make it so when you stop the emulation, the dialog box for
+  "would you like to stop emulation" comes up in VR space, rather than
+  in the QT UI. The latter is very easy to miss.
+* A PR to either update the immersive VR to whatever the current
+  dolphinXR is at the time, or to fix the problems with opaque
+  polygons tending to block the screen area as the game tries to draw
+  on it from a texture generated by 3D rendering itself.
+  
+  However by _far_ my priority is for this not to break stereoscopic
+  3D or flat rendering over getting this "working".
+* Emulation issues that you have a _very very_ good case are somehow
+  Steam Frame-specific and justify a Steam Frame-specific
+  fix. Otherwise I'd consider the emulation path off-limits.
+
+# Command Line Tooling
 
 ## Command Line Usage
 
+Command line is inherited from Dolphin, just renamed. This has not
+been gone over with a fine-toothed comb and may contain options not
+relevant to the Steam Frame, may partially or completely not work on a
+Steam Frame (e.g. I have no idea what a "movie" will do on a Steam
+Frame, especially in its various modes), etc.
+
 ```
-Usage: Dolphin.exe [options]... [FILE]...
+Usage: baiji [options]... [FILE]...
 
 Options:
   --version             show program's version number and exit
@@ -308,15 +485,10 @@ LLE (Low Level Emulation). HLE is faster but less accurate whereas
 LLE is slower but close to perfect. Note that LLE has two submodes (Interpreter and Recompiler)
 but they cannot be selected from the command line.
 
-Available video backends are "D3D" and "D3D12" (they are only available on Windows), "OGL", and "Vulkan".
-There's also "Null", which will not render anything, and
-"Software Renderer", which uses the CPU for rendering and
-is intended for debugging purposes only.
-
-## DolphinTool Usage
+## Baiji Tool Usage
 
 ```
-usage: dolphin-tool COMMAND -h
+usage: baiji-tool COMMAND -h
 
 commands supported: [convert, verify, header, extract]
 ```
@@ -396,3 +568,18 @@ Options:
   -q, --quiet           Mute all messages except for errors.
   -g, --gameonly        Only extracts the DATA partition.
 ```
+
+# Dolphin Links
+
+Relevant links for the original Dolphin underneath Baiji:
+
+* [Homepage](https://dolphin-emu.org/)
+* [Project Site](https://github.com/dolphin-emu/dolphin) 
+* [Forums](https://forums.dolphin-emu.org/) but DO NOT report Baiji
+ bugs
+* [Wiki](https://wiki.dolphin-emu.org/)
+* [GitHub Wiki](https://github.com/dolphin-emu/dolphin/wiki) 
+* [Issue
+  Tracker](https://bugs.dolphin-emu.org/projects/emulator/issues) but
+  DO NOT... you ought to have gotten this by now... report Baiji bugs
+* [FAQ](https://dolphin-emu.org/docs/faq/)

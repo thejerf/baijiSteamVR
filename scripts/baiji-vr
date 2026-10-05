@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BAIJI_ROOT="${BAIJI_ROOT:-$HOME/baiju}"
+BAIJI_ROOT="${BAIJI_ROOT:-$HOME/baiji}"
 LOG_DIR="$HOME/.local/share/baiji/Logs"
 mkdir -p "$LOG_DIR" "$HOME/.config/baiji" "$HOME/.cache/baiji"
 

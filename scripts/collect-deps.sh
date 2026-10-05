@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 SYSROOT="${SYSROOT:-/sysroot}"
-DEST="${DEST:-/work/dest/home/steamos/baiju/lib/baiji}"
+DEST="${DEST:-/work/dest/home/steamos/baiji/lib/baiji}"
 mkdir -p "$DEST"
 # Steam Frame runs glibc 2.39; use its glibc vector and gpg-error libraries rather
 # than the newer SDK copies (which require GLIBC_2.41/2.42).

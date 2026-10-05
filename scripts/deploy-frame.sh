@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 FRAME="${1:-frame}"
-STAGE="state/stage-frame/home/steamos/baiju"
+STAGE="state/stage-frame/home/steamos/baiji"
 
 for file in baiji baiji-nogui baiji-tool baiji-vr; do
   if [[ ! -f "$STAGE/bin/$file" ]]; then
@@ -12,10 +12,10 @@ for file in baiji baiji-nogui baiji-tool baiji-vr; do
   fi
 done
 
-ssh "$FRAME" 'mkdir -p ~/baiju/bin ~/baiju/lib/baiji ~/baiju/share'
-ssh "$FRAME" 'rm -f ~/baiju/lib/baiji/libmvec.so.1 ~/baiju/lib/baiji/libgpg-error.so.0'
+ssh "$FRAME" 'mkdir -p ~/baiji/bin ~/baiji/lib/baiji ~/baiji/share'
+ssh "$FRAME" 'rm -f ~/baiji/lib/baiji/libmvec.so.1 ~/baiji/lib/baiji/libgpg-error.so.0'
 scp "$STAGE/bin/baiji" "$STAGE/bin/baiji-nogui" "$STAGE/bin/baiji-tool" \
-  "$STAGE/bin/baiji-vr" "$FRAME:baiju/bin/"
+  "$STAGE/bin/baiji-vr" "$FRAME:baiji/bin/"
 
 tar -C "$STAGE" -cf - \
   lib/baiji \
@@ -24,6 +24,6 @@ tar -C "$STAGE" -cf - \
   share/icons/hicolor/256x256/apps/baiji.png \
   share/man/man6/baiji.6 \
   share/man/man6/baiji-nogui.6 |
-  ssh "$FRAME" 'tar -xf - -C "$HOME/baiju"'
+  ssh "$FRAME" 'tar -xf - -C "$HOME/baiji"'
 
-echo "BaijiSteamVR files deployed under $FRAME:~/baiju (no existing binaries removed)."
+echo "BaijiSteamVR files deployed under $FRAME:~/baiji (no existing binaries removed)."
