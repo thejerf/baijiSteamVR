@@ -373,6 +373,7 @@ void VRConfigWidget::CreateWidgets()
       },
       ConfigFloatSlider::ScaleMode::Exponential);
 
+#ifndef BAIJI_STEAMVR
   auto* mirror_view = mark_default(new ConfigChoiceMap<OpenXRMirrorView>(
       {{tr("Both Eyes"), OpenXRMirrorView::BothEyes},
        {tr("Left Eye"), OpenXRMirrorView::LeftEye},
@@ -381,6 +382,7 @@ void VRConfigWidget::CreateWidgets()
       Config::GFX_VR_MIRROR_VIEW, layer, m_global_layer.get()));
   openxr_layout->addWidget(new QLabel(tr("Desktop Mirror View:")), 2, 0);
   openxr_layout->addWidget(mirror_view, 2, 1, 1, 2);
+#endif
   auto* camera_group = new QGroupBox(tr("Camera"));
   auto* camera_layout = new QGridLayout(camera_group);
   camera_layout->addWidget(

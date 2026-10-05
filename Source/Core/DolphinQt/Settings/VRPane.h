@@ -67,7 +67,9 @@ private:
   ConfigBool* m_disable_cpu_cull = nullptr;
   ConfigBool* m_ortho_scissor_fix = nullptr;
   ConfigBool* m_layered_palette_conversion_path = nullptr;
+#ifndef BAIJI_STEAMVR
   ConfigChoiceMap<OpenXRMirrorView>* m_mirror_view = nullptr;
+#endif
   ConfigChoiceMap<int>* m_forced_vbi_frequency = nullptr;
   ConfigChoiceMap<int>* m_requested_refresh_rate = nullptr;
   ConfigSlider* m_clear_efb_slider = nullptr;

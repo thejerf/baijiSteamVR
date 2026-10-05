@@ -216,7 +216,11 @@ const Info<bool> GFX_VR_DONT_CLEAR_SCREEN{{System::GFX, "VR", "DontClearScreen"}
 const Info<bool> GFX_VR_LOAD_CUSTOM_SHADERS{{System::GFX, "VR", "LoadCustomShaders"}, false};
 const Info<bool> GFX_VR_DISABLE_CPU_CULL{{System::GFX, "VR", "DisableCPUCull"}, false};
 const Info<OpenXRMirrorView> GFX_VR_MIRROR_VIEW{{System::GFX, "VR", "MirrorView"},
-                                                OpenXRMirrorView::BothEyes};
+#ifdef BAIJI_STEAMVR
+                                                OpenXRMirrorView::None};
+#else
+                                                 OpenXRMirrorView::BothEyes};
+#endif
 const Info<OpenXRReferenceSpaceMode> GFX_VR_REFERENCE_SPACE_MODE{
     {System::GFX, "VR", "ReferenceSpaceMode"}, OpenXRReferenceSpaceMode::Local};
 const Info<OpenXRTrackingMode> GFX_VR_TRACKING_MODE{{System::GFX, "VR", "TrackingMode"},

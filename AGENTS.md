@@ -22,6 +22,18 @@
   in `GraphicsSettings.cpp` and loaded in `VideoConfig.cpp`. `true` is Eager (submit
   each HMD refresh, reusing the last frame); `false` is Lazy (pace submissions to game
   frames so PC runtime motion smoothing can engage).
+- Frame hitch investigation: `~/.config/baiji/frame-timing` enables buffered CSV
+  captures in Baiji's Logs directory; analyze with `scripts/analyze-frame-timing.py`.
+  The 2026-10-04 SMG2 baseline showed cheap XR calls/queue locks, no gameplay shader
+  compilation, GPU fence waits up to 8 ms, and intentional XR content waits up to
+  15 ms. The pacing loop now removes Baiji's content wait. Its
+  comparison capture had steadier XR cycles but more repeated published content;
+  the user initially reported possibly smoother motion despite worse Steam statistics.
+  With recording/logging off, the user confirmed a significant subjective improvement
+  and requested committing it. Long GPU waits were predominantly staging-texture
+  readbacks; 1x internal resolution also improved the remaining hitches. Keep 120 Hz
+  for comparison; the user has already investigated refresh-rate mismatch.
+  Desktop mirroring is forced off in Baiji and its Qt options are hidden.
 - Frame controller changes span `Common/VR/OpenXRInputState.h`,
   `InputCommon/ControllerInterface/OpenXR/OpenXR.cpp`, Vulkan/OpenXR session setup,
   the Qt mapping UI, and `Data/Sys/Profiles/`. For Frame controllers, Flat Vulkan

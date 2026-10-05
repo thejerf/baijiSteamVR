@@ -250,7 +250,11 @@ void VideoConfig::Refresh()
   vr_dont_clear_screen = Config::Get(Config::GFX_VR_DONT_CLEAR_SCREEN);
   vr_load_custom_shaders = Config::Get(Config::GFX_VR_LOAD_CUSTOM_SHADERS);
   vr_disable_cpu_cull = Config::Get(Config::GFX_VR_DISABLE_CPU_CULL);
+#ifdef BAIJI_STEAMVR
+  vr_mirror_view = OpenXRMirrorView::None;
+#else
   vr_mirror_view = Config::Get(Config::GFX_VR_MIRROR_VIEW);
+#endif
   vr_reference_space_mode = Config::Get(Config::GFX_VR_REFERENCE_SPACE_MODE);
   vr_tracking_mode = Config::Get(Config::GFX_VR_TRACKING_MODE);
   vr_use_openxr_play_space_center = Config::Get(Config::GFX_VR_USE_OPENXR_PLAY_SPACE_CENTER);

@@ -211,6 +211,7 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
   openxr_layout->addWidget(m_units_per_meter, 1, 1);
   openxr_layout->addWidget(m_units_per_meter_value, 1, 2);
 
+#ifndef BAIJI_STEAMVR
   m_mirror_view = new ConfigChoiceMap<OpenXRMirrorView>(
       {{tr("Both Eyes"), OpenXRMirrorView::BothEyes},
        {tr("Left Eye"), OpenXRMirrorView::LeftEye},
@@ -219,6 +220,7 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
       Config::GFX_VR_MIRROR_VIEW);
   openxr_layout->addWidget(new QLabel(tr("Desktop Mirror View:")), 2, 0);
   openxr_layout->addWidget(m_mirror_view, 2, 1, 1, 2);
+#endif
 
   camera_layout->addWidget(m_enable_lean_back_angle, 0, 0);
   camera_layout->addWidget(m_lean_back_angle, 0, 1);
@@ -754,6 +756,7 @@ void VRPane::AddDescriptions()
       "<br><br>This may fix missing geometry in some games at the cost of a small performance hit."
        "<br><br>This only affects BaijiSteamVR's CPU culling optimization. It does not override "
       "the game's own backface culling state.");
+#ifndef BAIJI_STEAMVR
   static constexpr char TR_MIRROR_VIEW_DESCRIPTION[] = QT_TR_NOOP(
       "Selects what the desktop render window shows while OpenXR is active."
       "<br><br>Both Eyes shows the current side-by-side mirror. Left Eye and Right Eye fill the "
@@ -761,6 +764,7 @@ void VRPane::AddDescriptions()
       "normally to the headset."
       "<br><br>This only affects the desktop mirror view; it does not affect the OpenXR headset "
       "output.");
+#endif
   static constexpr char TR_FORCED_VBI_FREQUENCY_DESCRIPTION[] = QT_TR_NOOP(
        "Forces BaijiSteamVR's VBI frequency to the selected rate while OpenXR VR is enabled."
       "<br><br>Auto samples the headset refresh rate once at OpenXR session startup and uses "
@@ -880,7 +884,9 @@ void VRPane::AddDescriptions()
   m_head_locked_curvature->SetDescription(tr(TR_HEAD_LOCKED_CURVATURE_DESCRIPTION));
   m_dont_clear_screen->SetDescription(tr(TR_DONT_CLEAR_SCREEN_DESCRIPTION));
   m_disable_cpu_cull->SetDescription(tr(TR_DISABLE_CPU_CULL_DESCRIPTION));
+#ifndef BAIJI_STEAMVR
   m_mirror_view->SetDescription(tr(TR_MIRROR_VIEW_DESCRIPTION));
+#endif
   m_forced_vbi_frequency->SetDescription(tr(TR_FORCED_VBI_FREQUENCY_DESCRIPTION));
   m_requested_refresh_rate->SetDescription(tr(TR_REQUESTED_REFRESH_RATE_DESCRIPTION));
   m_clear_efb_slider->SetDescription(tr(TR_CLEAR_EFB_COPIES_DESCRIPTION));

@@ -1367,6 +1367,13 @@ void OpenXRManager::FrameThreadLoop()
       // Lazy mode already waited for content before the cycle started; just consume.
       if (!eager_heartbeat)
         budget_ns = 0;
+#ifdef BAIJI_STEAMVR
+      // Steam Frame: let xrWaitFrame own the submission cadence. Waiting for
+      // game content here couples heartbeat delivery to emulation jitter; the trace
+      // showed 10-15 ms waits despite already having a released frame to submit.
+      // Consume whatever is ready and otherwise reuse the last layers immediately.
+      budget_ns = 0;
+#endif
 
       std::unique_lock<std::mutex> lock(m_publish_mutex);
       if (budget_ns > 0 && m_publish_serial == consumed_serial)
