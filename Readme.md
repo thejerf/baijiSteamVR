@@ -92,15 +92,7 @@ release this as a Flatpak, because Flatpak software can not get to the
 VR infrastructure. I expect this to change over time, but who knows
 when.
 
-Snapshots are not available yet. For now, install by building from source
-with the instructions below.
-
 ## Install From Snapshot
-
-Hey, if you're seeing this, congratulations, you've snuck in before
-the official release. These instructions should work, but if you would
-be so kind as to let me announce this tomorrow morning, that'd be
-great, thank you.
 
 (These instructions assume you haven't changed the `steamos` user. If
 you don't know what that means, you haven't. I think some paths end up
