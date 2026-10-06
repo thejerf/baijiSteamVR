@@ -130,7 +130,7 @@ in the build image, so the host does not need to provide it.
    cd baijiSteamVR
    ./scripts/compile-cross-sdk.sh
    ./scripts/deploy-frame.sh frame
-   ssh frame "steamos-add-to-steam ./baiji/bin/baiji"
+   ssh frame "steamos-add-to-steam ./baiji/bin/baiji-vr"
    ```
 
    Debug symbols are omitted by default. To include them, run the build command as

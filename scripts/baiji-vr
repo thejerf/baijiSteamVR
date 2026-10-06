@@ -2,8 +2,8 @@
 set -euo pipefail
 
 BAIJI_ROOT="${BAIJI_ROOT:-$HOME/baiji}"
-LOG_DIR="$HOME/.local/share/baiji/Logs"
-mkdir -p "$LOG_DIR" "$HOME/.config/baiji" "$HOME/.cache/baiji"
+# LOG_DIR="$HOME/.local/share/baiji/Logs"
+# mkdir -p "$LOG_DIR" "$HOME/.config/baiji" "$HOME/.cache/baiji"
 
 export DISPLAY="${BAIJI_DISPLAY:-${DISPLAY:-:2}}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
@@ -30,4 +30,5 @@ if [[ -f "$HOME/.config/baiji/debug-logging" ]]; then
     "$@" >>"$LOG_DIR/baiji-launcher.log" 2>&1
 fi
 
-exec "$BAIJI_ROOT/bin/baiji" "$@" >>"$LOG_DIR/baiji-launcher.log" 2>&1
+exec "$BAIJI_ROOT/bin/baiji" "$@" 2>&1 > /dev/null
+
