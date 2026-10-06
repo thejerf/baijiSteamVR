@@ -192,15 +192,9 @@ like. I don't care.
   is mostly frozen during emulation. But only mostly. Still, best just
   to treat it as frozen until you stop the emulation.
 * I left the "immersive VR" work in from the dolphinXR branch if you
-  want to play with it, but in my opinionated opinion, there isn't
-  much juice in that squeeze. The games are broken enough in
-  stereoscopic 3D; trying to turn them into full VR is just
-  crazy. Maybe, by sheer luck, there will be some handful of games
-  where it produces some sort of experience, but it won't be
-  many. Still, it's an experience if nothing else. Though it's
-  rather broken on Steam Frame at the moment, as any game that puts a
-  polygon over the entire screen tends to just opaquely block it
-  out. I suspect that's a Steam Frame-specific quirk, but I don't know.
+  want to play with it, but something seems to be pretty wrong with
+  this port of it. I didn't spend much time diagnosing it and probably
+  sent the AI down the completely wrong track anyhow.
 
 # The Usual Fake FAQs
 
