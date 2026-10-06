@@ -399,6 +399,12 @@ Here's my current wishlist:
   future. This may require changes from Valve.
 * An uninstall script that gets all the little config tidbits left
   lying around the home directory, in case the user tires of Baiji.
+* An informed opinion (from some experience in play) about how to map
+  some of the hotkey actions to the controller. Both Wiimote +
+  Nunchuck and Gamecube controllers are pretty full up on the
+  controls. We _need_ a "stop emulation" button, but it's not clear
+  where to put save/restore state and a whole bunch of other useful
+  functionality like that until we get some use under our belt.
 * If it becomes clear the core Dolphin project is keying in on support
   that may obsolete this project, especially direct support for
   stereoscopic 3D in an OpenXR environment, a migration script to move
