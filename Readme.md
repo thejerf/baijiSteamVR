@@ -95,10 +95,37 @@ when.
 Snapshots are not available yet. For now, install by building from source
 with the instructions below.
 
-## Install From Snapshot (Not Available Yet)
+## Install From Snapshot
 
-There are no published snapshots to install yet. This option will be
-documented when snapshots are available.
+Hey, if you're seeing this, congratulations, you've snuck in before
+the official release. These instructions should work, but if you would
+be so kind as to let me announce this tomorrow morning, that'd be
+great, thank you.
+
+(These instructions assume you haven't changed the `steamos` user. If
+you don't know what that means, you haven't. I think some paths end up
+in the executable. If you have changed it, you may need to do some
+symlinking or hardlinking to have this end up unpacked into
+`/home/steamos/baiji`.)
+
+1. Start the Desktop environment in your Steam Frame.
+2. Navigate to this URL in a browser.
+3. Start `Konsole`, or the terminal of your choice.
+4. Copy this by clicking on the little double-square next to these
+   commands:
+
+   ```bash
+   cd
+   wget https://github.com/thejerf/baijiSteamVR/releases/download/baiji-v0.1-alpha/baiji-v0.1-alpha.tar.bz2
+   tar xjf baiji-v0.1-alpha.tar.bz2
+   ssh frame "steamos-add-to-steam ./baiji/bin/baiji-vr"
+   ```
+5. Paste that into your Konsole session and hit "enter" on the
+   keyboard.
+   
+`baiji-vr` will appear as an option in your Non-Steam Games library.
+
+From there you'll need to load it up with your legally-acquired ROMs.
 
 ## Build and Install From an x86_64 Linux Machine
 
