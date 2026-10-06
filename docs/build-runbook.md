@@ -80,6 +80,8 @@ performance overlays, and core-dump debugging:
   included in the staged application data.
 - The SDK overlay is mounted as one sysroot view; avoid adding nested binds beneath the
   read-only SDK mount, which Podman/runc cannot create on some systems.
+- Debug symbols are off by default. Prefix the build command with `DEBUG_SYMBOLS=1` to
+  include them in both Baiji and the bundled libevdev build.
 - `scripts/fix-submodules.sh` is for a fresh checkout only. Review its actions before
   running it, especially when any submodule worktree is modified.
 - Preserve local changes in OpenXR, Qt, and fmt submodules; do not reset them.

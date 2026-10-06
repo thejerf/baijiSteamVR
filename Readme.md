@@ -129,9 +129,12 @@ in the build image, so the host does not need to provide it.
    git clone --recurse-submodules https://github.com/thejerf/baijiSteamVR.git
    cd baijiSteamVR
    ./scripts/compile-cross-sdk.sh
-   ./scripts/deploy-frame.sh frame
-   ssh frame "steamos-add-to-steam ./baiji/bin/baiji"
-   ```
+    ./scripts/deploy-frame.sh frame
+    ssh frame "steamos-add-to-steam ./baiji/bin/baiji"
+    ```
+
+   Debug symbols are omitted by default. To include them, run the build command as
+   `DEBUG_SYMBOLS=1 ./scripts/compile-cross-sdk.sh`.
 
    These instructions build the current checkout rather than a packaged
    release, so the code may be unstable.

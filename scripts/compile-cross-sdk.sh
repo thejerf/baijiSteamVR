@@ -10,6 +10,21 @@ case "$SCRIPT_DIR" in
   *) cd "./$SCRIPT_DIR/.." ;;
 esac
 ENGINE=podman
+DEBUG_SYMBOLS="${DEBUG_SYMBOLS:-0}"
+case "$DEBUG_SYMBOLS" in
+  0)
+    DEBUG_FLAGS=""
+    MESON_DEBUG_SYMBOLS=false
+    ;;
+  1)
+    DEBUG_FLAGS=" -g"
+    MESON_DEBUG_SYMBOLS=true
+    ;;
+  *)
+    echo "DEBUG_SYMBOLS must be 0 (default) or 1." >&2
+    exit 2
+    ;;
+esac
 INSTALL_PREFIX="${INSTALL_PREFIX:-/home/steamos/baiji}"
 BUILD_DIR="$PWD/state/build-baiji"
 STAGE_DIR="$PWD/state/stage-frame"
@@ -103,7 +118,7 @@ ln -sfn /sdk/lib/plugins "$SDK_OVERLAY/usr/lib/plugins"
 export CCACHE_DIR="$PWD/state/ccache-cross-sdk"
 mkdir -p "$CCACHE_DIR"
 
-EXTRA_FLAGS="-O3 -mcpu=cortex-x4 -I/sysroot/include -DXR_USE_GRAPHICS_API_OPENGL"
+EXTRA_FLAGS="-O3 -mcpu=cortex-x4 -I/sysroot/include -DXR_USE_GRAPHICS_API_OPENGL$DEBUG_FLAGS"
 
 if ! "$ENGINE" image exists "$IMAGE" || [[ ! -f "$IMAGE_STAMP" ]] ||
    [[ "$(<"$IMAGE_STAMP")" != "$IMAGE_CONFIGURATION_HASH" ]]; then
@@ -189,16 +204,20 @@ fi
         --cross-file /work/project/scripts/cross-meson-sdk.txt \\
         --prefix \$LIBEVDEV_INSTALL_DIR \\
         --libdir lib/aarch64-linux-gnu \\
+        --buildtype=release \\
+        -Ddebug=$MESON_DEBUG_SYMBOLS \\
         -Ddefault_library=static \\
         -Dtests=disabled \\
         -Dtools=disabled \\
         -Ddocumentation=disabled
+    else
+      meson configure \$LIBEVDEV_BUILD_DIR --buildtype=release -Ddebug=$MESON_DEBUG_SYMBOLS
     fi
     meson compile -C \$LIBEVDEV_BUILD_DIR
     meson install -C \$LIBEVDEV_BUILD_DIR
     cmake -S /work/project -B /work/build -G Ninja \
       -DCMAKE_TOOLCHAIN_FILE=/work/project/scripts/cross-toolchain-sdk.cmake \
-      -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+      -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_C_FLAGS=\"$EXTRA_FLAGS\" \
       -DCMAKE_CXX_FLAGS=\"$EXTRA_FLAGS\" \
       -DCMAKE_C_COMPILER_LAUNCHER=ccache \
