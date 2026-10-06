@@ -446,7 +446,8 @@ Here's my current wishlist:
   if _all_ you can do is slide them, it is very difficult to build a
   slider that is accurate. The especially tend to jerk at the very
   end just as you are releasing the button, and trying to make very
-  small angular adjustments to change a value is not easy. Something
+  small angular adjustments to change a value is not easy. (In fact
+  the QT GUI has this problem in some places too, annoyingly.) Something
   like "point at the control and use thumbstick to adjust" may help,
   but then you need documentation the user can use to figure that out
   in realtime as they use it.
