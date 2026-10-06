@@ -64,8 +64,9 @@
   or user-data paths inside Baiji config are suspicious and must not be followed.
 - Frame build: from the repository root run
   `INSTALL_PREFIX=/home/steamos/baiju ./scripts/compile-cross-sdk.sh`, then
-  `./scripts/deploy-frame.sh frame`. The build uses Podman, needs the existing SDK under
-  `state/`, rebuilds the image when `Containerfile.cross` changes, and stages to
+  `./scripts/deploy-frame.sh frame`. The build uses Podman, installs the AArch64 KDE SDK
+  into ignored `state/` via Flatpak when missing, rebuilds the image when
+  `Containerfile.cross` changes, and stages to
   `state/stage-frame/`. Its persistent build/cache are
   `state/build-baiji/` and `state/ccache-cross-sdk/`. It configures
   `ENABLE_TESTS=OFF`; this is not a test build.

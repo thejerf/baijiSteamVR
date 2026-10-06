@@ -11,8 +11,9 @@ The old Flatpak application build and deployment scripts are archived in
   dependency collection for AArch64.
 - `scripts/deploy-frame.sh` — transfer only the Baiji executable, library, and data
   paths to a Frame (`frame` by default); it never deletes or replaces old binaries.
-- `state/flatpak-home/.../org.kde.Sdk/aarch64/6.10/active/files` — existing KDE SDK
-  sysroot used for compilation and Qt plugin/library collection.
+- `state/flatpak-home/.../org.kde.Sdk/aarch64/6.10/active/files` — AArch64 KDE SDK
+  sysroot used for compilation and Qt plugin/library collection; `compile-cross-sdk.sh`
+  installs it via Flatpak if it is missing.
 - `state/sdk-overlay/` — generated read-only sysroot view combining SDK paths expected
   under `/usr` without changing the installed SDK.
 - `state/build-baiji/`, `state/ccache-cross-sdk/`, and `state/stage-frame/` — local
@@ -67,9 +68,9 @@ performance overlays, and core-dump debugging:
 ## Local build notes
 
 - The cross-SDK build uses Podman.
-- Before creating build state, `compile-cross-sdk.sh` checks for Podman, Flatpak, its
-  host utilities, the container definition, and the installed SDK sysroot. It reports
-  all missing prerequisites before aborting.
+- Before building, `compile-cross-sdk.sh` checks for Podman, its host utilities, and the
+  container definition. If the SDK sysroot is missing, it installs `org.kde.Sdk//6.10`
+  for AArch64 into ignored `state/` using Flatpak; this does not create a Flatpak app.
 - The cross-build image includes `qemu-user`; no host QEMU executable is required or
   bind-mounted. The build helper tracks the `Containerfile.cross` hash and rebuilds the
   image when its configuration changes.

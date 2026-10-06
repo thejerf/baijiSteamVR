@@ -103,9 +103,11 @@ documented when snapshots are available.
 ## Build and Install From an x86_64 Linux Machine
 
 This is the maintained way to build a Steam Frame version. The host needs
-Git and Podman. It also
-needs the AArch64 KDE SDK in the checkout. QEMU's AArch64 emulator is
-installed in the build image, so the host does not need to provide it.
+Git and Podman. If the AArch64 KDE SDK is not already present in the
+checkout, Flatpak is needed on the first build to install it into ignored
+`state/` build data. This SDK is a compiler sysroot; Baiji itself is built
+as a regular executable, not a Flatpak. QEMU's AArch64 emulator is installed
+in the build image, so the host does not need to provide it.
 
 1. Turn on Developer Mode on the Frame and enable SSH access. Configure an
    SSH host alias on your Linux machine (replace the example address with

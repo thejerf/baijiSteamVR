@@ -14,19 +14,20 @@ INSTALL_PREFIX="${INSTALL_PREFIX:-/home/steamos/baiji}"
 BUILD_DIR="$PWD/state/build-baiji"
 STAGE_DIR="$PWD/state/stage-frame"
 SDK="$PWD/state/flatpak-home/.local/share/flatpak/runtime/org.kde.Sdk/aarch64/6.10/active/files"
+FLATPAK_USER_DIR="$PWD/state/flatpak-home/.local/share/flatpak"
 SDK_OVERLAY="$PWD/state/sdk-overlay"
 SDK_INCLUDE_OVERLAY="$SDK_OVERLAY/usr/include"
 IMAGE="localhost/baijisteamvr-cross:latest"
 IMAGE_STAMP="$PWD/state/cross-sdk-image-$ENGINE.sha256"
 
 PREFLIGHT_ERRORS=()
-for required_command in podman flatpak sha256sum cut mkdir ln cp; do
+for required_command in podman sha256sum cut mkdir ln cp; do
   if ! command -v "$required_command" >/dev/null 2>&1; then
     PREFLIGHT_ERRORS+=("Required command '$required_command' was not found in PATH.")
   fi
 done
-if [[ ! -d "$SDK" ]]; then
-  PREFLIGHT_ERRORS+=("Missing AArch64/KDE SDK sysroot: $SDK")
+if [[ ! -d "$SDK" ]] && ! command -v flatpak >/dev/null 2>&1; then
+  PREFLIGHT_ERRORS+=("The AArch64 KDE SDK is missing and Flatpak is required to install org.kde.Sdk//6.10.")
 fi
 if [[ ! -f Containerfile.cross ]]; then
   PREFLIGHT_ERRORS+=("Missing cross-build container definition: $PWD/Containerfile.cross")
@@ -34,6 +35,25 @@ fi
 if (( ${#PREFLIGHT_ERRORS[@]} > 0 )); then
   printf 'Error: %s\n' "${PREFLIGHT_ERRORS[@]}" >&2
   printf 'Aborting cross-SDK build after %d preflight error(s).\n' "${#PREFLIGHT_ERRORS[@]}" >&2
+  exit 1
+fi
+
+if [[ ! -d "$SDK" ]]; then
+  printf 'Installing the AArch64 KDE SDK runtime (org.kde.Sdk//6.10) into %s\n' \
+    "$FLATPAK_USER_DIR"
+  mkdir -p "$FLATPAK_USER_DIR"
+  FLATPAK_USER_DIR="$FLATPAK_USER_DIR" flatpak remote-add --user --if-not-exists flathub \
+    https://dl.flathub.org/repo/flathub.flatpakrepo
+  FLATPAK_USER_DIR="$FLATPAK_USER_DIR" flatpak install --user --arch=aarch64 --noninteractive \
+    --assumeyes flathub \
+    org.kde.Sdk//6.10
+fi
+if [[ ! -d "$SDK" ]]; then
+  echo "The AArch64 KDE SDK runtime was not installed at the expected path: $SDK" >&2
+  exit 1
+fi
+if [[ ! -x "$SDK/lib/libexec/syncqt" ]]; then
+  echo "The KDE SDK is missing Qt's AArch64 syncqt tool: $SDK/lib/libexec/syncqt" >&2
   exit 1
 fi
 
