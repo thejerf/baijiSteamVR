@@ -458,10 +458,8 @@ void HotkeyManager::LoadDefaults(const ControllerInterface& ciface)
 
 #ifdef ENABLE_VR
   SetDefaultDevice("OpenXR/0/OpenXR Controller");
-  set_key_expression(HK_OPEN, "`Right Button System`");
-  set_key_expression(HK_PLAY_PAUSE, "`Right Button Menu`");
+  // Keep Right Button Menu available for GameCube Start.
   set_key_expression(HK_STOP, "`Left Button View`");
-  set_key_expression(HK_SCREENSHOT, "`Right Button Y`");
   // Steam Frame provides headset recentering at the OS/runtime level; leave the app hotkey unset.
   return;
 #endif
