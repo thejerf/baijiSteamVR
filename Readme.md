@@ -472,6 +472,10 @@ Here's my current wishlist:
 * A PR to make it so when you stop the emulation, the dialog box for
   "would you like to stop emulation" comes up in VR space, rather than
   in the QT UI. The latter is very easy to miss.
+* Or even expand that to include the ability load or save snapshots and
+  anything else that might be helpful to have on a menu. There's a lot
+  of commands that are of interest and trying to put them all on chords
+  can be problematic.
 * A PR to update the immersive VR to work correctly.
 * Emulation issues that you have a _very very_ good case are somehow
   Steam Frame-specific and justify a Steam Frame-specific
