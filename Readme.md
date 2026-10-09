@@ -74,6 +74,13 @@ and streaming and everything set up. Perhaps even, dare I think it,
 that this use case becomes considered one of the definitive reasons to
 get a Steam Frame. Vive le matériel libre.
 
+# Known Issues
+
+* Turning on passthrough turns off the controllers in at least stereoscopic 3D, haven't tested flat yet.
+* [FerrisTriangle on Reddit](https://www.reddit.com/user/FerrisTriangle/) has information about making the Immersive VR mode work, as well as some performance information.
+
+I'm busy this weekend so it'll be a bit but I will be looking at that bug and seeing if I can twiddle the default settings so Immersive VR works out of the box. Thanks to FerrisTriangle - I never got a combination that worked during my own testing. It is so much easier to work from a position of a feature working and then tune it from there then to find the right settings from scratch.
+
 # Features
 
 * Steam Frame-centric default settings, including mappings and such.
