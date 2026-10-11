@@ -74,13 +74,6 @@ and streaming and everything set up. Perhaps even, dare I think it,
 that this use case becomes considered one of the definitive reasons to
 get a Steam Frame. Vive le matériel libre.
 
-# Known Issues
-
-* Turning on passthrough turns off the controllers in at least stereoscopic 3D, haven't tested flat yet.
-* [FerrisTriangle on Reddit](https://www.reddit.com/user/FerrisTriangle/) has information about making the Immersive VR mode work, as well as some performance information.
-
-I'm busy this weekend so it'll be a bit but I will be looking at that bug and seeing if I can twiddle the default settings so Immersive VR works out of the box. Thanks to FerrisTriangle - I never got a combination that worked during my own testing. It is so much easier to work from a position of a feature working and then tune it from there then to find the right settings from scratch.
-
 # Features
 
 * Steam Frame-centric default settings, including mappings and such.
@@ -227,76 +220,32 @@ like. I don't care.
 Most FAQs aren't really "frequently asked", they're just made up
 things the developer expects to be asked. This list is no different.
 
-## Why Are Issues Closed On This Repo?
+## Why Are Issues Limited On This Repo?
 
-My dear friend gamer. I'm very happy to see you. I hope this
-repository brings you fun and joy.
+Issues are open on this repository but will be limited to the UI shell
+around Dolphin, not game issues themselves.
 
-But can I level with you?
-
-I didn't do this work so I could spend the next several months
-addressing issues like _When I Jam The Wii Virtual Console "Ocarina Of
-Time" Into Baiji, Equipping The Boomerang Makes Link's Head
-Disappear Unless I Am Standing On My Head In Real Life_.
-
-This is shared in a spirit of fun... and that includes me, having fun,
-bulding something together with the community, not volunteering to be
-personally responsible for getting Baiji running on every Steam Frame
-in the world.
-
-Moreover, the truth is, this is a very complicated repo to make issues
-into: 
-
-* This project is not competent to address emulation issues inside
-  of Dolphin.
+This project does not have the competence to address emulation issues inside
+of Dolphin.
   
-  Making emulation changes is an extremely complicated and
-  frought process; what fixes one issue in a game breaks hundreds of
-  other games. If there is an emulation issue in Baiji, the simple, but
-  harsh truth is, it's going to stay there.
+Making emulation changes is an extremely complicated and
+frought process; what fixes one issue in a game breaks hundreds of
+other games. If there is an emulation issue in Baiji, the simple, but
+harsh truth is, it's going to stay there.
   
-  The upstream Dolphin team has the skills, the testing
-  infrastructure, the decades of awareness, and the community to make
-  changes. Even with the mighty power of
-  *AI*... AI... Ai... ai... i... I do not have the skills, the testing
-  infrastructure, or the community. So the best thing is just not to
-  start accepting issues that are not going to go anywhere anyhow.
+The upstream Dolphin team has the skills, the testing
+infrastructure, the decades of awareness, and the community to make
+changes. Even with the mighty power of
+*AI*... AI... Ai... ai... i... I do not have the skills, the testing
+infrastructure, or the community. So the best thing is just not to
+start accepting issues that are not going to go anywhere anyhow.
 
-  The only exception is that some blessed soul may make a PR that does
-  an upstream pull from the Dolphin project. That I may be able to
-  accept. But that's the only emulation fix this project is likely to
-  make.
-
-* No Wii or Gamecube game was designed to run this way. They will do
-  weird things. They will put all their action into stuff that is
-  very, very out-of-frame for the TV that is virtually impossible to
-  focus on. The entire UI will sit in a 2D plane that is somehow
-  behind the action visually, yet sitting on top of it.
-  
-  No game quirk of this nature is in scope for Baiji (or Dolphin, for
-  that matter). "Fixing" this would require someone to directly modify
-  the ROM as a fan patch; there's nothing much the emulator can do
-  about it. Some games are going to be like Super Mario Galaxy -
-  quirky, but ultimately quite enhanced by the 3D. Some games will
-  probably be rendered unplayable. Many games will be in between. All
-  you can do is try them.
-
-* The only things that are really "Baiji" about this project are the
-  utilization of OpenXR to implement the stereoscopic 3D, a few
-  additional controls for the stereoscopic 3D, and the
-  specialization of the UI to the Steam Frame.
-  
-  Basically everything else is out-of-scope. Immersive VR is part of
-  the dolphinXR project. Which, as I write this, is still under
-  development and I am now at least a week behind them, which means
-  it's not an accurate representation of their current state. If that
-  project asks me to remove the immersive VR from this one, I will
-  comply. If someone does a tested PR, we can pull it in.
-  
-Really, the only useful things to the project are PRs, not bug
-reports. 
-
-So, on that topic...
+The only things that are really "Baiji" about this project are the
+utilization of OpenXR to implement the VR outputs, a few
+additional controls for the stereoscopic 3D, and the
+specialization of the UI to the Steam Frame.
+ 
+Basically everything else will be out of scope.
 
 ## How Do I Fix A Bug?
 
@@ -472,10 +421,6 @@ Here's my current wishlist:
 * A PR to make it so when you stop the emulation, the dialog box for
   "would you like to stop emulation" comes up in VR space, rather than
   in the QT UI. The latter is very easy to miss.
-* Or even expand that to include the ability load or save snapshots and
-  anything else that might be helpful to have on a menu. There's a lot
-  of commands that are of interest and trying to put them all on chords
-  can be problematic.
 * A PR to update the immersive VR to work correctly.
 * Emulation issues that you have a _very very_ good case are somehow
   Steam Frame-specific and justify a Steam Frame-specific
@@ -622,3 +567,22 @@ Relevant links for the original Dolphin underneath Baiji:
   Tracker](https://bugs.dolphin-emu.org/projects/emulator/issues) but
   DO NOT... you ought to have gotten this by now... report Baiji bugs
 * [FAQ](https://dolphin-emu.org/docs/faq/)
+
+# Known Quirks/Bugs That Don't Seem Fixable
+
+For any of these, a PR that proves me wrong would be great, but as far
+as I know these are currently not reasonable fixable:
+
+* When the QT UI is visible during 3D emulation, SteamOS spatializes
+  Baiji's emulation output to be coming from the location of the QT
+  UI, not the emulation. The Frame's OS does not seem to offer a way
+  to bypass this for just one application.
+
+# Changelog
+
+* v0.2-alpha
+* v0.1-alpha - Initial release.
+  * Many Frame-specific UI changes to make working with the Frame
+    specifically slicker.
+  * Support for the full Frame controllers with their XR profile.
+  * Support for native display of stereoscopic 3D.

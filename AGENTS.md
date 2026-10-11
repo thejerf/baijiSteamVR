@@ -56,6 +56,12 @@
   sensor values stayed zero while the user rotated the controller. The captured trace
   did show d-pad, trigger, and stick events, so it did not reproduce total SDL input
   loss. Keep the thumbstick IR fallback; do not assume SDL sensor support.
+- Frame audio quirk (2026-10-11): AudioCommon sends stereo through Cubeb/PipeWire;
+  SteamOS WirePlumber creates a `spatialize_filter_chain` for output streams when the
+  built-in speaker sink is default. `node.stream.enable-spatial-audio` is a global
+  setting, and the current policy has no per-application opt-out. Do not change this
+  global setting for Baiji; leave the UI-position spatialization documented as a quirk
+  unless Frame exposes a supported per-stream opt-out.
 - Baiji is a Steam Frame-only Dolphin cut; changes may be intentionally more
   aggressive than upstream Dolphin. This branch is temporary and can end once
   upstream incorporates its features. Inspect Baiji data only under
@@ -104,7 +110,8 @@
 - The configured SSH alias is `frame`. If it is absent on a development machine,
   ask the user to create it; it makes build transfer and device debugging much easier.
 - Steam Frame debugging guidance, especially core-dump access and processing, is at
-  <https://partner.steamgames.com/doc/steamhardware/steamframe/debugging>.
+  <https://partner.steamgames.com/doc/steamhardware/steamframe/debugging>; consult it
+  before retrieving or processing Frame crash dumps.
 - The deploy script copies Baiji-named files under `~/baiju` on the target. CLI
   smoke tests are documented in `docs/build-runbook.md`; the GUI launcher is
   `baiji-vr`.
@@ -124,3 +131,30 @@
   or alter unrelated existing Frame binaries, user data, or Steam shortcuts;
   follow the runbook's Baiji-only paths. Do not publish from this checkout unless
   explicitly requested.
+
+## External technical references
+
+- [Steam Frame developer setup](https://partner.steamgames.com/doc/steamhardware/steamframe/setup)
+  covers Developer Mode, SSH/ADB access, and recommended beta channels; consult it
+  when setting up or troubleshooting access to a Frame development headset.
+- [Steam Frame OpenXR engine integrations](https://partner.steamgames.com/doc/steamhardware/steamframe/engines)
+  collects platform-specific OpenXR integration guidance for supported engines.
+  Start here when adapting general OpenXR behavior to the Frame runtime.
+- [Steam Frame custom engine integration](https://partner.steamgames.com/doc/steamhardware/steamframe/engines/custom)
+  is the more direct reference for applications integrating OpenXR without one of
+  the documented game engines; check its runtime and extension guidance for
+  Frame-specific requirements.
+- [Steam Frame Input](https://partner.steamgames.com/doc/steamhardware/steamframe/input)
+  documents the headset's controller/input behavior and is useful when investigating
+  controller profiles, bindings, or input expectations on-device.
+- [Khronos OpenXR Tutorial](https://openxr-tutorial.com/)
+  provides practical, API-level examples of initialization, graphics/swapchains,
+  actions, and extensions across platforms; use it for implementation patterns, then
+  verify runtime-specific support separately.
+- [Khronos OpenXR 1.1 Specification](https://registry.khronos.org/OpenXR/specs/1.1/html/xrspec.html)
+  is the normative reference for API semantics, synchronization, and extension behavior;
+  consult it when tutorial examples leave behavior ambiguous.
+- [Khronos OpenXR SDK Source](https://github.com/KhronosGroup/OpenXR-SDK-Source)
+  contains the OpenXR loader and SDK source; use it to investigate loader behavior or
+  SDK integration details, not as a substitute for checking extensions exposed by the
+  Frame runtime.
