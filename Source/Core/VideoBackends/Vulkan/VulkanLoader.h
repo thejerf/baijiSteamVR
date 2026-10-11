@@ -9,7 +9,10 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
-#if defined(HAVE_X11)
+// The Frame's Qt launcher uses XCB/Xwayland, but Vulkan's surface is created from the
+// Xlib handles exposed by Qt. Keep this WSI available even when the cross-build omits
+// Dolphin's optional X11 input dependencies.
+#if defined(HAVE_X11) || (defined(BAIJI_STEAMVR) && __has_include(<X11/Xlib.h>))
 #define VK_USE_PLATFORM_XLIB_KHR
 #endif
 

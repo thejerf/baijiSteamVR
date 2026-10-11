@@ -2,9 +2,6 @@
 set -euo pipefail
 
 BAIJI_ROOT="${BAIJI_ROOT:-$HOME/baiji}"
-# LOG_DIR="$HOME/.local/share/baiji/Logs"
-# mkdir -p "$LOG_DIR" "$HOME/.config/baiji" "$HOME/.cache/baiji"
-
 export DISPLAY="${BAIJI_DISPLAY:-${DISPLAY:-:2}}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 export XR_RUNTIME_JSON="${XR_RUNTIME_JSON:-/opt/steamvr/steamxr_linuxarm64.json}"
@@ -21,6 +18,8 @@ for auth in /run/user/1000/nested_plasma/xauth_*; do
 done
 
 if [[ -f "$HOME/.config/baiji/debug-logging" ]]; then
+  LOG_DIR="$HOME/.local/share/baiji/Logs"
+  mkdir -p "$LOG_DIR"
   exec "$BAIJI_ROOT/bin/baiji" \
     -C Logger.Options.WriteToFile=True \
     -C Logger.Options.Verbosity=5 \
@@ -31,4 +30,3 @@ if [[ -f "$HOME/.config/baiji/debug-logging" ]]; then
 fi
 
 exec "$BAIJI_ROOT/bin/baiji" "$@" 2>&1 > /dev/null
-
