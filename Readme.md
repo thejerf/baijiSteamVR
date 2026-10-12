@@ -616,6 +616,7 @@ as I know these are currently not reasonable fixable:
     when Immersive VR is selected.
 
 * v0.2-alpha (not released yet)
+  * Added + and - to mapping on left & right bumper for Wii + Nunchuck.
   * Turning on Room View with the Steam UI stops rendering in Stereo
     and VR mode and pauses the emulation, rather than continuing to
     render and emulate and making it look like it was ignoring
