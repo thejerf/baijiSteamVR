@@ -234,7 +234,8 @@ like. I don't care.
   laser mode when you click "play". You *must* be in gamepad mode to
   actually play the game. I panicked several times during
   development that I had broken controller support but it was just
-  that I had forgotten to switch.
+  that I had forgotten to switch. There is a dialog that should remind
+  you. Note this is an aspect of the Steam OS, not Baiji.
 * I believe this is the case in core Dolphin as well, but the main UI
   is mostly frozen during emulation. But only mostly. Still, best just
   to treat it as frozen until you stop the emulation.
@@ -247,85 +248,6 @@ like. I don't care.
 
 Most FAQs aren't really "frequently asked", they're just made up
 things the developer expects to be asked. This list is no different.
-
-## Why Are Issues Limited On This Repo?
-
-Issues are open on this repository but will be limited to the UI shell
-around Dolphin, not game issues themselves.
-
-This project does not have the competence to address emulation issues inside
-of Dolphin.
-  
-Making emulation changes is an extremely complicated and
-frought process; what fixes one issue in a game breaks hundreds of
-other games. If there is an emulation issue in Baiji, the simple, but
-harsh truth is, it's going to stay there.
-  
-The upstream Dolphin team has the skills, the testing
-infrastructure, the decades of awareness, and the community to make
-changes. Even with the mighty power of
-*AI*... AI... Ai... ai... i... I do not have the skills, the testing
-infrastructure, or the community. So the best thing is just not to
-start accepting issues that are not going to go anywhere anyhow.
-
-The only things that are really "Baiji" about this project are the
-utilization of OpenXR to implement the VR outputs, a few
-additional controls for the stereoscopic 3D, and the
-specialization of the UI to the Steam Frame.
- 
-Basically everything else will be out of scope.
-
-## How Do I Fix A Bug?
-
-This is VERY IMPORTANT: In an era of AI, the value you bring to a PR
-submitted to any project *IS NOT THE CODE*. Code is not free, but its
-value is rapidly dropping.
-
-The value you bring is [in the
-*TESTING*](https://jerf.org/iri/post/2026/what_value_code_in_ai_era/).
-
-Code used to have some value. Most of that value is gone. Not quite
-all, but most. What Baiji and other products need is *TESTING*. Both
-for quality, and for the user experience.
-
-I have an AI too. I too can run a prompt that says "make a Minecraft
-clone, make no mistakes, kthxbye". The result will be superficially
-playable, but not even remotely fun or good.
-
-It may seem like I'm not actually answering the question in the
-heading, but the answer is, the way you fix a bug is to set up your
-coding environment, you can use whatever you like to fix something,
-but then you need to test it. It is *WORSE THAN USELESS* for you to
-type a prompt into your AI and immediately rush to submit it as a
-PR. I would literally _rather not have that PR at all_.
-
-What I need is for you to _test_ your PRs.
-
-If you create a PR, and you test it, you have something that may be of
-value to the project.
-
-Once you have a tested branch in your local repo(s), the AI can walk
-you through the process of creating a PR if you don't already
-know. The PR prompt will hopefull guide you in this as well, but
-please tell us all what testing you have done on your PR.
-
-That doesn't mean you need to have tested every possible interaction
-with every possible feature on every possible game. Goodness knows
-Baiji's work doesn't even remotely rise to that standard either! But
-it is very helpful to know what testing has and has not been done, so
-we can know what to look out for, and others may know to make their
-own PRs against your PR. Do not be shy to say "I haven't tested this
-with X". The space of "all possible Wii and Gamecube games" is
-huge.
-
-Because the true value of a PR is testing, note that _testing_ someone
-else's PR can be as valuable or even more valuable than coming up with
-one of your own. Before starting a PR check the PR tab and see if
-there's anything either close to your work or is what you'd have
-made. If so, please join with that PR rather than source a new
-one by building that PR yourself and running it on your local Steam
-Frame. There is nothing as valuable as the _second_ pair of eyes on a
-PR!
 
 ## Why Not A Flatpak?
 
@@ -358,8 +280,7 @@ The Dolphin team is not behind this project. In particular that means,
 if the pieces break, you own them, maybe I have a bit of
 responsibility for them, but the Dolphin team has no responsibility
 whatsoever. Not even the polite one of at least listening to your
-problem. The correct solution for the Dolphin project, if anyone
-doeesn't pick up what I have repeatedly tried to lay down, and files a
+problem. The correct solution for the Dolphin project, if anyone files a
 bug with them, or starts a forum thread about bugs in Baiji, or
 anything else like that, is to immediately close it/lock it, and scold
 you a bit for putting it in the wrong place.
@@ -379,7 +300,7 @@ Instead: I am a mere minnow next to the awesome Dolphin project. I am standing
 on the shoulder of their giantness, and to a lesser but still
 significant extent, on the work of the dolphinXR fork. I am
 deeply appreciative and while I want to help the Steam Frame, this is
-a mere trivial "one long weekend" gloss on top of the
+a mere trivial "couple o' weekends" gloss on top of the
 who-knows-how-many person-centuries of work the Dolphin project
 represents. Do not overestimate my "contribution". Nothing in this
 paragraph is a joke or even slightly sarcastic.
@@ -604,7 +525,8 @@ as I know these are currently not reasonable fixable:
 * When the QT UI is visible during 3D emulation, SteamOS spatializes
   Baiji's emulation output to be coming from the location of the QT
   UI, not the emulation. The Frame's OS does not seem to offer a way
-  to bypass this for just one application.
+  to bypass this for just one application. It seems to have a switch
+  that could be thrown for the whole OS but I'm not touching it.
 
 # Changelog
 
@@ -616,7 +538,8 @@ as I know these are currently not reasonable fixable:
     when Immersive VR is selected.
 
 * v0.2-alpha (not released yet)
-  * Added + and - to mapping on left & right bumper for Wii + Nunchuck.
+  * Added + and - to mapping on left & right bumper for Wii +
+    Nunchuck.
   * Turning on Room View with the Steam UI stops rendering in Stereo
     and VR mode and pauses the emulation, rather than continuing to
     render and emulate and making it look like it was ignoring

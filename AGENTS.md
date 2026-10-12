@@ -135,6 +135,9 @@
   or alter unrelated existing Frame binaries, user data, or Steam shortcuts;
   follow the runbook's Baiji-only paths. Do not publish from this checkout unless
   explicitly requested.
+- This project is not particularly worried about linting. Don't worry
+  about trying to run clang-format. Nor is there any practical way to
+  unit test most of the work this project is doing as it is all UI work.
 
 ## External technical references
 
