@@ -68,8 +68,12 @@
   `~/.config/baiji` and `~/.local/share/baiji`; ignore the separate Dolphin
   installation/config. Legacy INI filenames may remain, but Dolphin installation
   or user-data paths inside Baiji config are suspicious and must not be followed.
+- Never modify Frame/SteamOS/SteamVR system or runtime settings as part of Baiji
+  development, testing, or deployment, even for temporary experiments. Treat
+  `~/.config/openvr/config/steamvr.vrsettings` and other non-Baiji settings as
+  read-only; keep testing changes within Baiji-owned code, binaries, and config.
 - Frame build: from the repository root run
-  `INSTALL_PREFIX=/home/steamos/baiju ./scripts/compile-cross-sdk.sh`, then
+  `INSTALL_PREFIX=/home/steamos/baiji ./scripts/compile-cross-sdk.sh`, then
   `./scripts/deploy-frame.sh frame`. The build uses Podman, installs the AArch64 KDE SDK
   into ignored `state/` via Flatpak when missing, rebuilds the image when
   `Containerfile.cross` changes, and stages to
@@ -91,14 +95,14 @@
   (glibc 2.43). The Frame has glibc 2.39, so do not copy that raw executable there;
   use `compile-cross-sdk.sh` and its Frame-compatible SDK/staging output instead.
 - For a binary-only Frame debug iteration, copy
-  `state/stage-frame/home/steamos/baiju/bin/baiji` to
-  `frame:baiju/bin/baiji`; use `deploy-frame.sh` when staged libraries/assets also
-  changed. The Big Picture shortcut launches `~/baiju/bin/baiji-vr`, which runs
-  `~/baiju/bin/baiji`, so keep replacing that binary path to reuse the shortcut.
+  `state/stage-frame/home/steamos/baiji/bin/baiji` to
+  `frame:baiji/bin/baiji`; use `deploy-frame.sh` when staged libraries/assets also
+  changed. The Big Picture shortcut launches `~/baiji/bin/baiji-vr`, which runs
+  `~/baiji/bin/baiji`, so keep replacing that binary path to reuse the shortcut.
   The user promoted the current Frame build to known-good on 2026-10-04 despite
   uncertainty about intermittent controller input and reported performance improvement.
-  Preserve `~/baiju/bin/baiji-known-good`; only replace it on explicit user promotion.
-  To restore the Big Picture shortcut to that build, copy it back to `~/baiju/bin/baiji`.
+  Preserve `~/baiji/bin/baiji-known-good`; only replace it on explicit user promotion.
+  To restore the Big Picture shortcut to that build, copy it back to `~/baiji/bin/baiji`.
   We cannot test headset controls directly from the development host: collaborate with
   the user on debug runs and retrieve logs over SSH.
 - On the Frame, creating `~/.config/baiji/debug-logging` makes the existing
@@ -112,7 +116,7 @@
 - Steam Frame debugging guidance, especially core-dump access and processing, is at
   <https://partner.steamgames.com/doc/steamhardware/steamframe/debugging>; consult it
   before retrieving or processing Frame crash dumps.
-- The deploy script copies Baiji-named files under `~/baiju` on the target. CLI
+- The deploy script copies Baiji-named files under `~/baiji` on the target. CLI
   smoke tests are documented in `docs/build-runbook.md`; the GUI launcher is
   `baiji-vr`.
 - For a host Linux VR build, configure with

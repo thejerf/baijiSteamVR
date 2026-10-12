@@ -174,6 +174,34 @@ you an "emulation-based" toolchain, where it runs a native ARM
 toolchain on an x86 CPU, decline that. It was miserably slow. I don't
 know about ARM-based Mac OS machines.
 
+# Performance Tips and Tricks
+
+* Wii emulation itself has a problem called _shader stutter_, where
+  the first time you're doing "something", where "something" is hard
+  to define but is often
+  "the first time you've seen some particular object or effect in the game",
+  there will be a hitch in the emulation while it is
+  "compiling a shader". You can see Dolphin's own [extensive
+  discussion of this problem and their Ubershader
+  solution](https://dolphin-emu.org/blog/2017/07/30/ubershaders/).
+  
+  That's an old blog post and some of the discussion about specific
+  hardware is out of date. However, the general problem hasn't gone
+  anywhere.
+  
+  And the Steam Frame is not powerful enough to run Ubershaders. You
+  should almost certainly leave the default setting to compile the
+  shaders in advance on. You can try Hybrid mode; note that can take
+  a minute or two (literally, minutes) to start, but may help. You can
+  fiddle with the "Skip Drawing" if you really want to try to avoid
+  the hitches, at the price of potentially having popin or breaking
+  certain features.
+  
+  But be aware this seems to be intrinsic to the problem of Wii
+  Emulation. The only "solution" is to (eventually) stream this from
+  something that supports full 3D to the Frame and can handle an
+  Ubershader.
+
 # Ownership
 
 I see a number of other people are working on similar forks. Honestly,
@@ -580,7 +608,33 @@ as I know these are currently not reasonable fixable:
 
 # Changelog
 
-* v0.2-alpha
+* Todo before release:
+  * Check Room View in VR, can probably leave that rendering while the
+    Steam UI is up
+  * Check the Reddit feedback about the settings that make VR work,
+    and lock the ones that _must_ be set for Immersive VR to work,
+    when Immersive VR is selected.
+
+* v0.2-alpha (not released yet)
+  * Turning on Room View with the Steam UI stops rendering in Stereo
+    and VR mode and pauses the emulation, rather than continuing to
+    render and emulate and making it look like it was ignoring
+    controls.
+    
+    Ideally, we'd leave the game UI up if you bring up the Steam UI,
+    and only stop displaying the game if you go to full room view
+    mode, but once focus is removed from the game, baiji can't tell
+    what you're doing. Since we can't be smart about this, we have to
+    not display the game even if you only are looking at the Steam UI.
+    
+    This may be a bug in the UI's Room View support; it shouldn't let
+    us draw on it. If it correctly ignored our draw requests we could
+    get it to work like most other games, which still render in the
+    background.
+  * Improved the way a surface is requested for flat 2D mode. I'm
+    honestly uncertain if v0.1-alpha was broken, but if it was this
+    should fix it, if it wasn't, this should make future builds less
+    likely to break.
 * v0.1-alpha - Initial release.
   * Many Frame-specific UI changes to make working with the Frame
     specifically slicker.

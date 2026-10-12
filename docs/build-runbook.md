@@ -25,14 +25,14 @@ The old Flatpak application build and deployment scripts are archived in
 From the project root:
 
 ```bash
-INSTALL_PREFIX=/home/steamos/baiju ./scripts/compile-cross-sdk.sh
+INSTALL_PREFIX=/home/steamos/baiji ./scripts/compile-cross-sdk.sh
 ./scripts/deploy-frame.sh frame
 ```
 
-The build installs locally under `state/stage-frame/home/steamos/baiju` before
+The build installs locally under `state/stage-frame/home/steamos/baiji` before
 deployment. App executables use the `baiji` names. Private dynamic libraries are
-installed below `~/baiju/lib/baiji`; application data is in `~/baiju/share/baiji`.
-Localized catalogs, when available, are kept under `~/baiju/share/baiji/locale` so the
+installed below `~/baiji/lib/baiji`; application data is in `~/baiji/share/baiji`.
+Localized catalogs, when available, are kept under `~/baiji/share/baiji/locale` so the
 app never reads the existing install's shared locale directory.
 No Dolphin-named executable, last-good binary, or legacy user-data directory is used
 or modified.
@@ -43,14 +43,14 @@ builds.
 Smoke-test the CLI on the Frame:
 
 ```bash
-ssh frame 'LD_LIBRARY_PATH="$HOME/baiju/lib/baiji" "$HOME/baiju/bin/baiji-tool" --help'
-ssh frame 'LD_LIBRARY_PATH="$HOME/baiju/lib/baiji" "$HOME/baiju/bin/baiji-nogui" --help'
+ssh frame 'LD_LIBRARY_PATH="$HOME/baiji/lib/baiji" "$HOME/baiji/bin/baiji-tool" --help'
+ssh frame 'LD_LIBRARY_PATH="$HOME/baiji/lib/baiji" "$HOME/baiji/bin/baiji-nogui" --help'
 ```
 
 To launch the Baiji GUI in the nested X11 desktop with the SteamVR runtime:
 
 ```bash
-ssh frame 'BAIJI_DISPLAY=:0 "$HOME/baiju/bin/baiji-vr"'
+ssh frame 'BAIJI_DISPLAY=:0 "$HOME/baiji/bin/baiji-vr"'
 ```
 
 The launcher preserves the Steam-provided `DISPLAY` (defaulting to `:2` for a direct

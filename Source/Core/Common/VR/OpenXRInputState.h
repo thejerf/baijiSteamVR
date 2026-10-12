@@ -123,6 +123,16 @@ public:
     ++s_state.generation;
   }
 
+  static void SetSessionFocused(bool focused)
+  {
+    std::lock_guard lk(s_state_mutex);
+    if (s_state.session_focused == focused)
+      return;
+
+    s_state.session_focused = focused;
+    ++s_state.generation;
+  }
+
   static std::string GetDiagnosticString()
   {
     std::lock_guard lk(s_state_mutex);

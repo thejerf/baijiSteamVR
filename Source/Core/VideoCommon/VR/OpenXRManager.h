@@ -501,6 +501,7 @@ private:
   void EnsureHomePositionFromCurrentViews() const;
   std::array<XREyeView, 2> GetTrackingAdjustedEyeViews() const;
   void ResetInputActionsState();
+  void SetSessionFocused(bool focused, bool pause_emulation_when_unfocused = true);
   void HandleSessionStateChange(XrSessionState new_state);
   // World-locked quad pose for the flat panel. Refresh from video-thread view data after a
   // reference-space rebase; serialize readers because input sampling also queries this pose.
@@ -622,6 +623,11 @@ private:
   XrSessionState m_session_state = XR_SESSION_STATE_UNKNOWN;
   std::atomic<bool> m_session_running{false};
   std::atomic<bool> m_session_focused{false};
+  std::mutex m_session_focus_mutex;
+  bool m_focus_loss_pause_attempted = false;
+  bool m_emulation_paused_for_focus_loss = false;
+  bool m_focus_pause_pending = false;
+  bool m_resume_after_pending_focus_pause = false;
   bool m_exit_render_loop = false;
 
   XrFrameState m_frame_state{XR_TYPE_FRAME_STATE};

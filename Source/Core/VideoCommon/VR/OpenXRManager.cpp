@@ -50,6 +50,8 @@
 #include "Common/Timer.h"
 #include "Common/VR/OpenXRInputState.h"
 #include "Core/Config/GraphicsSettings.h"
+#include "Core/Core.h"
+#include "Core/System.h"
 #include "VideoCommon/OnScreenDisplay.h"
 #include "VideoCommon/VideoConfig.h"
 
@@ -1167,9 +1169,9 @@ void OpenXRManager::DestroySession()
   // Everything below belongs to a session or its frame loop. Keep only the instance/system and
   // instance-level extension state so a subsequent game starts from the same state as a newly
   // constructed manager without forcing the runtime through VR_Shutdown/VR_Init again.
+  SetSessionFocused(false, false);
   m_session_state = XR_SESSION_STATE_UNKNOWN;
   m_session_running.store(false, std::memory_order_release);
-  m_session_focused.store(false, std::memory_order_release);
   m_exit_render_loop = false;
   m_frame_state = {XR_TYPE_FRAME_STATE};
   m_view_state_flags = 0;
@@ -1342,7 +1344,10 @@ void OpenXRManager::FrameThreadLoop()
     if (!BeginFrame())
       continue;
 
-    const bool should_render = m_should_render_snapshot.load(std::memory_order_acquire);
+    const bool runtime_should_render =
+        m_should_render_snapshot.load(std::memory_order_acquire);
+    const bool should_render = runtime_should_render &&
+                               m_session_focused.load(std::memory_order_acquire);
     const int64_t period_ns = m_predicted_display_period_snapshot.load(std::memory_order_acquire);
 
     // Wait for the game to hand over a fresh frame for as long as this cycle can afford:
@@ -1453,8 +1458,8 @@ void OpenXRManager::FrameThreadLoop()
       }
     }
 
-    EndFrameDetached(m_frame_state.predictedDisplayTime, GetActiveBlendMode(), submit_content,
-                     layers);
+    EndFrameDetached(m_frame_state.predictedDisplayTime, GetActiveBlendMode(),
+                     runtime_should_render, layers);
 #ifdef BAIJI_STEAMVR
     handoff_lock.unlock();
 #endif
@@ -2117,6 +2122,88 @@ void OpenXRManager::ResetInputActionsState()
   Common::VR::OpenXRInputState::Reset();
 }
 
+void OpenXRManager::SetSessionFocused(bool focused, bool pause_emulation_when_unfocused)
+{
+  Core::System& system = Core::System::GetInstance();
+  const Core::State core_state = Core::GetState(system);
+  bool pause_emulation = false;
+  bool resume_emulation = false;
+  {
+    std::lock_guard focus_lock(m_session_focus_mutex);
+    m_session_focused.store(focused, std::memory_order_release);
+    Common::VR::OpenXRInputState::SetSessionFocused(focused);
+
+    if (focused)
+    {
+      m_focus_loss_pause_attempted = false;
+      if (!m_focus_pause_pending && m_emulation_paused_for_focus_loss)
+      {
+        m_emulation_paused_for_focus_loss = false;
+        resume_emulation = true;
+      }
+    }
+    else if (!pause_emulation_when_unfocused)
+    {
+      m_focus_loss_pause_attempted = false;
+      if (m_focus_pause_pending)
+      {
+        m_resume_after_pending_focus_pause = true;
+      }
+      else if (m_emulation_paused_for_focus_loss)
+      {
+        m_emulation_paused_for_focus_loss = false;
+        resume_emulation = true;
+      }
+    }
+    else if (!m_focus_loss_pause_attempted && !m_focus_pause_pending)
+    {
+      if (core_state == Core::State::Paused)
+      {
+        m_focus_loss_pause_attempted = true;
+      }
+      else if (core_state == Core::State::Running)
+      {
+        m_focus_loss_pause_attempted = true;
+        m_focus_pause_pending = true;
+        m_resume_after_pending_focus_pause = false;
+        pause_emulation = true;
+      }
+    }
+  }
+
+  if (resume_emulation)
+  {
+    if (Core::GetState(system) == Core::State::Paused)
+    {
+      Core::SetState(system, Core::State::Running);
+    }
+  }
+
+  if (!pause_emulation)
+    return;
+
+  // Do not hold the focus-state mutex while pausing the core. The video thread can
+  // report XR_SESSION_NOT_FOCUSED while the XR pacing thread handles the matching
+  // session event; Core::SetState may wait for that video thread to reach a safe point.
+  Core::SetState(system, Core::State::Paused);
+  const bool core_is_paused = Core::GetState(system) == Core::State::Paused;
+  bool resume_after_pause = false;
+  {
+    std::lock_guard focus_lock(m_session_focus_mutex);
+    m_focus_pause_pending = false;
+    resume_after_pause = core_is_paused &&
+                         (m_session_focused.load(std::memory_order_acquire) ||
+                          m_resume_after_pending_focus_pause);
+    m_resume_after_pending_focus_pause = false;
+    m_emulation_paused_for_focus_loss = core_is_paused && !resume_after_pause;
+    if (resume_after_pause)
+      m_focus_loss_pause_attempted = false;
+  }
+
+  if (core_is_paused && resume_after_pause)
+    Core::SetState(system, Core::State::Running);
+}
+
 void OpenXRManager::UpdateHaptics()
 {
   if (!m_session_running || m_session == XR_NULL_HANDLE || m_action_haptic == XR_NULL_HANDLE)
@@ -2222,6 +2309,7 @@ void OpenXRManager::UpdateInputActions()
   {
     // XR_SESSION_NOT_FOCUSED is a success code but means input is inactive.
     // Don't reset state — keep previous connected status to avoid flicker in UI.
+    SetSessionFocused(false);
     return;
   }
   if (XR_FAILED(sync_result))
@@ -2229,6 +2317,7 @@ void OpenXRManager::UpdateInputActions()
     ResetInputActionsState();
     return;
   }
+  SetSessionFocused(true);
 
   std::array<Common::VR::OpenXRControllerState, 2> controllers{};
   std::array<bool, 2> actions_active{};
@@ -2558,15 +2647,15 @@ void OpenXRManager::HandleSessionStateChange(XrSessionState new_state)
     break;
   }
   case XR_SESSION_STATE_SYNCHRONIZED:
-    m_session_focused = false;
+    SetSessionFocused(false);
     break;
 
   case XR_SESSION_STATE_VISIBLE:
-    m_session_focused = false;
+    SetSessionFocused(false);
     break;
 
   case XR_SESSION_STATE_FOCUSED:
-    m_session_focused = true;
+    SetSessionFocused(true);
     INFO_LOG_FMT(OPENXR, "OpenXR: Session FOCUSED — controller input is now active.");
 #if defined(ANDROID)
     // Meta Quest may ignore perf settings before the session is FOCUSED. Re-issue
@@ -2584,7 +2673,7 @@ void OpenXRManager::HandleSessionStateChange(XrSessionState new_state)
                    static_cast<int>(end_result));
     }
     m_session_running = false;
-    m_session_focused = false;
+    SetSessionFocused(false, false);
     ResetInputActionsState();
     INFO_LOG_FMT(OPENXR, "OpenXR: Session stopped.");
     break;
@@ -2594,7 +2683,7 @@ void OpenXRManager::HandleSessionStateChange(XrSessionState new_state)
   case XR_SESSION_STATE_EXITING:
     m_exit_render_loop = true;
     m_session_running = false;
-    m_session_focused = false;
+    SetSessionFocused(false, false);
     ResetInputActionsState();
     break;
 
@@ -2821,15 +2910,20 @@ bool OpenXRManager::EndFrameDetached(XrTime display_time,
                                      const std::vector<XrCompositionLayerBaseHeader*>& layers,
                                      bool lock_graphics_queue)
 {
+  const bool session_focused = m_session_focused.load(std::memory_order_acquire);
+  const bool can_submit_layers = should_render && session_focused;
+  const bool passthrough_requested =
+      g_ActiveConfig.VRPassthroughBackgroundEnabled() && m_swapchain != nullptr &&
+      session_focused;
   // Keep the FB passthrough feed in sync with the Passthrough setting. Gated on a
   // registered swapchain so the controller-binding utility session never starts it.
-  UpdateFBPassthrough(g_ActiveConfig.VRPassthroughBackgroundEnabled() && m_swapchain != nullptr);
+  UpdateFBPassthrough(passthrough_requested);
 
   // The passthrough layer composites first (behind the projection layer), replacing the
   // black void with the camera feed wherever the projection layer's alpha is 0.
   std::vector<XrCompositionLayerBaseHeader*> submit_layers;
   submit_layers.reserve(layers.size() + 1);
-  if (m_fb_passthrough_running && m_fb_passthrough_layer != XR_NULL_HANDLE)
+  if (can_submit_layers && m_fb_passthrough_running && m_fb_passthrough_layer != XR_NULL_HANDLE)
   {
     m_fb_passthrough_composition_layer = {XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB};
     m_fb_passthrough_composition_layer.flags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
@@ -2838,15 +2932,16 @@ bool OpenXRManager::EndFrameDetached(XrTime display_time,
     submit_layers.push_back(
         reinterpret_cast<XrCompositionLayerBaseHeader*>(&m_fb_passthrough_composition_layer));
   }
-  submit_layers.insert(submit_layers.end(), layers.begin(), layers.end());
+  if (can_submit_layers)
+    submit_layers.insert(submit_layers.end(), layers.begin(), layers.end());
 
   XrFrameEndInfo end_info{XR_TYPE_FRAME_END_INFO};
   end_info.displayTime = display_time;
   end_info.environmentBlendMode = environment_blend_mode;
 
-  // Only submit layers when the runtime requests rendering; otherwise submit 0 layers
-  // (this handles the VISIBLE/SYNCHRONIZED states correctly).
-  if (should_render)
+  // Only submit layers when the runtime requests rendering and the session is focused.
+  // Submit 0 layers in VISIBLE/SYNCHRONIZED states, including system room view.
+  if (can_submit_layers)
   {
     end_info.layerCount = static_cast<uint32_t>(submit_layers.size());
     end_info.layers = submit_layers.data();
