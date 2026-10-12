@@ -5,6 +5,7 @@
 
 #include <QColor>
 #include <QPixmap>
+#include <QRect>
 #include <QWidget>
 
 class QEnterEvent;
@@ -29,14 +30,15 @@ public:
     No
   };
   static void ShowBalloon(const QString& title, const QString& message,
-                          const QPoint& target_arrow_tip_position, QWidget* parent,
+                          const QPoint& target_arrow_tip_position,
+                          const QRect& target_widget_rect_global, QWidget* parent,
                           ShowArrow show_arrow = ShowArrow::Yes, int border_width = 1);
   static void HideBalloon();
   static bool IsCursorInsideWidgetBoundingBox(const QWidget& widget);
   static bool IsCursorOnBalloonTip();
   static bool IsWidgetBalloonTipActive(const QWidget& widget);
 
-  BalloonTip(PrivateTag, const QString& title, QString message, QWidget* parent);
+  BalloonTip(PrivateTag, const QString& title, QString message, QWidget* parent, int border_width);
 
 protected:
   void enterEvent(QEnterEvent* event) override;
@@ -45,9 +47,11 @@ protected:
   void paintEvent(QPaintEvent* event) override;
 
 private:
-  void UpdateBoundsAndRedraw(const QPoint& target_arrow_tip_position, ShowArrow show_arrow,
+  void UpdateBoundsAndRedraw(const QPoint& target_arrow_tip_position,
+                             const QRect& target_widget_rect_global, ShowArrow show_arrow,
                              int border_width);
 
   QColor m_border_color;
   QPixmap m_pixmap;
+  QRect m_owner_rect;
 };

@@ -3,6 +3,8 @@
 
 #include "DolphinQt/Config/ToolTipControls/BalloonTip.h"
 
+#include <algorithm>
+#include <cstdlib>
 #include <memory>
 
 #include <QApplication>
@@ -16,7 +18,6 @@
 #include <QPen>
 #include <QPoint>
 #include <QRect>
-#include <QScreen>
 #include <QSize>
 #include <QString>
 #include <QVBoxLayout>
@@ -39,7 +40,8 @@ QWidget* s_parent = nullptr;
 }  // namespace
 
 void BalloonTip::ShowBalloon(const QString& title, const QString& message,
-                             const QPoint& target_arrow_tip_position, QWidget* const parent,
+                             const QPoint& target_arrow_tip_position,
+                             const QRect& target_widget_rect_global, QWidget* const parent,
                              const ShowArrow show_arrow, const int border_width)
 {
   HideBalloon();
@@ -47,13 +49,16 @@ void BalloonTip::ShowBalloon(const QString& title, const QString& message,
     return;
 
 #if defined(__APPLE__)
+  (void)target_widget_rect_global;
   QString the_message = message;
   the_message.replace(QStringLiteral("<dolphin_emphasis>"), QStringLiteral("<b>"));
   the_message.replace(QStringLiteral("</dolphin_emphasis>"), QStringLiteral("</b>"));
   QToolTip::showText(target_arrow_tip_position, the_message, parent);
 #else
-  s_the_balloon_tip = std::make_unique<BalloonTip>(PrivateTag{}, title, message, parent);
-  s_the_balloon_tip->UpdateBoundsAndRedraw(target_arrow_tip_position, show_arrow, border_width);
+  s_the_balloon_tip =
+      std::make_unique<BalloonTip>(PrivateTag{}, title, message, parent, border_width);
+  s_the_balloon_tip->UpdateBoundsAndRedraw(target_arrow_tip_position, target_widget_rect_global,
+                                           show_arrow, border_width);
 #endif
 }
 
@@ -70,11 +75,15 @@ void BalloonTip::HideBalloon()
 #endif
 }
 
-BalloonTip::BalloonTip(PrivateTag, const QString& title, QString message, QWidget* const parent)
+BalloonTip::BalloonTip(PrivateTag, const QString& title, QString message, QWidget* const parent,
+                       const int border_width)
     : QWidget(nullptr, Qt::ToolTip)
 {
   s_parent = parent;
   setMouseTracking(true);
+
+  const QWidget* const owner_window = parent->window();
+  m_owner_rect = QRect(owner_window->mapToGlobal(QPoint(0, 0)), owner_window->size());
 
   QColor window_color;
   QColor text_color;
@@ -92,8 +101,18 @@ BalloonTip::BalloonTip(PrivateTag, const QString& title, QString message, QWidge
   message.replace(QStringLiteral("</dolphin_emphasis>"), QStringLiteral("</b></font>"));
 
   auto* const balloontip_layout = new QVBoxLayout;
-  balloontip_layout->setSizeConstraint(QLayout::SetFixedSize);
+  balloontip_layout->setSizeConstraint(QLayout::SetNoConstraint);
   setLayout(balloontip_layout);
+
+  const float border_half_width = border_width / 2.0;
+  const int rounded_corner_margin = border_half_width / 4;
+  const int horizontal_margin = border_width + rounded_corner_margin + 12;
+  const int bounded_horizontal_margin =
+      std::min(horizontal_margin, std::max(0, (m_owner_rect.width() - 1) / 2));
+  const int max_width = std::max(1, m_owner_rect.width() - 2 * bounded_horizontal_margin);
+  const int vertical_margin = bounded_horizontal_margin + 18;
+  balloontip_layout->setContentsMargins(bounded_horizontal_margin, vertical_margin,
+                                        bounded_horizontal_margin, vertical_margin);
 
   const auto create_label = [=](const QString& text) {
     QLabel* const label = new QLabel;
@@ -102,7 +121,6 @@ BalloonTip::BalloonTip(PrivateTag, const QString& title, QString message, QWidge
     label->setText(text);
     label->setTextFormat(Qt::RichText);
 
-    const int max_width = label->screen()->availableGeometry().width() / 3;
     label->setMaximumWidth(max_width);
 
     if (label->sizeHint().width() > max_width)
@@ -185,26 +203,25 @@ void BalloonTip::paintEvent(QPaintEvent* const event)
 }
 
 void BalloonTip::UpdateBoundsAndRedraw(const QPoint& target_arrow_tip_position,
+                                       const QRect& target_widget_rect_global,
                                        const ShowArrow show_arrow, const int border_full_width)
 {
   const float border_half_width = border_full_width / 2.0;
 
   // This should be odd so that the arrow tip is a single pixel wide.
-  const int arrow_full_width = 35;
-  const float arrow_half_width = arrow_full_width / 2.0;
-  // The y distance between the inner edge of the rectangle border and the inner tip of the arrow
-  // border, and also the distance between the outer edge of the rectangle border and the outer tip
-  // of the arrow border
-  const int arrow_height = (1 + arrow_full_width) / 2;
+  constexpr int preferred_arrow_full_width = 35;
 
   // Distance between the label layout and the inner rectangle border edge
-  const int balloon_interior_padding = 12;
+  constexpr int balloon_interior_padding = 12;
   // Prevent the corners of the label layout from portruding into the rounded rectangle corners at
   // larger border sizes.
   const int rounded_corner_margin = border_half_width / 4;
-  const int horizontal_margin =
+  const int nominal_horizontal_margin =
       border_full_width + rounded_corner_margin + balloon_interior_padding;
-  const int vertical_margin = horizontal_margin + arrow_height;
+  const int horizontal_margin =
+      std::min(nominal_horizontal_margin, std::max(0, (m_owner_rect.width() - 1) / 2));
+  const int preferred_arrow_height = (1 + preferred_arrow_full_width) / 2;
+  const int vertical_margin = horizontal_margin + preferred_arrow_height;
 
   // Create enough space around the layout containing the title and message to draw the balloon and
   // both arrow tips (at most one of which will be visible)
@@ -212,10 +229,45 @@ void BalloonTip::UpdateBoundsAndRedraw(const QPoint& target_arrow_tip_position,
                                vertical_margin);
 
   QSize size_hint = sizeHint();
+  size_hint.setWidth(std::min(size_hint.width(), m_owner_rect.width()));
+  size_hint.setHeight(std::min(size_hint.height(), m_owner_rect.height()));
+
+  // Keep the balloon beside its target, choosing the side with more room if it must be clipped.
+  const int space_above = std::max(0, target_widget_rect_global.top() - m_owner_rect.top());
+  const int space_below =
+      std::max(0, m_owner_rect.bottom() - target_widget_rect_global.bottom());
+  const bool arrow_at_bottom =
+      size_hint.height() <= space_above ||
+      (size_hint.height() > space_below && space_above >= space_below);
+  const int available_height = arrow_at_bottom ? space_above : space_below;
+  size_hint.setHeight(std::min(size_hint.height(), std::max(1, available_height)));
+
+  // The content layout may prefer a larger size, but the visible tooltip is always bounded by its
+  // owning window.
+  setMaximumSize(m_owner_rect.size());
+  resize(size_hint);
+
+  // Reduce the arrow with the available height/width so even unusually small windows have a
+  // non-negative rounded-rectangle area.
+  int arrow_full_width =
+      show_arrow == ShowArrow::Yes ?
+          std::min(preferred_arrow_full_width, size_hint.width() - border_full_width) :
+          0;
+  if (arrow_full_width > 0 && arrow_full_width % 2 == 0)
+    --arrow_full_width;
+  const int max_arrow_height = std::max(0, (size_hint.height() - border_full_width - 1) / 2);
+  const int max_arrow_width = max_arrow_height > 0 ? 2 * max_arrow_height - 1 : 0;
+  arrow_full_width = std::max(0, std::min(arrow_full_width, max_arrow_width));
+  const float arrow_half_width = arrow_full_width / 2.0;
+  // The y distance between the inner edge of the rectangle border and the inner tip of the arrow
+  // border, and also the distance between the outer edge of the rectangle border and the outer tip
+  // of the arrow border.
+  const int arrow_height = (1 + arrow_full_width) / 2;
 
   // These positions represent the middle of each edge of the BalloonTip's rounded rectangle
-  const float rect_width = size_hint.width() - border_full_width;
-  const float rect_height = size_hint.height() - border_full_width - 2 * arrow_height;
+  const float rect_width = std::max(0, size_hint.width() - border_full_width);
+  const float rect_height =
+      std::max(0, size_hint.height() - border_full_width - 2 * arrow_height);
   const float rect_top = border_half_width + arrow_height;
   const float rect_bottom = rect_top + rect_height;
   const float rect_left = border_half_width;
@@ -240,22 +292,29 @@ void BalloonTip::UpdateBoundsAndRedraw(const QPoint& target_arrow_tip_position,
   // the left edge of the arrow interior; otherwise the distance between the right edges.
   const int arrow_nearest_edge_x_offset =
       std::min(adjusted_arrow_x_offset, centered_arrow_x_offset);
-  const int arrow_tip_x_offset = arrow_nearest_edge_x_offset + arrow_half_width;
-
-  // The BalloonTip should be contained entirely within the screen that contains the target
-  // position.
-  QScreen* screen = QGuiApplication::screenAt(target_arrow_tip_position);
-  if (screen == nullptr)
-  {
-    // If the target position isn't on any screen (which can happen if the window is partly off the
-    // screen and the user hovers over the label) then use the screen containing the cursor instead.
-    screen = QGuiApplication::screenAt(QCursor::pos());
-  }
-  const QRect screen_rect = screen->geometry();
+  const int left_arrow_tip_x = static_cast<int>(arrow_nearest_edge_x_offset + arrow_half_width);
+  const int right_arrow_tip_x =
+      static_cast<int>(size_hint.width() - arrow_nearest_edge_x_offset - arrow_full_width +
+                       arrow_half_width);
+  const int rightmost_valid_x =
+      std::max(m_owner_rect.left(), m_owner_rect.right() - size_hint.width() + 1);
+  const int left_arrow_window_x = std::clamp(target_arrow_tip_position.x() - left_arrow_tip_x,
+                                             m_owner_rect.left(), rightmost_valid_x);
+  const int right_arrow_window_x = std::clamp(target_arrow_tip_position.x() - right_arrow_tip_x,
+                                              m_owner_rect.left(), rightmost_valid_x);
+  const int left_arrow_error =
+      std::abs(left_arrow_window_x + left_arrow_tip_x - target_arrow_tip_position.x());
+  const int right_arrow_error =
+      std::abs(right_arrow_window_x + right_arrow_tip_x - target_arrow_tip_position.x());
+  const bool arrow_at_left = left_arrow_error <= right_arrow_error;
+  const int actual_balloontip_global_x = arrow_at_left ? left_arrow_window_x : right_arrow_window_x;
 
   QPainterPath rect_path;
-  rect_path.addRoundedRect(rect_left, rect_top, rect_width, rect_height, corner_outer_radius,
-                           corner_outer_radius);
+  if (rect_width > 0 && rect_height > 0)
+  {
+    rect_path.addRoundedRect(rect_left, rect_top, rect_width, rect_height, corner_outer_radius,
+                             corner_outer_radius);
+  }
 
   // The default pen cap style Qt::SquareCap extends drawn lines one half width before the starting
   // point and one half width after the ending point such that the starting and ending points are
@@ -290,25 +349,18 @@ void BalloonTip::UpdateBoundsAndRedraw(const QPoint& target_arrow_tip_position,
   mask_painter.setBrush(QBrush(Qt::color1));
   mask_painter.drawPath(rect_path);
 
-  const bool arrow_at_bottom =
-      target_arrow_tip_position.y() - size_hint.height() + arrow_height >= 0;
-  const bool arrow_at_left =
-      target_arrow_tip_position.x() + size_hint.width() - arrow_tip_x_offset < screen_rect.width();
-
   const float arrow_base_y =
       arrow_at_bottom ? rect_bottom - border_half_width : rect_top + border_half_width;
 
   const float arrow_tip_vertical_offset = arrow_at_bottom ? arrow_height : -arrow_height;
   const float arrow_tip_interior_y = arrow_base_y + arrow_tip_vertical_offset;
-  const float arrow_tip_exterior_y =
-      arrow_tip_interior_y + (arrow_at_bottom ? border_full_width : -border_full_width);
   const float arrow_base_left_edge_x =
       arrow_at_left ? arrow_nearest_edge_x_offset :
                       size_hint.width() - arrow_nearest_edge_x_offset - arrow_full_width;
   const float arrow_base_right_edge_x = arrow_base_left_edge_x + arrow_full_width;
   const float arrow_tip_x = arrow_base_left_edge_x + arrow_half_width;
 
-  if (show_arrow == ShowArrow::Yes)
+  if (show_arrow == ShowArrow::Yes && arrow_full_width > 0)
   {
     // Drawing diagonal lines in Qt is filled with edge cases and inexplicable behavior. Getting it
     // to do what you want at one border size is simple enough, but doing so flexibly is an exercise
@@ -377,22 +429,15 @@ void BalloonTip::UpdateBoundsAndRedraw(const QPoint& target_arrow_tip_position,
 
   setMask(mask_bitmap);
 
-  // Place the arrow tip at the target position whether the arrow tip is drawn or not
-  const int target_balloontip_global_x =
-      target_arrow_tip_position.x() - static_cast<int>(arrow_tip_x);
-  const int rightmost_valid_balloontip_global_x =
-      screen_rect.left() + screen_rect.width() - size_hint.width();
-  // If the balloon would extend off the screen, push it left or right until it's not
-  const int actual_balloontip_global_x =
-      std::max(screen_rect.left(),
-               std::min(rightmost_valid_balloontip_global_x, target_balloontip_global_x));
-  // The tip pixel should be in the middle of the control, and arrow_tip_exterior_y is at the bottom
-  // of that pixel. When arrow_at_bottom is true the arrow is above arrow_tip_exterior_y and so the
-  // tip pixel is in the right place, but when it's false the arrow is below arrow_tip_exterior_y
-  // so the tip pixel would be the one below that. Make this adjustment to fix that.
-  const int tip_pixel_adjustment = arrow_at_bottom ? 0 : 1;
+  // Anchor the popup edge to the source widget edge selected for this side, so its border doesn't
+  // cut through the widget.
+  const int preferred_balloontip_global_y =
+      arrow_at_bottom ? target_widget_rect_global.top() - size_hint.height() :
+                        target_widget_rect_global.bottom() + 1;
+  const int lowest_valid_y =
+      std::max(m_owner_rect.top(), m_owner_rect.bottom() - size_hint.height() + 1);
   const int actual_balloontip_global_y =
-      target_arrow_tip_position.y() - arrow_tip_exterior_y - tip_pixel_adjustment;
+      std::clamp(preferred_balloontip_global_y, m_owner_rect.top(), lowest_valid_y);
 
   move(actual_balloontip_global_x, actual_balloontip_global_y);
 

@@ -60,8 +60,11 @@ private:
     this->killTimer(*m_timer_id);
     m_timer_id.reset();
 
-    BalloonTip::ShowBalloon(m_title, m_description,
-                            this->parentWidget()->mapToGlobal(GetToolTipPosition()), this);
+    const QPoint target_position = this->parentWidget()->mapToGlobal(GetToolTipPosition());
+    const QRect target_widget_rect_global(this->mapToGlobal(this->rect().topLeft()),
+                                          this->rect().size());
+    BalloonTip::ShowBalloon(m_title, m_description, target_position, target_widget_rect_global,
+                            this);
 
     Derived::timerEvent(event);
   }
