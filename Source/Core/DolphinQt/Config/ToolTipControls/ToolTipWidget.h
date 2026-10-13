@@ -64,7 +64,7 @@ private:
     const QRect target_widget_rect_global(this->mapToGlobal(this->rect().topLeft()),
                                           this->rect().size());
     BalloonTip::ShowBalloon(m_title, m_description, target_position, target_widget_rect_global,
-                            this);
+                            this, BalloonTip::ShowArrow::No);
 
     Derived::timerEvent(event);
   }

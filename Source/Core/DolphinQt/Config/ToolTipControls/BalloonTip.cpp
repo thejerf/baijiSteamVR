@@ -110,7 +110,7 @@ BalloonTip::BalloonTip(PrivateTag, const QString& title, QString message, QWidge
   const int bounded_horizontal_margin =
       std::min(horizontal_margin, std::max(0, (m_owner_rect.width() - 1) / 2));
   const int max_width = std::max(1, m_owner_rect.width() - 2 * bounded_horizontal_margin);
-  const int vertical_margin = bounded_horizontal_margin + 18;
+  const int vertical_margin = bounded_horizontal_margin;
   balloontip_layout->setContentsMargins(bounded_horizontal_margin, vertical_margin,
                                         bounded_horizontal_margin, vertical_margin);
 
@@ -220,11 +220,11 @@ void BalloonTip::UpdateBoundsAndRedraw(const QPoint& target_arrow_tip_position,
       border_full_width + rounded_corner_margin + balloon_interior_padding;
   const int horizontal_margin =
       std::min(nominal_horizontal_margin, std::max(0, (m_owner_rect.width() - 1) / 2));
-  const int preferred_arrow_height = (1 + preferred_arrow_full_width) / 2;
+  const int preferred_arrow_height =
+      show_arrow == ShowArrow::Yes ? (1 + preferred_arrow_full_width) / 2 : 0;
   const int vertical_margin = horizontal_margin + preferred_arrow_height;
 
-  // Create enough space around the layout containing the title and message to draw the balloon and
-  // both arrow tips (at most one of which will be visible)
+  // Reserve space for the chevron only when one is requested.
   layout()->setContentsMargins(horizontal_margin, vertical_margin, horizontal_margin,
                                vertical_margin);
 
@@ -236,10 +236,10 @@ void BalloonTip::UpdateBoundsAndRedraw(const QPoint& target_arrow_tip_position,
   const int space_above = std::max(0, target_widget_rect_global.top() - m_owner_rect.top());
   const int space_below =
       std::max(0, m_owner_rect.bottom() - target_widget_rect_global.bottom());
-  const bool arrow_at_bottom =
+  const bool popup_above_widget =
       size_hint.height() <= space_above ||
       (size_hint.height() > space_below && space_above >= space_below);
-  const int available_height = arrow_at_bottom ? space_above : space_below;
+  const int available_height = popup_above_widget ? space_above : space_below;
   size_hint.setHeight(std::min(size_hint.height(), std::max(1, available_height)));
 
   // The content layout may prefer a larger size, but the visible tooltip is always bounded by its
@@ -350,9 +350,9 @@ void BalloonTip::UpdateBoundsAndRedraw(const QPoint& target_arrow_tip_position,
   mask_painter.drawPath(rect_path);
 
   const float arrow_base_y =
-      arrow_at_bottom ? rect_bottom - border_half_width : rect_top + border_half_width;
+      popup_above_widget ? rect_bottom - border_half_width : rect_top + border_half_width;
 
-  const float arrow_tip_vertical_offset = arrow_at_bottom ? arrow_height : -arrow_height;
+  const float arrow_tip_vertical_offset = popup_above_widget ? arrow_height : -arrow_height;
   const float arrow_tip_interior_y = arrow_base_y + arrow_tip_vertical_offset;
   const float arrow_base_left_edge_x =
       arrow_at_left ? arrow_nearest_edge_x_offset :
@@ -376,14 +376,14 @@ void BalloonTip::UpdateBoundsAndRedraw(const QPoint& target_arrow_tip_position,
 
     QPainterPath arrow_border_path;
     QPainterPath arrow_interior_fill_path;
-    const float y_end_offset = arrow_at_bottom ? border_full_width : -border_full_width;
+    const float y_end_offset = popup_above_widget ? border_full_width : -border_full_width;
 
     // Draw the arrow border and interior lines from the outside inward. Each loop iteration draws
     // one pair of border lines and one pair of interior lines.
     for (int i = 1; i <= arrow_half_width; i++)
     {
       const float x_offset_from_arrow_base_edge = i - 0.5;
-      const float border_y_start = arrow_base_y + (arrow_at_bottom ? i : -i);
+      const float border_y_start = arrow_base_y + (popup_above_widget ? i : -i);
       const float border_y_end = border_y_start + y_end_offset;
       const float interior_y_start = arrow_base_y;
       const float interior_y_end = border_y_start;
@@ -432,8 +432,8 @@ void BalloonTip::UpdateBoundsAndRedraw(const QPoint& target_arrow_tip_position,
   // Anchor the popup edge to the source widget edge selected for this side, so its border doesn't
   // cut through the widget.
   const int preferred_balloontip_global_y =
-      arrow_at_bottom ? target_widget_rect_global.top() - size_hint.height() :
-                        target_widget_rect_global.bottom() + 1;
+      popup_above_widget ? target_widget_rect_global.top() - size_hint.height() :
+                           target_widget_rect_global.bottom() + 1;
   const int lowest_valid_y =
       std::max(m_owner_rect.top(), m_owner_rect.bottom() - size_hint.height() + 1);
   const int actual_balloontip_global_y =
