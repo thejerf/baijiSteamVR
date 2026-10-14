@@ -201,6 +201,14 @@ know about ARM-based Mac OS machines.
   Emulation. The only "solution" is to (eventually) stream this from
   something that supports full 3D to the Frame and can handle an
   Ubershader.
+* Remarkably, there are still even some Gamecube games that the Steam
+  Frame can struggle with. I have verified this with a native build of
+  Dolphin 2609: The Steam Frame can only barely push Wind Waker
+  at native resolution on one screen, and it still makes some stutters
+  even so. The good news is, if you sit through the emulation stuttering,
+  it actually doesn't look all that great in 3D. The cell shading effect
+  flattens everything out into a rather visually boring 3D effect,
+  rather than looking awesome, so we're not missing anything.
 
 # Ownership
 
