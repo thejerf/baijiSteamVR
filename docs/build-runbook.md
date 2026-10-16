@@ -29,6 +29,10 @@ INSTALL_PREFIX=/home/steamos/baiji ./scripts/compile-cross-sdk.sh
 ./scripts/deploy-frame.sh frame
 ```
 
+Steam Frame StereoScreen submits both eye blits together. The submit worker waits for the pair's
+GPU fence, then releases both swapchain images and publishes the quad layers; while the pair is
+pending, the video thread can advance and the XR pacing thread reprojects the last completed pair.
+
 The build installs locally under `state/stage-frame/home/steamos/baiji` before
 deployment. App executables use the `baiji` names. Private dynamic libraries are
 installed below `~/baiji/lib/baiji`; application data is in `~/baiji/share/baiji`.

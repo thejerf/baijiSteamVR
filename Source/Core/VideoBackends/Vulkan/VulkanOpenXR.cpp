@@ -285,7 +285,8 @@ std::unique_lock<std::mutex> VulkanOpenXR::AcquireGraphicsQueueLock()
 bool VulkanOpenXR::WaitForPendingFrameFinalization(std::string_view reason)
 {
 #if defined(ANDROID)
-  if (m_async_frame_finalization_in_flight.load(std::memory_order_acquire))
+  if (m_async_frame_finalization_in_flight.load(std::memory_order_acquire) ||
+      m_stereo_finalization_in_flight.load(std::memory_order_acquire))
   {
     static uint32_t s_async_wait_log_count = 0;
     if (!g_command_buffer_mgr)
@@ -324,7 +325,7 @@ bool VulkanOpenXR::WaitForPendingFrameFinalization(std::string_view reason)
   return true;
 }
 
-void VulkanOpenXR::FinalizePendingXRFrame(PendingXRFrame frame)
+void VulkanOpenXR::FinalizePendingXRFrame(PendingXRFrame frame, VkResult submit_result)
 {
   const uint64_t finalize_start_us = Common::Timer::NowUs();
   uint64_t release_total_us = 0;
@@ -359,6 +360,18 @@ void VulkanOpenXR::FinalizePendingXRFrame(PendingXRFrame frame)
   {
     if (frame.eye_acquired[eye])
       release_swapchain(frame.eye_swapchains[eye], eye == 0 ? "eye 0" : "eye 1");
+  }
+
+  if (submit_result != VK_SUCCESS)
+  {
+    m_async_frame_finalization_failed.store(true, std::memory_order_release);
+    success = false;
+  }
+
+  if (!success)
+  {
+    m_async_frame_finalization_in_flight.store(false, std::memory_order_release);
+    return;
   }
 
   const uint64_t end_frame_start_us = Common::Timer::NowUs();
@@ -1311,6 +1324,13 @@ void VulkanOpenXR::DestroySwapchains()
 AbstractFramebuffer* VulkanOpenXR::AcquireEyeFramebuffer(uint32_t eye_index)
 {
   ASSERT(eye_index < 2);
+#if defined(BAIJI_STEAMVR)
+  // Do not acquire a second XR image pair while the previous pair is still being written.
+  // The submit worker releases/publishes the pending pair after its fence signals; meanwhile
+  // the pacing thread keeps reprojecting the last completed pair.
+  if (m_stereo_finalization_in_flight.load(std::memory_order_acquire))
+    return nullptr;
+#endif
   static unsigned int s_openxr_vk_acquire_log_count = 0;
   const uint64_t perf_start_us = Common::Timer::NowUs();
   Common::ScopeGuard perf_guard([perf_start_us] {
@@ -1641,8 +1661,8 @@ bool VulkanOpenXR::SubmitFrame()
     m_async_frame_finalization_in_flight.store(true, std::memory_order_release);
     g_command_buffer_mgr->SubmitCommandBuffer(
         true, false, true, VK_NULL_HANDLE, 0xFFFFFFFF,
-        [this, frame = std::move(pending_frame)]() mutable {
-          FinalizePendingXRFrame(std::move(frame));
+        [this, frame = std::move(pending_frame)](VkResult submit_result) mutable {
+          FinalizePendingXRFrame(std::move(frame), submit_result);
         });
     StateTracker::GetInstance()->InvalidateCachedState();
 
@@ -1740,15 +1760,115 @@ bool VulkanOpenXR::SubmitFlatFrame()
                                            m_eye_swapchains[0].width, m_eye_swapchains[0].height);
 }
 
+void VulkanOpenXR::FinalizeStereoFlatFrameAfterGPU(VkFence fence, bool have_pair,
+                                                    VkResult submit_result)
+{
+  Common::ScopeGuard completion_guard([this] {
+    m_stereo_finalization_in_flight.store(false, std::memory_order_release);
+  });
+
+  if (submit_result == VK_SUCCESS)
+  {
+    const VkResult wait_result =
+        vkWaitForFences(g_vulkan_context->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
+    if (wait_result != VK_SUCCESS)
+    {
+      LOG_VULKAN_ERROR(wait_result, "StereoScreen async completion fence wait failed: ");
+      m_async_frame_finalization_failed.store(true, std::memory_order_release);
+      return;
+    }
+  }
+  else
+  {
+    LOG_VULKAN_ERROR(submit_result, "StereoScreen async queue submission failed: ");
+    m_async_frame_finalization_failed.store(true, std::memory_order_release);
+  }
+
+  if (!VR::g_openxr)
+  {
+    ERROR_LOG_FMT(VIDEO, "OpenXR Vulkan: XR manager disappeared before stereo pair finalization.");
+    return;
+  }
+
+  bool released = true;
+  {
+    // The image writes are now complete. Keep the existing handoff -> graphics queue -> publish
+    // order for the short release/publish transaction, but do not hold either lock during the
+    // GPU fence wait above.
+    VR::OpenXRManager::ScopedVideoFrameHandoff handoff(VR::g_openxr.get());
+    {
+      auto queue_lock = AcquireGraphicsQueueLock();
+      XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+      for (uint32_t eye = 0; eye < 2; ++eye)
+      {
+        if (!m_image_acquired[eye])
+          continue;
+
+        const XrResult result =
+            xrReleaseSwapchainImage(m_eye_swapchains[eye].swapchain, &release_info);
+        if (XR_FAILED(result))
+        {
+          WARN_LOG_FMT(VIDEO, "OpenXR: async completed stereo eye {} release failed ({}).", eye,
+                       static_cast<int>(result));
+          released = false;
+        }
+        else
+        {
+          m_image_acquired[eye] = false;
+        }
+      }
+    }
+
+    if (!released || submit_result != VK_SUCCESS)
+      return;
+
+    if (have_pair && VR::g_openxr->IsFrameThreadActive())
+    {
+      if (!VR::g_openxr->SubmitStereoQuadFrame({m_eye_swapchains[0].swapchain,
+                                                 m_eye_swapchains[1].swapchain},
+                                                m_eye_swapchains[0].width,
+                                                m_eye_swapchains[0].height))
+      {
+        m_async_frame_finalization_failed.store(true, std::memory_order_release);
+      }
+    }
+  }
+}
+
 bool VulkanOpenXR::SubmitStereoFlatFrame()
 {
   ASSERT(VR::g_openxr != nullptr);
 
 #if defined(BAIJI_STEAMVR)
+  // Keep displaying the last completed pair while the submit worker finishes the prior pair.
+  if (m_stereo_finalization_in_flight.load(std::memory_order_acquire))
+    return true;
+
   if (m_image_acquired[0] || m_image_acquired[1])
   {
     const bool have_pair = m_image_acquired[0] && m_image_acquired[1];
     StateTracker::GetInstance()->EndRenderPass();
+
+    if (VR::g_openxr->IsFrameThreadActive() && g_command_buffer_mgr->UsesThreadedSubmission())
+    {
+      // Let the Vulkan worker wait for GPU completion. Until its fence signals, the XR pacing
+      // thread can safely reproject the last released pair and this video thread can continue
+      // emulation; AcquireEyeFramebuffer skips another XR pair while finalization is pending.
+      const VkFence completion_fence = g_command_buffer_mgr->GetCurrentFence();
+      m_stereo_finalization_in_flight.store(true, std::memory_order_release);
+      const bool queued = g_command_buffer_mgr->SubmitCommandBuffer(
+          true, false, false, VK_NULL_HANDLE, 0xFFFFFFFF,
+           [this, completion_fence, have_pair](VkResult submit_result) {
+             FinalizeStereoFlatFrameAfterGPU(completion_fence, have_pair, submit_result);
+           });
+      StateTracker::GetInstance()->InvalidateCachedState();
+      if (!queued)
+      {
+        m_stereo_finalization_in_flight.store(false, std::memory_order_release);
+        return false;
+      }
+      return have_pair;
+    }
 
     // Submitted writes alone left visible doubled/stale images on Steam Frame.
     // Finish BOTH eye blits before releasing either image to the runtime. Wait

@@ -55,6 +55,8 @@ public:
     auto& resources = m_command_buffers[m_current_cmd_buffer];
     return resources.fence_counter;
   }
+  VkFence GetCurrentFence() const { return m_command_buffers[m_current_cmd_buffer].fence; }
+  bool UsesThreadedSubmission() const { return m_use_threaded_submission; }
 
   // Returns the semaphore for the current command buffer, which can be used to ensure the
   // swap chain image is ready before the command buffer executes.
@@ -86,7 +88,7 @@ public:
                            bool advance_to_next_frame = false,
                            VkSwapchainKHR present_swap_chain = VK_NULL_HANDLE,
                            uint32_t present_image_index = 0xFFFFFFFF,
-                           std::function<void()> post_submit_callback = {});
+                           std::function<void(VkResult)> post_submit_callback = {});
 
   bool IsDeviceLost() const { return m_device_lost.load(std::memory_order_acquire); }
 
@@ -174,7 +176,7 @@ private:
     VkSwapchainKHR present_swap_chain;
     u32 present_image_index;
     u32 command_buffer_index;
-    std::function<void()> post_submit_callback;
+    std::function<void(VkResult)> post_submit_callback;
   };
   Common::WorkQueueThreadSP<PendingCommandBufferSubmit> m_submit_thread;
   std::vector<VkSemaphore> m_present_semaphores = {};

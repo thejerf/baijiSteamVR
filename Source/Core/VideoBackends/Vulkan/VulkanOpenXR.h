@@ -190,7 +190,8 @@ private:
       std::vector<VkImageView>* out_views);
 
   void DestroySwapchains();
-  void FinalizePendingXRFrame(PendingXRFrame frame);
+  void FinalizePendingXRFrame(PendingXRFrame frame, VkResult submit_result);
+  void FinalizeStereoFlatFrameAfterGPU(VkFence fence, bool have_pair, VkResult submit_result);
 
   std::array<XRVkEyeSwapchain, 2> m_eye_swapchains{};
   XRVkLayeredSwapchain m_layered_swapchain{};
@@ -212,6 +213,9 @@ private:
 
   std::atomic<bool> m_async_frame_finalization_in_flight{false};
   std::atomic<bool> m_async_frame_finalization_failed{false};
+  // StereoScreen keeps acquired eye images until their blits finish on the GPU while the
+  // Vulkan submit worker waits for the pair fence and finalizes the handoff.
+  std::atomic<bool> m_stereo_finalization_in_flight{false};
 };
 
 // Global Vulkan OpenXR instance — valid between VideoBackend::Initialize() and Shutdown().

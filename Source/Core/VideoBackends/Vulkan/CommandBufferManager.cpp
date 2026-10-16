@@ -331,10 +331,10 @@ bool CommandBufferManager::CreateSubmitThread()
 #endif
     }
 
-    SubmitCommandBuffer(submit.command_buffer_index, submit.present_swap_chain,
-                        submit.present_image_index);
+    const VkResult submit_result = SubmitCommandBuffer(
+        submit.command_buffer_index, submit.present_swap_chain, submit.present_image_index);
     if (submit.post_submit_callback)
-      submit.post_submit_callback();
+      submit.post_submit_callback(submit_result);
     CmdBufferResources& resources = m_command_buffers[submit.command_buffer_index];
     resources.waiting_for_submit.store(false, std::memory_order_release);
   });
@@ -434,10 +434,10 @@ void CommandBufferManager::WaitForCommandBufferCompletion(u32 index)
 }
 
 bool CommandBufferManager::SubmitCommandBuffer(bool submit_on_worker_thread,
-                                                bool wait_for_completion, bool advance_to_next_frame,
-                                                VkSwapchainKHR present_swap_chain,
-                                                uint32_t present_image_index,
-                                                std::function<void()> post_submit_callback)
+                                                 bool wait_for_completion, bool advance_to_next_frame,
+                                                 VkSwapchainKHR present_swap_chain,
+                                                 uint32_t present_image_index,
+                                                 std::function<void(VkResult)> post_submit_callback)
 {
   if (IsDeviceLost())
     return false;
@@ -511,7 +511,7 @@ bool CommandBufferManager::SubmitCommandBuffer(bool submit_on_worker_thread,
     const VkResult submit_result =
         SubmitCommandBuffer(m_current_cmd_buffer, present_swap_chain, present_image_index);
     if (post_submit_callback)
-      post_submit_callback();
+      post_submit_callback(submit_result);
     if (submit_result != VK_SUCCESS)
       return false;
     if (wait_for_completion)

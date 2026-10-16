@@ -94,11 +94,11 @@
   `state/build-aarch64/Binaries/baiji`, but this uses the Ubuntu 26.04 build image
   (glibc 2.43). The Frame has glibc 2.39, so do not copy that raw executable there;
   use `compile-cross-sdk.sh` and its Frame-compatible SDK/staging output instead.
-- For a binary-only Frame debug iteration, copy
-  `state/stage-frame/home/steamos/baiji/bin/baiji` to
-  `frame:baiji/bin/baiji`; use `deploy-frame.sh` when staged libraries/assets also
-  changed. The Big Picture shortcut launches `~/baiji/bin/baiji-vr`, which runs
-  `~/baiji/bin/baiji`, so keep replacing that binary path to reuse the shortcut.
+- For binary-only Frame builds, atomically replace
+  `~/baiji/bin/baiji` with `state/stage-frame/home/steamos/baiji/bin/baiji`; this is
+  the emulator executable launched by `~/baiji/bin/baiji-vr` from the Big Picture /
+  Gamescope shortcut. Leave `baiji-vr` in place. Use `deploy-frame.sh` when staged
+  libraries/assets also changed.
   The user promoted the current Frame build to known-good on 2026-10-04 despite
   uncertainty about intermittent controller input and reported performance improvement.
   Preserve `~/baiji/bin/baiji-known-good`; only replace it on explicit user promotion.

@@ -174,33 +174,8 @@ you an "emulation-based" toolchain, where it runs a native ARM
 toolchain on an x86 CPU, decline that. It was miserably slow. I don't
 know about ARM-based Mac OS machines.
 
-# Performance Tips and Tricks
+# Performance Issues
 
-* Wii emulation itself has a problem called _shader stutter_, where
-  the first time you're doing "something", where "something" is hard
-  to define but is often
-  "the first time you've seen some particular object or effect in the game",
-  there will be a hitch in the emulation while it is
-  "compiling a shader". You can see Dolphin's own [extensive
-  discussion of this problem and their Ubershader
-  solution](https://dolphin-emu.org/blog/2017/07/30/ubershaders/).
-  
-  That's an old blog post and some of the discussion about specific
-  hardware is out of date. However, the general problem hasn't gone
-  anywhere.
-  
-  And the Steam Frame is not powerful enough to run Ubershaders. You
-  should almost certainly leave the default setting to compile the
-  shaders in advance on. You can try Hybrid mode; note that can take
-  a minute or two (literally, minutes) to start, but may help. You can
-  fiddle with the "Skip Drawing" if you really want to try to avoid
-  the hitches, at the price of potentially having popin or breaking
-  certain features.
-  
-  But be aware this seems to be intrinsic to the problem of Wii
-  Emulation. The only "solution" is to (eventually) stream this from
-  something that supports full 3D to the Frame and can handle an
-  Ubershader.
 * Remarkably, there are still even some Gamecube games that the Steam
   Frame can struggle with. I have verified this with a native build of
   Dolphin 2609: The Steam Frame can only barely push Wind Waker
@@ -244,13 +219,12 @@ like. I don't care.
   development that I had broken controller support but it was just
   that I had forgotten to switch. There is a dialog that should remind
   you. Note this is an aspect of the Steam OS, not Baiji.
-* I believe this is the case in core Dolphin as well, but the main UI
+* The main UI
   is mostly frozen during emulation. But only mostly. Still, best just
   to treat it as frozen until you stop the emulation.
-* I left the "immersive VR" work in from the dolphinXR branch if you
-  want to play with it, but something seems to be pretty wrong with
-  this port of it. I didn't spend much time diagnosing it and probably
-  sent the AI down the completely wrong track anyhow.
+* The "Immersive VR" only works with a certain set of settings,
+  but they are not locked in when it is selected. This is next
+  on the agenda.
 
 # The Usual Fake FAQs
 
@@ -482,6 +456,8 @@ as I know these are currently not reasonable fixable:
     when Immersive VR is selected.
 
 * v0.2-alpha (not released yet)
+  * Fixed what seems to be the last major performance regression
+    against a natively-compiled Dolphin.
   * Added + and - to mapping on left & right bumper for Wii +
     Nunchuck.
   * Turning on Room View with the Steam UI stops rendering in Stereo
