@@ -20,6 +20,7 @@ public:
   ~Host() override;
 
   static Host* GetInstance();
+  static bool IsRenderToMain();
 
   bool GetRenderFocus();
   bool GetRenderFullFocus();

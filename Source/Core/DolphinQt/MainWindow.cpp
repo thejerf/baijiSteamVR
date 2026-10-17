@@ -1263,7 +1263,7 @@ void MainWindow::ShowRenderWidget()
   SetFullScreenResolution(false);
   Host::GetInstance()->SetRenderFullscreen(false);
 
-  if (Config::Get(Config::MAIN_RENDER_TO_MAIN))
+  if (Host::IsRenderToMain())
   {
     // If we're rendering to main, add it to the stack and update our title when necessary.
     m_rendering_to_main = true;

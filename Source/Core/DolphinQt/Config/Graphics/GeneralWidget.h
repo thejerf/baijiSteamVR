@@ -53,7 +53,9 @@ private:
 
   // Options
   ConfigBool* m_autoadjust_window_size;
+#ifndef BAIJI_STEAMVR
   ConfigBool* m_render_main_window;
+#endif
 
   std::array<ConfigRadioInt*, 4> m_shader_compilation_mode{};
   ConfigBool* m_wait_for_shaders;

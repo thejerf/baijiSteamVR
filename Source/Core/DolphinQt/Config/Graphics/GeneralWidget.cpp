@@ -110,13 +110,19 @@ void GeneralWidget::CreateWidgets()
 
   m_autoadjust_window_size = new ConfigBool(tr("Auto-Adjust Window Size"),
                                             Config::MAIN_RENDER_WINDOW_AUTOSIZE, m_game_layer);
+#ifndef BAIJI_STEAMVR
   m_render_main_window =
       new ConfigBool(tr("Render to Main Window"), Config::MAIN_RENDER_TO_MAIN, m_game_layer);
+#endif
 
   m_options_box->setLayout(m_options_layout);
 
+#ifndef BAIJI_STEAMVR
   m_options_layout->addWidget(m_render_main_window, 0, 0);
   m_options_layout->addWidget(m_autoadjust_window_size, 0, 1);
+#else
+  m_options_layout->addWidget(m_autoadjust_window_size, 0, 0);
+#endif
 
   // Other
   auto* shader_compilation_box = new QGroupBox(tr("Shader Compilation"));
@@ -199,7 +205,9 @@ void GeneralWidget::BackendWarning()
 void GeneralWidget::OnEmulationStateChanged(bool running)
 {
   m_backend_combo->setEnabled(!running);
+#ifndef BAIJI_STEAMVR
   m_render_main_window->setEnabled(!running);
+#endif
   m_enable_fullscreen->setEnabled(!running);
 
   const bool supports_adapters = !g_backend_info.Adapters.empty();
@@ -233,10 +241,12 @@ void GeneralWidget::AddDescriptions()
   static const char TR_AUTOSIZE_DESCRIPTION[] =
       QT_TR_NOOP("Automatically adjusts the window size to the internal resolution.<br><br>"
                  "<dolphin_emphasis>If unsure, leave this unchecked.</dolphin_emphasis>");
+#ifndef BAIJI_STEAMVR
   static const char TR_RENDER_TO_MAINWINDOW_DESCRIPTION[] =
-       QT_TR_NOOP("Uses the main BaijiSteamVR window for rendering rather than "
+      QT_TR_NOOP("Uses the main BaijiSteamVR window for rendering rather than "
                  "a separate render window.<br><br><dolphin_emphasis>If unsure, leave "
                  "this unchecked.</dolphin_emphasis>");
+#endif
   static const char TR_ASPECT_RATIO_DESCRIPTION[] = QT_TR_NOOP(
       "Selects which aspect ratio to use for displaying the game."
       "<br><br>The aspect ratio of the image sent out by the original consoles varied depending on "
@@ -308,7 +318,9 @@ void GeneralWidget::AddDescriptions()
 
   m_autoadjust_window_size->SetDescription(tr(TR_AUTOSIZE_DESCRIPTION));
 
+#ifndef BAIJI_STEAMVR
   m_render_main_window->SetDescription(tr(TR_RENDER_TO_MAINWINDOW_DESCRIPTION));
+#endif
 
   m_shader_compilation_mode[0]->SetDescription(tr(TR_SHADER_COMPILE_SPECIALIZED_DESCRIPTION));
 

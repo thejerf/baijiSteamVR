@@ -62,9 +62,20 @@ Host* Host::GetInstance()
   return s_instance;
 }
 
+bool Host::IsRenderToMain()
+{
+#ifdef BAIJI_STEAMVR
+  // Keep the main Qt interface available while emulating on Steam Frame. Batch mode
+  // intentionally uses a separate render window because its main window is hidden.
+  return !Settings::Instance().IsBatchModeEnabled();
+#else
+  return Config::Get(Config::MAIN_RENDER_TO_MAIN);
+#endif
+}
+
 void Host::SetRenderHandle(void* handle)
 {
-  m_render_to_main = Config::Get(Config::MAIN_RENDER_TO_MAIN);
+  m_render_to_main = IsRenderToMain();
 
   if (m_render_handle == handle)
     return;
@@ -146,7 +157,7 @@ void Host::SetRenderFocus(bool focus)
   if (g_gfx && m_render_fullscreen && g_ActiveConfig.ExclusiveFullscreenEnabled())
   {
     RunWithGPUThreadInactive([focus] {
-      if (!Config::Get(Config::MAIN_RENDER_TO_MAIN))
+      if (!Host::IsRenderToMain())
         g_gfx->SetFullscreen(focus);
     });
   }
