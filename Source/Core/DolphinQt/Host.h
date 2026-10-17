@@ -52,6 +52,9 @@ private:
   std::atomic<void*> m_render_handle{nullptr};
   std::atomic<void*> m_main_window_handle{nullptr};
   std::atomic<bool> m_render_to_main{false};
+#ifdef BAIJI_STEAMVR
+  std::atomic<bool> m_application_focused{false};
+#endif
   std::atomic<bool> m_render_focus{false};
   std::atomic<bool> m_render_full_focus{false};
   std::atomic<bool> m_render_fullscreen{false};

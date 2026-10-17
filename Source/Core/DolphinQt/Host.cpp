@@ -7,6 +7,7 @@
 
 #include <QAbstractEventDispatcher>
 #include <QApplication>
+#include <QGuiApplication>
 #include <QLocale>
 #include <QThread>
 
@@ -43,6 +44,16 @@
 
 Host::Host()
 {
+#ifdef BAIJI_STEAMVR
+  m_application_focused =
+      QGuiApplication::applicationState() == Qt::ApplicationState::ApplicationActive;
+  connect(qApp, &QGuiApplication::applicationStateChanged, this,
+          [this](Qt::ApplicationState state) {
+            m_application_focused.store(state == Qt::ApplicationState::ApplicationActive,
+                                         std::memory_order_release);
+          });
+#endif
+
   State::SetOnAfterLoadCallback([] {
     auto& finder = CullingCodeFinder::GetInstance();
     finder.NotifySavestateLoaded();
@@ -135,7 +146,12 @@ static void RunWithGPUThreadInactive(std::function<void()> f)
 
 bool Host::GetRenderFocus()
 {
-#ifdef _WIN32
+#ifdef BAIJI_STEAMVR
+  // The main window, settings dialogs, and the render widget all belong to the same Qt
+  // application. Keep focus while switching among them; only lose it when Baiji itself
+  // becomes inactive.
+  return m_application_focused.load(std::memory_order_acquire);
+#elif defined(_WIN32)
   // Unfortunately Qt calls SetRenderFocus() with a slight delay compared to what we actually need
   // to avoid inputs that cause a focus loss to be processed by the emulation
   if (m_render_to_main && !m_render_fullscreen)
@@ -240,7 +256,11 @@ void Host_UpdateTitle(const std::string& title)
 
 bool Host_RendererHasFocus()
 {
+#ifdef BAIJI_STEAMVR
+  return Host::GetInstance()->GetRenderFocus();
+#else
   return Host::GetInstance()->GetRenderFocus() || Host::GetInstance()->GetGBAFocus();
+#endif
 }
 
 bool Host_RendererHasFullFocus()

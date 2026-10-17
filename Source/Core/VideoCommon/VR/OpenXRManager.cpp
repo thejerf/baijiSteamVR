@@ -50,7 +50,9 @@
 #include "Common/Timer.h"
 #include "Common/VR/OpenXRInputState.h"
 #include "Core/Config/GraphicsSettings.h"
+#include "Core/Config/MainSettings.h"
 #include "Core/Core.h"
+#include "Core/Host.h"
 #include "Core/System.h"
 #include "VideoCommon/OnScreenDisplay.h"
 #include "VideoCommon/VideoConfig.h"
@@ -1346,8 +1348,12 @@ void OpenXRManager::FrameThreadLoop()
 
     const bool runtime_should_render =
         m_should_render_snapshot.load(std::memory_order_acquire);
+#ifdef BAIJI_STEAMVR
+    const bool should_render = runtime_should_render && Host_RendererHasFocus();
+#else
     const bool should_render = runtime_should_render &&
                                m_session_focused.load(std::memory_order_acquire);
+#endif
     const int64_t period_ns = m_predicted_display_period_snapshot.load(std::memory_order_acquire);
 
     // Wait for the game to hand over a fresh frame for as long as this cycle can afford:
@@ -1458,8 +1464,8 @@ void OpenXRManager::FrameThreadLoop()
       }
     }
 
-    EndFrameDetached(m_frame_state.predictedDisplayTime, GetActiveBlendMode(),
-                     runtime_should_render, layers);
+    EndFrameDetached(m_frame_state.predictedDisplayTime, GetActiveBlendMode(), should_render,
+                     layers);
 #ifdef BAIJI_STEAMVR
     handoff_lock.unlock();
 #endif
@@ -2124,6 +2130,12 @@ void OpenXRManager::ResetInputActionsState()
 
 void OpenXRManager::SetSessionFocused(bool focused, bool pause_emulation_when_unfocused)
 {
+#ifdef BAIJI_STEAMVR
+  // Use the same user preference for OpenXR session focus changes as for Qt window focus.
+  pause_emulation_when_unfocused =
+      pause_emulation_when_unfocused && Config::Get(Config::MAIN_PAUSE_ON_FOCUS_LOST);
+#endif
+
   Core::System& system = Core::System::GetInstance();
   const Core::State core_state = Core::GetState(system);
   bool pause_emulation = false;
@@ -2911,10 +2923,16 @@ bool OpenXRManager::EndFrameDetached(XrTime display_time,
                                      bool lock_graphics_queue)
 {
   const bool session_focused = m_session_focused.load(std::memory_order_acquire);
+#ifdef BAIJI_STEAMVR
+  const bool application_focused = Host_RendererHasFocus();
+  const bool can_submit_layers = should_render && application_focused;
+#else
+  constexpr bool application_focused = true;
   const bool can_submit_layers = should_render && session_focused;
+#endif
   const bool passthrough_requested =
       g_ActiveConfig.VRPassthroughBackgroundEnabled() && m_swapchain != nullptr &&
-      session_focused;
+      session_focused && application_focused;
   // Keep the FB passthrough feed in sync with the Passthrough setting. Gated on a
   // registered swapchain so the controller-binding utility session never starts it.
   UpdateFBPassthrough(passthrough_requested);
