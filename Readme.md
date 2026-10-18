@@ -456,6 +456,17 @@ as I know these are currently not reasonable fixable:
     when Immersive VR is selected.
 
 * v0.2-alpha (not released yet)
+  * Per reddit user FerrisTriangle, [some settings are necessary to
+    use Immersive
+    VR](https://www.reddit.com/r/SteamFrame/comments/1x01rte/comment/pevcr99/?context=3). I
+    tested them out individually and identified two that seem to be
+    necessary, so those two are now locked to the correct setting if
+    Immersive VR is chosen.
+  * Fixed the core QT UI not rendering while the game is emulating,
+    which also fixes the fact that starting a game requires you to
+    just know that you need to hit the Steam button. This also returns
+    access to all the config you can change while the game is running,
+    menus for accessing save states, etc.
   * Fixed what seems to be the last major performance regression
     against a natively-compiled Dolphin.
   * Added + and - to mapping on left & right bumper for Wii +

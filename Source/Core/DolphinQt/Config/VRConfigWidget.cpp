@@ -15,6 +15,7 @@
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
+#include <QSignalBlocker>
 #include <QStyle>
 #include <QTabWidget>
 #include <QTimer>
@@ -434,11 +435,34 @@ void VRConfigWidget::CreateWidgets()
   auto* virtual_screen_layout = new QGridLayout(virtual_screen_group);
   virtual_screen_layout->addWidget(
       make_bool(tr("Virtual Screen for 2D Content"), Config::GFX_VR_VIRTUAL_SCREEN), 0, 0, 1, 3);
-  virtual_screen_layout->addWidget(
-      make_bool(tr("Exact Screen Depth"), Config::GFX_VR_EXACT_SCREEN_DEPTH), 1, 0, 1, 3);
-  virtual_screen_layout->addWidget(
-      make_bool(tr("Auto-Exclude EFB Effects"), Config::GFX_VR_AUTO_NATIVE_EFB_EFFECTS), 2, 0, 1,
-      3);
+  auto* exact_screen_depth = make_bool(tr("Exact Screen Depth"), Config::GFX_VR_EXACT_SCREEN_DEPTH);
+  exact_screen_depth->setToolTip(
+      tr("When Immersive VR is selected, this option is locked off."));
+  virtual_screen_layout->addWidget(exact_screen_depth, 1, 0, 1, 3);
+  auto* auto_native_efb_effects =
+      make_bool(tr("Auto-Exclude EFB Effects"), Config::GFX_VR_AUTO_NATIVE_EFB_EFFECTS);
+  auto_native_efb_effects->setToolTip(
+      tr("When Immersive VR is selected, this option is locked on."));
+  virtual_screen_layout->addWidget(auto_native_efb_effects, 2, 0, 1, 3);
+  const auto update_immersive_screen_options = [get_game_or_base, exact_screen_depth,
+                                                auto_native_efb_effects] {
+    const bool immersive_vr =
+        get_game_or_base(Config::GFX_VR_PRESENTATION_MODE) == OpenXRPresentationMode::Immersive;
+    exact_screen_depth->setEnabled(!immersive_vr);
+    auto_native_efb_effects->setEnabled(!immersive_vr);
+    if (immersive_vr)
+    {
+      const QSignalBlocker exact_screen_depth_blocker(exact_screen_depth);
+      const QSignalBlocker auto_native_efb_effects_blocker(auto_native_efb_effects);
+      exact_screen_depth->setChecked(false);
+      auto_native_efb_effects->setChecked(true);
+    }
+  };
+  connect(presentation_mode, &QComboBox::currentIndexChanged, this,
+          [update_immersive_screen_options](int) { update_immersive_screen_options(); });
+  connect(&Settings::Instance(), &Settings::ConfigChanged, this,
+          update_immersive_screen_options);
+  update_immersive_screen_options();
   auto* screen_distance = add_float(
       virtual_screen_layout, 3, tr("Screen Distance (m):"), Config::GFX_VR_SCREEN_DISTANCE_MIN,
       Config::GFX_VR_SCREEN_DISTANCE_MAX, Config::GFX_VR_SCREEN_DISTANCE,

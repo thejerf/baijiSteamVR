@@ -10,6 +10,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QTabWidget>
 #include <QVBoxLayout>
 
@@ -494,7 +495,8 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
          "eliminates z-fighting between overlapping 2D elements by construction. With this "
          "enabled, Auto Layer Spread / Layer Offset / Element Depth are no longer needed for "
          "correctness.<br><br>"
-         "Disable only to fall back to the legacy layer system for troubleshooting."));
+         "Disable only to fall back to the legacy layer system for troubleshooting.<br><br>"
+         "When Immersive VR is selected, this option is locked off."));
   virtual_screen_layout->addWidget(m_exact_screen_depth, 1, 0, 1, 3);
 
   // Auto-Exclude EFB Effects
@@ -509,8 +511,27 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
          "a manual Fullscreen override.<br><br>"
          "Genuine 2D content that samples a frame copy opaquely (e.g. a frozen pause-menu "
          "background) stays on the virtual screen. Disable this if a game's 2D element is "
-         "misdetected and leaves the screen."));
+         "misdetected and leaves the screen.<br><br>"
+         "When Immersive VR is selected, this option is locked on."));
   virtual_screen_layout->addWidget(m_auto_native_efb_effects, 2, 0, 1, 3);
+  const auto update_immersive_screen_options = [this] {
+    const bool immersive_vr =
+        Config::Get(Config::GFX_VR_PRESENTATION_MODE) == OpenXRPresentationMode::Immersive;
+    m_exact_screen_depth->setEnabled(!immersive_vr);
+    m_auto_native_efb_effects->setEnabled(!immersive_vr);
+    if (immersive_vr)
+    {
+      const QSignalBlocker exact_screen_depth_blocker(m_exact_screen_depth);
+      const QSignalBlocker auto_native_efb_effects_blocker(m_auto_native_efb_effects);
+      m_exact_screen_depth->setChecked(false);
+      m_auto_native_efb_effects->setChecked(true);
+    }
+  };
+  connect(m_presentation_mode, &QComboBox::currentIndexChanged, this,
+          [update_immersive_screen_options](int) { update_immersive_screen_options(); });
+  connect(&Settings::Instance(), &Settings::ConfigChanged, this,
+          update_immersive_screen_options);
+  update_immersive_screen_options();
 
   m_hud_thickness = new ConfigFloatSlider(Config::GFX_VR_HUD_THICKNESS_MIN,
                                           Config::GFX_VR_HUD_THICKNESS_MAX,
