@@ -409,21 +409,7 @@ as I know these are currently not reasonable fixable:
     against a natively-compiled Dolphin.
   * Added + and - to mapping on left & right bumper for Wii +
     Nunchuck.
-  * Turning on Room View with the Steam UI stops rendering in Stereo
-    and VR mode and pauses the emulation, rather than continuing to
-    render and emulate and making it look like it was ignoring
-    controls.
-    
-    Ideally, we'd leave the game UI up if you bring up the Steam UI,
-    and only stop displaying the game if you go to full room view
-    mode, but once focus is removed from the game, baiji can't tell
-    what you're doing. Since we can't be smart about this, we have to
-    not display the game even if you only are looking at the Steam UI.
-    
-    This may be a bug in the UI's Room View support; it shouldn't let
-    us draw on it. If it correctly ignored our draw requests we could
-    get it to work like most other games, which still render in the
-    background.
+  * Room View support improved, but probably still needs work.
   * Improved the way a surface is requested for flat 2D mode. I'm
     honestly uncertain if v0.1-alpha was broken, but if it was this
     should fix it, if it wasn't, this should make future builds less
