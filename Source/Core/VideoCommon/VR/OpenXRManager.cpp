@@ -34,6 +34,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <ranges>
 #include <thread>
 #if defined(ANDROID)
 #include <android/log.h>
@@ -937,7 +938,19 @@ bool OpenXRManager::InitializeSystem()
   if (m_xrCreatePassthroughFB != nullptr)
     props.next = &passthrough_props;
 #endif
-  xrGetSystemProperties(m_instance, m_system_id, &props);
+  const XrResult properties_result = xrGetSystemProperties(m_instance, m_system_id, &props);
+  if (XR_FAILED(properties_result))
+  {
+    WARN_LOG_FMT(OPENXR,
+                 "OpenXR: xrGetSystemProperties failed ({}); runtime layer capacity is unknown.",
+                 static_cast<int>(properties_result));
+    m_max_layer_count = 0;
+  }
+  else
+  {
+    m_max_layer_count = props.graphicsProperties.maxLayerCount;
+  }
+  INFO_LOG_FMT(OPENXR, "OpenXR: Runtime composition layer limit {}.", m_max_layer_count);
   m_system_name = props.systemName;
   m_quest_or_vd_runtime.reset();
   m_system_vendor_id = props.vendorId;
@@ -1174,6 +1187,11 @@ void OpenXRManager::DestroySession()
   SetSessionFocused(false, false);
   m_session_state = XR_SESSION_STATE_UNKNOWN;
   m_session_running.store(false, std::memory_order_release);
+  m_frame_begun.store(false, std::memory_order_release);
+  m_stop_confirmation_active.store(false, std::memory_order_release);
+  m_stop_confirmation_result.store(OpenXRStopConfirmationResult::Idle,
+                                   std::memory_order_release);
+  m_max_layer_count = 0;
   m_exit_render_loop = false;
   m_frame_state = {XR_TYPE_FRAME_STATE};
   m_view_state_flags = 0;
@@ -1230,6 +1248,8 @@ void OpenXRManager::PublishFrame(const std::array<XrCompositionLayerProjectionVi
   }
 
   std::lock_guard<std::mutex> lock(m_publish_mutex);
+  m_published_frame = {};
+  m_published_frame.valid = true;
   m_published_frame.is_quad = false;
   m_published_frame.views = views;
   m_published_frame.layer_flags = layer_flags;
@@ -1240,6 +1260,8 @@ void OpenXRManager::PublishFrame(const std::array<XrCompositionLayerProjectionVi
 void OpenXRManager::PublishQuadFrame(const XrCompositionLayerQuad& quad)
 {
   std::lock_guard<std::mutex> lock(m_publish_mutex);
+  m_published_frame = {};
+  m_published_frame.valid = true;
   m_published_frame.is_quad = true;
   m_published_frame.is_stereo_quad = false;
   m_published_frame.quad = quad;
@@ -1251,11 +1273,52 @@ void OpenXRManager::PublishQuadFrame(const XrCompositionLayerQuad& quad)
 void OpenXRManager::PublishStereoQuadFrame(const std::array<XrCompositionLayerQuad, 2>& quads)
 {
   std::lock_guard<std::mutex> lock(m_publish_mutex);
+  m_published_frame = {};
+  m_published_frame.valid = true;
   m_published_frame.is_quad = false;
   m_published_frame.is_stereo_quad = true;
   m_published_frame.stereo_quads = quads;
   m_published_frame.stereo_quad_count = static_cast<uint32_t>(quads.size());
   m_publish_serial++;
+  m_publish_cv.notify_all();
+}
+
+void OpenXRManager::CacheSubmittedFrame(
+    const std::vector<XrCompositionLayerBaseHeader*>& layers)
+{
+  PublishedXRFrame frame;
+  if (layers.size() == 1 && layers[0] != nullptr &&
+      layers[0]->type == XR_TYPE_COMPOSITION_LAYER_PROJECTION)
+  {
+    const auto* projection = reinterpret_cast<const XrCompositionLayerProjection*>(layers[0]);
+    if (projection->viewCount == frame.views.size() && projection->views != nullptr)
+    {
+      frame.valid = true;
+      frame.layer_flags = projection->layerFlags;
+      std::copy_n(projection->views, frame.views.size(), frame.views.begin());
+    }
+  }
+  else if (layers.size() == 1 && layers[0] != nullptr &&
+           layers[0]->type == XR_TYPE_COMPOSITION_LAYER_QUAD)
+  {
+    frame.valid = true;
+    frame.is_quad = true;
+    frame.quad = *reinterpret_cast<const XrCompositionLayerQuad*>(layers[0]);
+  }
+  else if (layers.size() == 2 && layers[0] != nullptr && layers[1] != nullptr &&
+           layers[0]->type == XR_TYPE_COMPOSITION_LAYER_QUAD &&
+           layers[1]->type == XR_TYPE_COMPOSITION_LAYER_QUAD)
+  {
+    frame.valid = true;
+    frame.is_stereo_quad = true;
+    frame.stereo_quad_count = 2;
+    frame.stereo_quads[0] = *reinterpret_cast<const XrCompositionLayerQuad*>(layers[0]);
+    frame.stereo_quads[1] = *reinterpret_cast<const XrCompositionLayerQuad*>(layers[1]);
+  }
+
+  std::lock_guard<std::mutex> lock(m_publish_mutex);
+  m_published_frame = frame;
+  ++m_publish_serial;
   m_publish_cv.notify_all();
 }
 
@@ -2497,8 +2560,8 @@ void OpenXRManager::UpdateInputActions()
                  right.thumbstick_x, right.thumbstick_y);
   }
 
-  // Provide HMD head orientation for IR pointer reference direction.
-  // Use left eye orientation as a proxy for head center (negligible difference from averaged).
+  // Provide the HMD center pose for IR pointing and world-locked UI placement. Eye orientations
+  // are effectively identical; average the positions to remove the left-eye IPD offset.
   Common::VR::OpenXRPoseState head_pose;
   if (m_eye_views[0].pose.orientation.w != 0.0f || m_eye_views[0].pose.orientation.x != 0.0f ||
       m_eye_views[0].pose.orientation.y != 0.0f || m_eye_views[0].pose.orientation.z != 0.0f)
@@ -2508,9 +2571,9 @@ void OpenXRManager::UpdateInputActions()
                              m_eye_views[0].pose.orientation.y,
                              m_eye_views[0].pose.orientation.z,
                              m_eye_views[0].pose.orientation.w};
-    head_pose.position = {m_eye_views[0].pose.position.x,
-                          m_eye_views[0].pose.position.y,
-                          m_eye_views[0].pose.position.z};
+    head_pose.position = {(m_eye_views[0].pose.position.x + m_eye_views[1].pose.position.x) * 0.5f,
+                          (m_eye_views[0].pose.position.y + m_eye_views[1].pose.position.y) * 0.5f,
+                          (m_eye_views[0].pose.position.z + m_eye_views[1].pose.position.z) * 0.5f};
   }
 
   std::array<std::string, 2> profile_strings;
@@ -2520,8 +2583,70 @@ void OpenXRManager::UpdateInputActions()
   Common::VR::OpenXRInputState::SetControllers(controllers, true, head_pose,
                                                profile_strings, m_session_focused,
                                                input_time);
+  UpdateStopConfirmationInput(controllers);
 
   UpdateHaptics();
+}
+
+void OpenXRManager::UpdateStopConfirmationInput(
+    const std::array<Common::VR::OpenXRControllerState, 2>& controllers)
+{
+  if (!m_stop_confirmation_active.load(std::memory_order_acquire) ||
+      m_stop_confirmation_result.load(std::memory_order_acquire) !=
+          OpenXRStopConfirmationResult::Pending)
+    return;
+
+  const auto& right = controllers[1];
+  const bool primary = right.primary_button;
+  const bool secondary = right.secondary_button;
+  const bool neutral = std::ranges::all_of(controllers, [](const auto& controller) {
+    return !controller.primary_button && !controller.secondary_button && !controller.frame_x_button &&
+           !controller.frame_y_button && !controller.menu_button && !controller.system_button &&
+           !controller.view_button && !controller.bumper_button && !controller.dpad_up &&
+           !controller.dpad_down && !controller.dpad_left && !controller.dpad_right &&
+           !controller.trigger_button && !controller.squeeze_button && !controller.thumbstick_button &&
+           controller.trigger_value <= 0.2f && controller.squeeze_value <= 0.2f &&
+           std::abs(controller.thumbstick_x) <= 0.2f && std::abs(controller.thumbstick_y) <= 0.2f;
+  });
+
+  std::lock_guard lock(m_stop_confirmation_input_mutex);
+  if (!m_stop_confirmation_active.load(std::memory_order_acquire) ||
+      m_stop_confirmation_result.load(std::memory_order_acquire) !=
+          OpenXRStopConfirmationResult::Pending)
+  {
+    return;
+  }
+  if (!m_stop_confirmation_armed)
+  {
+    if (!neutral)
+    {
+      m_stop_confirmation_neutral_since.reset();
+    }
+    else if (!m_stop_confirmation_neutral_since)
+    {
+      m_stop_confirmation_neutral_since = std::chrono::steady_clock::now();
+    }
+    else if (std::chrono::steady_clock::now() - *m_stop_confirmation_neutral_since >=
+             std::chrono::milliseconds(150))
+    {
+      m_stop_confirmation_armed = true;
+    }
+    m_stop_confirmation_previous_primary = primary;
+    m_stop_confirmation_previous_secondary = secondary;
+    return;
+  }
+
+  const bool primary_pressed = primary && !m_stop_confirmation_previous_primary;
+  const bool secondary_pressed = secondary && !m_stop_confirmation_previous_secondary;
+  m_stop_confirmation_previous_primary = primary;
+  m_stop_confirmation_previous_secondary = secondary;
+
+  if (primary_pressed && !secondary_pressed)
+    m_stop_confirmation_result.store(OpenXRStopConfirmationResult::Stop,
+                                     std::memory_order_release);
+  else if (secondary_pressed && !primary_pressed)
+    m_stop_confirmation_result.store(OpenXRStopConfirmationResult::Continue,
+                                     std::memory_order_release);
 }
 
 bool OpenXRManager::CreateReferenceSpace()
@@ -2766,6 +2891,7 @@ bool OpenXRManager::BeginFrame()
       return false;
     }
   }
+  m_frame_begun.store(true, std::memory_order_release);
   return true;
 }
 
@@ -2910,8 +3036,105 @@ void OpenXRManager::DestroyFBPassthrough()
   m_fb_passthrough_create_failed = false;
 }
 
+bool OpenXRManager::BeginStopConfirmation(std::string_view text)
+{
+  if (!m_swapchain || !m_session_running.load(std::memory_order_acquire) ||
+      m_stop_confirmation_active.load(std::memory_order_acquire))
+  {
+    return false;
+  }
+
+  const uint32_t game_layer_count = g_ActiveConfig.vr_stereo_screen ? 2 : 1;
+  const bool passthrough_requested = m_fb_passthrough_layer != XR_NULL_HANDLE &&
+                                     g_ActiveConfig.vr_passthrough;
+  const uint32_t required_layer_count = game_layer_count + (passthrough_requested ? 1 : 0) + 1;
+  if (m_max_layer_count < required_layer_count)
+  {
+    WARN_LOG_FMT(OPENXR,
+                 "OpenXR: Stop confirmation requires {} composition layers, but the runtime "
+                 "supports {}.",
+                 required_layer_count, m_max_layer_count);
+    return false;
+  }
+
+  if (!m_swapchain->PrepareStopConfirmationLayer(text))
+    return false;
+
+  {
+    std::lock_guard lock(m_stop_confirmation_input_mutex);
+    m_stop_confirmation_neutral_since.reset();
+    m_stop_confirmation_armed = false;
+    m_stop_confirmation_previous_primary = false;
+    m_stop_confirmation_previous_secondary = false;
+  }
+  m_stop_confirmation_result.store(OpenXRStopConfirmationResult::Pending,
+                                   std::memory_order_release);
+  m_stop_confirmation_active.store(true, std::memory_order_release);
+  {
+    std::lock_guard lock(m_publish_mutex);
+    m_publish_cv.notify_all();
+  }
+  return true;
+}
+
+void OpenXRManager::EndStopConfirmation()
+{
+  m_stop_confirmation_active.store(false, std::memory_order_release);
+  m_stop_confirmation_result.store(OpenXRStopConfirmationResult::Idle,
+                                   std::memory_order_release);
+  {
+    std::lock_guard lock(m_stop_confirmation_input_mutex);
+    m_stop_confirmation_neutral_since.reset();
+    m_stop_confirmation_armed = false;
+    m_stop_confirmation_previous_primary = false;
+    m_stop_confirmation_previous_secondary = false;
+  }
+}
+
+bool OpenXRManager::EndPreparedFrameForPacingThread()
+{
+  if (!m_frame_begun.load(std::memory_order_acquire))
+    return true;
+
+  PublishedXRFrame last_frame;
+  {
+    std::lock_guard lock(m_publish_mutex);
+    last_frame = m_published_frame;
+  }
+
+  XrCompositionLayerProjection projection_layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
+  std::vector<XrCompositionLayerBaseHeader*> layers;
+  if (last_frame.valid)
+  {
+    if (last_frame.is_quad)
+    {
+      layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&last_frame.quad));
+    }
+    else if (last_frame.is_stereo_quad)
+    {
+      for (uint32_t i = 0; i < last_frame.stereo_quad_count; ++i)
+      {
+        layers.push_back(
+            reinterpret_cast<XrCompositionLayerBaseHeader*>(&last_frame.stereo_quads[i]));
+      }
+    }
+    else
+    {
+      projection_layer.layerFlags = last_frame.layer_flags;
+      projection_layer.space = m_reference_space;
+      projection_layer.viewCount = static_cast<uint32_t>(last_frame.views.size());
+      projection_layer.views = last_frame.views.data();
+      layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&projection_layer));
+    }
+  }
+
+  return EndFrameDetached(m_frame_state.predictedDisplayTime, GetActiveBlendMode(),
+                          m_frame_state.shouldRender == XR_TRUE, layers);
+}
+
 bool OpenXRManager::EndFrame(const std::vector<XrCompositionLayerBaseHeader*>& layers)
 {
+  CacheSubmittedFrame(layers);
   return EndFrameDetached(m_frame_state.predictedDisplayTime, GetActiveBlendMode(),
                           m_frame_state.shouldRender == XR_TRUE, layers);
 }
@@ -2940,7 +3163,7 @@ bool OpenXRManager::EndFrameDetached(XrTime display_time,
   // The passthrough layer composites first (behind the projection layer), replacing the
   // black void with the camera feed wherever the projection layer's alpha is 0.
   std::vector<XrCompositionLayerBaseHeader*> submit_layers;
-  submit_layers.reserve(layers.size() + 1);
+  submit_layers.reserve(layers.size() + 2);
   if (can_submit_layers && m_fb_passthrough_running && m_fb_passthrough_layer != XR_NULL_HANDLE)
   {
     m_fb_passthrough_composition_layer = {XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB};
@@ -2952,6 +3175,27 @@ bool OpenXRManager::EndFrameDetached(XrTime display_time,
   }
   if (can_submit_layers)
     submit_layers.insert(submit_layers.end(), layers.begin(), layers.end());
+  if (can_submit_layers && m_stop_confirmation_active.load(std::memory_order_acquire) &&
+      m_swapchain != nullptr)
+  {
+    if (XrCompositionLayerQuad* confirmation_layer = m_swapchain->GetStopConfirmationLayer())
+    {
+      if (submit_layers.size() < m_max_layer_count)
+      {
+        // Composition layers are submitted in stack order. Keeping this quad last makes the
+        // prompt independent of the game's depth buffer and visible over the scene.
+        submit_layers.push_back(
+            reinterpret_cast<XrCompositionLayerBaseHeader*>(confirmation_layer));
+      }
+      else
+      {
+        WARN_LOG_FMT(OPENXR,
+                     "OpenXR: stop-confirmation quad exceeds the runtime layer limit ({}); "
+                     "omitting it for this frame.",
+                     m_max_layer_count);
+      }
+    }
+  }
 
   XrFrameEndInfo end_info{XR_TYPE_FRAME_END_INFO};
   end_info.displayTime = display_time;
@@ -2971,6 +3215,7 @@ bool OpenXRManager::EndFrameDetached(XrTime display_time,
       queue_lock = m_swapchain->AcquireGraphicsQueueLock();
     XR_CHECK(xrEndFrame(m_session, &end_info));
   }
+  m_frame_begun.store(false, std::memory_order_release);
   return true;
 }
 

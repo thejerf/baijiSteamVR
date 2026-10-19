@@ -107,6 +107,8 @@ private:
 
   // May ask for confirmation. Returns whether or not it actually stopped.
   bool RequestStop();
+  bool RequestStopFromEmulation();
+  bool RequestStopInternal(bool from_emulation);
   void ForceStop();
   void Reset();
   void FrameAdvance();

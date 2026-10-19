@@ -12,16 +12,24 @@
 
 #include <algorithm>
 #include <array>
+#include <cfloat>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
+#include <fmt/format.h>
+#include <imgui.h>
+#include <imgui_impl_vulkan.h>
+
 #include "Common/Assert.h"
+#include "Common/CommonPaths.h"
+#include "Common/FileUtil.h"
 #include "Common/Logging/Log.h"
 #include "Common/ScopeGuard.h"
 #include "Common/Timer.h"
+#include "Common/VR/OpenXRInputState.h"
 
 #include "Core/Config/GraphicsSettings.h"
 #include "VideoBackends/Vulkan/CommandBufferManager.h"
@@ -110,6 +118,500 @@ static void AppendOptionalOpenXRExtensions(std::vector<const char*>* extensions)
   }
 }
 }  // namespace
+
+class VulkanOpenXRConfirmationOverlay
+{
+public:
+  explicit VulkanOpenXRConfirmationOverlay(VulkanOpenXR& owner) : m_owner(owner) {}
+
+  ~VulkanOpenXRConfirmationOverlay() { Shutdown(); }
+
+  bool Initialize(VkFormat format)
+  {
+    if (!VR::g_openxr || !g_vulkan_context || format == VK_FORMAT_UNDEFINED)
+      return false;
+    m_format = format;
+
+    XrSwapchainCreateInfo swapchain_info{XR_TYPE_SWAPCHAIN_CREATE_INFO};
+    swapchain_info.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+    swapchain_info.format = static_cast<int64_t>(format);
+    swapchain_info.sampleCount = 1;
+    swapchain_info.width = UI_WIDTH;
+    swapchain_info.height = UI_HEIGHT;
+    swapchain_info.faceCount = 1;
+    swapchain_info.arraySize = 1;
+    swapchain_info.mipCount = 1;
+    if (XR_FAILED(xrCreateSwapchain(VR::g_openxr->GetSession(), &swapchain_info, &m_swapchain)))
+      return false;
+
+    uint32_t image_count = 0;
+    if (XR_FAILED(xrEnumerateSwapchainImages(m_swapchain, 0, &image_count, nullptr)) ||
+        image_count == 0)
+    {
+      Shutdown();
+      return false;
+    }
+
+    std::vector<XrSwapchainImageVulkanKHR> xr_images(
+        image_count, {XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR});
+    if (XR_FAILED(xrEnumerateSwapchainImages(
+            m_swapchain, image_count, &image_count,
+            reinterpret_cast<XrSwapchainImageBaseHeader*>(xr_images.data()))))
+    {
+      Shutdown();
+      return false;
+    }
+
+    if (!CreateRenderPass(format) || !CreateImages(xr_images))
+    {
+      Shutdown();
+      return false;
+    }
+    if (!InitializeImGui())
+    {
+      Shutdown();
+      return false;
+    }
+
+    m_layer = {XR_TYPE_COMPOSITION_LAYER_QUAD};
+    m_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+    m_layer.space = VR::g_openxr->GetReferenceSpace();
+    m_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+    m_layer.pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+    m_layer.pose.position = {0.0f, 0.0f, -1.2f};
+    m_layer.size = {1.1f, 0.55f};
+    m_layer.subImage.swapchain = m_swapchain;
+    m_layer.subImage.imageArrayIndex = 0;
+    m_layer.subImage.imageRect.offset = {0, 0};
+    m_layer.subImage.imageRect.extent = {static_cast<int32_t>(UI_WIDTH),
+                                         static_cast<int32_t>(UI_HEIGHT)};
+    return true;
+  }
+
+  bool Render(std::string_view text)
+  {
+    if (m_swapchain == XR_NULL_HANDLE || !m_imgui_backend_initialized)
+      return false;
+    UpdateWorldLockedPose();
+    if (m_rendered && m_text == text)
+      return true;
+
+    uint32_t image_index = 0;
+    XrSwapchainImageAcquireInfo acquire_info{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+    XrResult result = XR_SUCCESS;
+    {
+      auto queue_lock = m_owner.AcquireGraphicsQueueLock();
+      result = xrAcquireSwapchainImage(m_swapchain, &acquire_info, &image_index);
+    }
+    if (XR_FAILED(result) || image_index >= m_images.size())
+      return false;
+
+    XrSwapchainImageWaitInfo wait_info{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
+    wait_info.timeout = XR_INFINITE_DURATION;
+    if (XR_FAILED(xrWaitSwapchainImage(m_swapchain, &wait_info)))
+    {
+      ReleaseImage();
+      return false;
+    }
+
+    auto& image = m_images[image_index];
+    const VkDevice device = g_vulkan_context->GetDevice();
+    if (vkWaitForFences(device, 1, &image.fence, VK_TRUE, UINT64_MAX) != VK_SUCCESS ||
+        vkResetFences(device, 1, &image.fence) != VK_SUCCESS ||
+        vkResetCommandPool(device, image.command_pool, 0) != VK_SUCCESS)
+    {
+      ReleaseImage();
+      return false;
+    }
+
+    VkCommandBufferBeginInfo begin_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(image.command_buffer, &begin_info) != VK_SUCCESS)
+    {
+      ReleaseImage();
+      return false;
+    }
+
+    if (!image.initialized)
+    {
+      VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+      barrier.srcAccessMask = 0;
+      barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+      barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+      barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+      barrier.image = image.image;
+      barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      barrier.subresourceRange.levelCount = 1;
+      barrier.subresourceRange.layerCount = 1;
+      vkCmdPipelineBarrier(image.command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                           VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0,
+                           nullptr, 1, &barrier);
+      image.initialized = true;
+    }
+
+    ImGuiContext* const previous_context = ImGui::GetCurrentContext();
+    if (!BuildImGui(text))
+    {
+      ImGui::SetCurrentContext(previous_context);
+      vkEndCommandBuffer(image.command_buffer);
+      ReleaseImage();
+      return false;
+    }
+
+    VkClearValue clear_value{};
+    clear_value.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+    VkRenderPassBeginInfo render_info{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    render_info.renderPass = m_render_pass;
+    render_info.framebuffer = image.framebuffer;
+    render_info.renderArea.extent = {UI_WIDTH, UI_HEIGHT};
+    render_info.clearValueCount = 1;
+    render_info.pClearValues = &clear_value;
+    vkCmdBeginRenderPass(image.command_buffer, &render_info, VK_SUBPASS_CONTENTS_INLINE);
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), image.command_buffer);
+    vkCmdEndRenderPass(image.command_buffer);
+    ImGui::SetCurrentContext(previous_context);
+    if (vkEndCommandBuffer(image.command_buffer) != VK_SUCCESS)
+    {
+      ReleaseImage();
+      return false;
+    }
+
+    VkSubmitInfo submit_info{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &image.command_buffer;
+    VkResult submit_result = VK_SUCCESS;
+    {
+      auto queue_lock = m_owner.AcquireGraphicsQueueLock();
+      submit_result = vkQueueSubmit(g_vulkan_context->GetGraphicsQueue(), 1, &submit_info,
+                                    image.fence);
+    }
+    if (submit_result != VK_SUCCESS ||
+        vkWaitForFences(device, 1, &image.fence, VK_TRUE, UINT64_MAX) != VK_SUCCESS)
+    {
+      ReleaseImage();
+      return false;
+    }
+
+    XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+    {
+      auto queue_lock = m_owner.AcquireGraphicsQueueLock();
+      result = xrReleaseSwapchainImage(m_swapchain, &release_info);
+    }
+    if (XR_FAILED(result))
+      return false;
+
+    m_text.assign(text);
+    m_rendered = true;
+    return true;
+  }
+
+  XrCompositionLayerQuad* GetLayer() { return m_rendered ? &m_layer : nullptr; }
+
+  void Shutdown()
+  {
+    if (!g_vulkan_context)
+      return;
+
+    const VkDevice device = g_vulkan_context->GetDevice();
+    if (m_imgui_context != nullptr)
+    {
+      ImGuiContext* previous_context = ImGui::GetCurrentContext();
+      ImGui::SetCurrentContext(m_imgui_context);
+      if (m_imgui_backend_initialized)
+        ImGui_ImplVulkan_Shutdown();
+      ImGui::DestroyContext(m_imgui_context);
+      ImGui::SetCurrentContext(previous_context);
+      m_imgui_context = nullptr;
+      m_imgui_backend_initialized = false;
+    }
+
+    for (auto& image : m_images)
+    {
+      if (image.fence != VK_NULL_HANDLE)
+        vkDestroyFence(device, image.fence, nullptr);
+      if (image.command_pool != VK_NULL_HANDLE)
+        vkDestroyCommandPool(device, image.command_pool, nullptr);
+      if (image.framebuffer != VK_NULL_HANDLE)
+        vkDestroyFramebuffer(device, image.framebuffer, nullptr);
+      if (image.view != VK_NULL_HANDLE)
+        vkDestroyImageView(device, image.view, nullptr);
+    }
+    m_images.clear();
+
+    if (m_render_pass != VK_NULL_HANDLE)
+      vkDestroyRenderPass(device, m_render_pass, nullptr);
+    m_render_pass = VK_NULL_HANDLE;
+    if (m_swapchain != XR_NULL_HANDLE)
+    {
+      xrDestroySwapchain(m_swapchain);
+      m_swapchain = XR_NULL_HANDLE;
+    }
+    m_rendered = false;
+  }
+
+private:
+  static XrVector3f RotateVector(const XrQuaternionf& q, const XrVector3f& v)
+  {
+    const XrVector3f qv{q.x, q.y, q.z};
+    const XrVector3f uv{qv.y * v.z - qv.z * v.y, qv.z * v.x - qv.x * v.z,
+                       qv.x * v.y - qv.y * v.x};
+    const XrVector3f uuv{qv.y * uv.z - qv.z * uv.y, qv.z * uv.x - qv.x * uv.z,
+                         qv.x * uv.y - qv.y * uv.x};
+    return {v.x + 2.0f * (q.w * uv.x + uuv.x), v.y + 2.0f * (q.w * uv.y + uuv.y),
+            v.z + 2.0f * (q.w * uv.z + uuv.z)};
+  }
+
+  void UpdateWorldLockedPose()
+  {
+    if (!VR::g_openxr)
+      return;
+
+    // Capture the current view once when the dialog is opened, but express the quad in the same
+    // LOCAL/STAGE space as the game layer. The stored pose is then fixed while the user moves.
+    m_layer.space = VR::g_openxr->GetReferenceSpace();
+    const auto head = Common::VR::OpenXRInputState::GetSnapshot().head_pose;
+    if (!head.valid)
+      return;
+
+    const XrQuaternionf orientation{head.orientation[0], head.orientation[1],
+                                    head.orientation[2], head.orientation[3]};
+    const XrVector3f head_position{head.position[0], head.position[1], head.position[2]};
+    const XrVector3f forward = RotateVector(orientation, {0.0f, 0.0f, -1.0f});
+    constexpr float distance = 1.2f;
+    constexpr float vertical_offset = -0.25f;
+    m_layer.pose.orientation = orientation;
+    m_layer.pose.position = {head_position.x + forward.x * distance,
+                             head_position.y + forward.y * distance + vertical_offset,
+                             head_position.z + forward.z * distance};
+  }
+
+  struct Image
+  {
+    VkImage image = VK_NULL_HANDLE;
+    VkImageView view = VK_NULL_HANDLE;
+    VkFramebuffer framebuffer = VK_NULL_HANDLE;
+    VkCommandPool command_pool = VK_NULL_HANDLE;
+    VkCommandBuffer command_buffer = VK_NULL_HANDLE;
+    VkFence fence = VK_NULL_HANDLE;
+    bool initialized = false;
+  };
+
+  bool CreateRenderPass(VkFormat format)
+  {
+    VkAttachmentDescription attachment{};
+    attachment.format = format;
+    attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference reference{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &reference;
+
+    VkSubpassDependency dependency{};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    VkRenderPassCreateInfo info{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+    info.attachmentCount = 1;
+    info.pAttachments = &attachment;
+    info.subpassCount = 1;
+    info.pSubpasses = &subpass;
+    info.dependencyCount = 1;
+    info.pDependencies = &dependency;
+    return vkCreateRenderPass(g_vulkan_context->GetDevice(), &info, nullptr, &m_render_pass) ==
+           VK_SUCCESS;
+  }
+
+  bool CreateImages(std::vector<XrSwapchainImageVulkanKHR>& xr_images)
+  {
+    const VkDevice device = g_vulkan_context->GetDevice();
+    m_images.resize(xr_images.size());
+    for (size_t i = 0; i < xr_images.size(); ++i)
+    {
+      Image& image = m_images[i];
+      image.image = xr_images[i].image;
+
+      VkImageViewCreateInfo view_info{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+      view_info.image = image.image;
+      view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+      view_info.format = static_cast<VkFormat>(m_format);
+      view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      view_info.subresourceRange.levelCount = 1;
+      view_info.subresourceRange.layerCount = 1;
+      if (vkCreateImageView(device, &view_info, nullptr, &image.view) != VK_SUCCESS)
+        return false;
+
+      VkFramebufferCreateInfo framebuffer_info{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+      framebuffer_info.renderPass = m_render_pass;
+      framebuffer_info.attachmentCount = 1;
+      framebuffer_info.pAttachments = &image.view;
+      framebuffer_info.width = UI_WIDTH;
+      framebuffer_info.height = UI_HEIGHT;
+      framebuffer_info.layers = 1;
+      if (vkCreateFramebuffer(device, &framebuffer_info, nullptr, &image.framebuffer) != VK_SUCCESS)
+        return false;
+
+      VkCommandPoolCreateInfo pool_info{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
+      pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+      pool_info.queueFamilyIndex = g_vulkan_context->GetGraphicsQueueFamilyIndex();
+      if (vkCreateCommandPool(device, &pool_info, nullptr, &image.command_pool) != VK_SUCCESS)
+        return false;
+
+      VkCommandBufferAllocateInfo allocate_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+      allocate_info.commandPool = image.command_pool;
+      allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+      allocate_info.commandBufferCount = 1;
+      if (vkAllocateCommandBuffers(device, &allocate_info, &image.command_buffer) != VK_SUCCESS)
+        return false;
+
+      VkFenceCreateInfo fence_info{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+      fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+      if (vkCreateFence(device, &fence_info, nullptr, &image.fence) != VK_SUCCESS)
+        return false;
+    }
+    return true;
+  }
+
+  bool InitializeImGui()
+  {
+    ImGuiContext* const previous_context = ImGui::GetCurrentContext();
+    m_imgui_context = ImGui::CreateContext();
+    if (!m_imgui_context)
+      return false;
+    ImGui::SetCurrentContext(m_imgui_context);
+    ImGuiIO& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+    io.DisplaySize = {static_cast<float>(UI_WIDTH), static_cast<float>(UI_HEIGHT)};
+    io.DeltaTime = 1.0f / 90.0f;
+
+    std::string font_path = File::GetUserPath(D_LOAD_IDX) + "OSD_Font.ttf";
+    if (!File::Exists(font_path))
+      font_path = File::GetSysDirectory() + DIR_SEP + RESOURCES_DIR + DIR_SEP + "OSD_Font.ttf";
+    if (File::Exists(font_path))
+      io.Fonts->AddFontFromFileTTF(font_path.c_str(), 34.0f);
+    else
+      io.Fonts->AddFontDefault();
+
+    if (!ImGui_ImplVulkan_LoadFunctions(
+            VK_API_VERSION_1_1,
+            [](const char* name, void* user_data) {
+              return vkGetInstanceProcAddr(reinterpret_cast<VkInstance>(user_data), name);
+            },
+            g_vulkan_context->GetVulkanInstance()))
+    {
+      ImGui::DestroyContext(m_imgui_context);
+      m_imgui_context = nullptr;
+      ImGui::SetCurrentContext(previous_context);
+      return false;
+    }
+
+    ImGui_ImplVulkan_InitInfo info{};
+    info.ApiVersion = g_vulkan_context->GetDeviceInfo().apiVersion;
+    info.Instance = g_vulkan_context->GetVulkanInstance();
+    info.PhysicalDevice = g_vulkan_context->GetPhysicalDevice();
+    info.Device = g_vulkan_context->GetDevice();
+    info.QueueFamily = g_vulkan_context->GetGraphicsQueueFamilyIndex();
+    info.Queue = g_vulkan_context->GetGraphicsQueue();
+    info.RenderPass = m_render_pass;
+    info.MinImageCount = std::max(2u, static_cast<uint32_t>(m_images.size()));
+    info.ImageCount = info.MinImageCount;
+    info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    info.DescriptorPoolSize = IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE;
+    info.CheckVkResultFn = [](VkResult result) {
+      if (result != VK_SUCCESS)
+      {
+        ERROR_LOG_FMT(VIDEO, "OpenXR stop prompt: ImGui Vulkan operation failed ({}).",
+                      static_cast<int>(result));
+      }
+    };
+    if (!ImGui_ImplVulkan_Init(&info))
+    {
+      ImGui::DestroyContext(m_imgui_context);
+      m_imgui_context = nullptr;
+      ImGui::SetCurrentContext(previous_context);
+      return false;
+    }
+    m_imgui_backend_initialized = true;
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    ImGui::StyleColorsDark(&style);
+    style.WindowRounding = 18.0f;
+    style.WindowPadding = {46.0f, 36.0f};
+    style.ItemSpacing = {20.0f, 18.0f};
+    style.Colors[ImGuiCol_WindowBg] = {0.025f, 0.035f, 0.055f, 0.96f};
+    ImGui::SetCurrentContext(previous_context);
+    return true;
+  }
+
+  bool BuildImGui(std::string_view text)
+  {
+    ImGui::SetCurrentContext(m_imgui_context);
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = {static_cast<float>(UI_WIDTH), static_cast<float>(UI_HEIGHT)};
+    io.DeltaTime = 1.0f / 90.0f;
+    ImGui_ImplVulkan_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::SetNextWindowPos({UI_WIDTH * 0.5f, UI_HEIGHT * 0.5f}, ImGuiCond_Always,
+                            {0.5f, 0.5f});
+    ImGui::SetNextWindowSize({UI_WIDTH * 0.78f, UI_HEIGHT * 0.72f}, ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.96f);
+    constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+                                       ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings |
+                                       ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav;
+    if (ImGui::Begin("Confirm emulation stop", nullptr, flags))
+    {
+      ImGui::SetWindowFontScale(1.25f);
+      ImGui::TextWrapped("%.*s", static_cast<int>(text.size()), text.data());
+      ImGui::SetWindowFontScale(1.0f);
+    }
+    ImGui::End();
+    ImGui::Render();
+    return true;
+  }
+
+  void ReleaseImage()
+  {
+    XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+    XrResult result = XR_SUCCESS;
+    {
+      auto queue_lock = m_owner.AcquireGraphicsQueueLock();
+      result = xrReleaseSwapchainImage(m_swapchain, &release_info);
+    }
+    if (XR_FAILED(result))
+    {
+      WARN_LOG_FMT(VIDEO, "OpenXR stop prompt: swapchain image release failed ({}).",
+                   static_cast<int>(result));
+    }
+  }
+
+  static constexpr uint32_t UI_WIDTH = 1024;
+  static constexpr uint32_t UI_HEIGHT = 512;
+
+  VulkanOpenXR& m_owner;
+  XrSwapchain m_swapchain = XR_NULL_HANDLE;
+  VkFormat m_format = VK_FORMAT_UNDEFINED;
+  VkRenderPass m_render_pass = VK_NULL_HANDLE;
+  std::vector<Image> m_images;
+  ImGuiContext* m_imgui_context = nullptr;
+  bool m_imgui_backend_initialized = false;
+  bool m_rendered = false;
+  std::string m_text;
+  XrCompositionLayerQuad m_layer{XR_TYPE_COMPOSITION_LAYER_QUAD};
+};
 
 #if defined(ANDROID)
 static void AppendOptionalAndroidOpenXRExtensions(std::vector<const char*>* extensions)
@@ -280,6 +782,23 @@ std::unique_lock<std::mutex> VulkanOpenXR::AcquireGraphicsQueueLock()
     return g_command_buffer_mgr->AcquireQueueLock();
 
   return {};
+}
+
+bool VulkanOpenXR::PrepareStopConfirmationLayer(std::string_view text)
+{
+  if (!m_stop_confirmation_overlay || !VR::g_openxr)
+    return false;
+
+  // The pacing thread must not submit the overlay swapchain's previous image while it is being
+  // updated. Preserve the Frame handoff -> graphics-queue lock order; Render() releases the queue
+  // lock before waiting for its completion fence.
+  VR::OpenXRManager::ScopedVideoFrameHandoff handoff(VR::g_openxr.get());
+  return m_stop_confirmation_overlay->Render(text);
+}
+
+XrCompositionLayerQuad* VulkanOpenXR::GetStopConfirmationLayer()
+{
+  return m_stop_confirmation_overlay ? m_stop_confirmation_overlay->GetLayer() : nullptr;
 }
 
 bool VulkanOpenXR::WaitForPendingFrameFinalization(std::string_view reason)
@@ -923,6 +1442,14 @@ bool VulkanOpenXR::CreateSwapchains()
     return false;
   }
 
+  m_stop_confirmation_overlay = std::make_unique<VulkanOpenXRConfirmationOverlay>(*this);
+  if (!m_stop_confirmation_overlay->Initialize(static_cast<VkFormat>(swapchain_format)))
+  {
+    WARN_LOG_FMT(VIDEO, "OpenXR: Stop-confirmation quad initialization failed; VR stop prompts "
+                        "will use the desktop dialog.");
+    m_stop_confirmation_overlay.reset();
+  }
+
   return true;
 }
 
@@ -1283,6 +1810,9 @@ void VulkanOpenXR::DestroySwapchains()
   // destroying the swapchains referenced by those layers.
   if (VR::g_openxr)
     VR::g_openxr->ShutdownSession();
+
+  // Stop the compositor's references before destroying the prompt's runtime-owned images.
+  m_stop_confirmation_overlay.reset();
 
   DestroySwapchainVulkanObjects(m_layered_swapchain);
 

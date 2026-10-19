@@ -1,49 +1,20 @@
 # Baiji - Steam Frame-specific fork of DolphinXR, a fork of Dolphin
 
-Baiji is an AI-slop fork of
+Baiji is a fork of
 [dolphinXR](https://github.com/iChris4/dolphinXR/), a "developed with
 the use of AI tools" (straight from their readme) fork of Dolphin.
 
-Baiji may be AI slop but this Readme.md is organic and home-grown by a
-human.
+Baiji's headline features:
 
-Baiji is intended to be a near-term fork that directly integrates with
-the Steam Frame, removing the complication of trying to figure out how
-to stream VR from a remote computer, deal with VR control schemes,
-etc., and so forth, making a fork of Dolphin that _just works_ in 3D
-on the Steam Frame.
-
-3D? Did I say 3D? Yes, 3D. Core Dolphin has a long-standing feature
-called [stereoscopic
-3D](https://wiki.dolphin-emu.org/index.php?title=Stereoscopic_3D_Setup),
-which allows the running of Dolphin on a 3D monitor or with 3D
-glasses. However the hardware is specialized and the setup was not VR
-aware, so a default Dolphin install can only run flat on a virtual
-screen.
-
-The primary purpose of this fork is to make this stereoscopic 3D Just
-Work™. I can't show what this looks like in a static shot on GitHub,
-but if you can cross your eyes, here's [Super Mario Galaxy 2 in
-stereoscopic 3D on
-YouTube](https://www.youtube.com/watch?v=XmgdqCL2toE). I found a
-normal phone a pretty good way to view that with cross-eyes; getting
-the sizing right on a desktop is pretty challenging.
-
-In principle it is as easy as installing Baiji, getting a legal file
-Dolphin can read as a Wii game, and starting the ROM. Baiji should
-come up with a sensible Steam Frame controller mapping for a WiiMote +
-Nunchunk, in stereoscopic 3D, with sensible performance settings
-(which includes "precompiling shaders" before startup, though you may
-see some initial stutters as the cache is built out), and be off to
-the races. In practice, this is the work of a long weekend and I've
-tested a whopping 4 games, only one from the Gamecube, and one of
-which had an early crash with at least one of the development
-version.
-
-So don't expect miracles.
-
-But I figured this had gotten to the point where more eyes was the
-better way to go.
+* Native support of stereoscopic 3D and a VR mode. Play your games in
+  3D as easily as playing them in an original Dolphin build. No
+  fiddling with other external addons, just play your Wii and Gamecube
+  games in 3D. Flat mode is still available for games that work best
+  that way.
+* Native understanding of the Steam Frame controller, and a default
+  mapping for it that should be sensible for Wiimote + Nunchuck or a
+  Gamecube controller.
+* Other streamlining to work with the Steam Frame natively.
 
 A ["Baiji" is a possibly-extinct subspecies of
 dolphin](https://en.wikipedia.org/wiki/Baiji). Most dolphin species
@@ -73,17 +44,6 @@ it without trying to get widely disparate enviromnents and libraries
 and streaming and everything set up. Perhaps even, dare I think it,
 that this use case becomes considered one of the definitive reasons to
 get a Steam Frame. Vive le matériel libre.
-
-# Features
-
-* Steam Frame-centric default settings, including mappings and such.
-* Integrated Stereoscopic 3D, including some new settings not in the
-  original 3D support of use in VR.
-* Retained the VR work from the dolphinXR branch, selectable in a
-  drop-down.
-* Also retained flat mode, where at least the default Steam Frame
-  configurations can be of some use.
-* Controller configuration that works in the Steam Frame UI.
 
 # Installation And Startup
 
@@ -185,46 +145,10 @@ know about ARM-based Mac OS machines.
   flattens everything out into a rather visually boring 3D effect,
   rather than looking awesome, so we're not missing anything.
 
-# Ownership
-
-I see a number of other people are working on similar forks. Honestly,
-I don't really care to own this. All I want is the stereoscopic 3D,
-even if you pursue VR being another option, because of the ability to
-manipulate the stereoscopic 3D settings as I have them in this repo
-and the utility I think that will have. (Skies of Arcadia is seriously
-eye-crossing if you don't turn down the 3D.) Have a look at the
-reconfigured UI for the VR panel in this branch and how it allows you
-to select the various options. If anyone wants to have their AI look
-over my patch stream, break it down by feature, and incorporate it
-into your project, that's great. You can have the branding too if you
-like. I don't care.
-
 # Known Quirks
 
-* In Stereoscopic 3D mode, stopping the emulation (default the "View"
-  button, the button on top of the left controller) pops up a dialog
-  box in the QT environment asking you if you want to stop
-  emulation. The user experience is that emulation just freezes and
-  there is no indication of this. You must hit the Steam button to
-  pull up the Steam UI, and then, it seems to be random whether it
-  shows the default Steam OS controls for stopping or resuming the
-  game or the QT UI. You can select the QT UI from the list of running
-  windows on the left, then click "Yes", and emulation will stop and
-  control return to the main UI.
 * You may need to recenter once to align the pointer in Stereoscopic
   3D mode.
-* If you choose to emulate in Flat Mode, your controllers will be in
-  laser mode when you click "play". You *must* be in gamepad mode to
-  actually play the game. I panicked several times during
-  development that I had broken controller support but it was just
-  that I had forgotten to switch. There is a dialog that should remind
-  you. Note this is an aspect of the Steam OS, not Baiji.
-* The main UI
-  is mostly frozen during emulation. But only mostly. Still, best just
-  to treat it as frozen until you stop the emulation.
-* The "Immersive VR" only works with a certain set of settings,
-  but they are not locked in when it is selected. This is next
-  on the agenda.
 
 # The Usual Fake FAQs
 
@@ -292,6 +216,16 @@ Dolphin project has opinions about the details around how I've done
 this, I am very open to change, correction, PRs on this matter,
 etc. This is a sign of me trying to do it very correctly and
 carefully, not carelessly, and not to steal credit.
+
+## This Game Works Poorly In Stereoscopic 3D Or VR
+
+The farther you push a game out of its native environment, the worse
+it gets. Stereoscopic 3D is already pushing a lot of games. Any game
+that works in VR is a minor miracle.
+
+Issues about specific games in either 3D mode will not be accepted for
+Baiji. Fixing them would require something more like a full
+decompilation and rewrite project, not tweaks to Baiji.
 
 # Command Line Tooling
 
@@ -448,14 +382,11 @@ as I know these are currently not reasonable fixable:
 
 # Changelog
 
-* Todo before release:
-  * Check Room View in VR, can probably leave that rendering while the
-    Steam UI is up
-  * Check the Reddit feedback about the settings that make VR work,
-    and lock the ones that _must_ be set for Immersive VR to work,
-    when Immersive VR is selected.
-
 * v0.2-alpha (not released yet)
+  * Stopping the emulation should now, in all modes of access, produce
+    some user-visible dialog asking if they are sure, rather than
+    seeming to just freeze the game until you have the idea to go to
+    the QT UI and answer the dialog box that appeared there.
   * Per reddit user FerrisTriangle, [some settings are necessary to
     use Immersive
     VR](https://www.reddit.com/r/SteamFrame/comments/1x01rte/comment/pevcr99/?context=3). I

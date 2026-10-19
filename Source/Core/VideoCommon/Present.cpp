@@ -153,6 +153,59 @@ bool Presenter::Initialize()
   return true;
 }
 
+#ifdef ENABLE_VR
+bool Presenter::BeginOpenXRStopConfirmation(std::string_view text, bool* started_frame_thread)
+{
+  if (started_frame_thread)
+    *started_frame_thread = false;
+
+  std::lock_guard present_lock(m_present_mutex);
+  if (!VR::g_openxr || !m_onscreen_ui)
+    return false;
+
+  // The prompt renderer has a separate ImGui context, but Dear ImGui's current-context pointer is
+  // process-global. Serialize its context switch with the regular OnScreenUI event/render path.
+  auto imgui_lock = m_onscreen_ui->GetImGuiLock();
+  if (!VR::g_openxr->BeginStopConfirmation(text))
+    return false;
+
+  if (!VR::g_openxr->IsFrameThreadActive())
+  {
+    VR::IOpenXRSwapchain* const swapchain = VR::g_openxr->GetSwapchain();
+    if (!swapchain || !swapchain->SupportsDetachedFrameLoop() ||
+        !VR::g_openxr->EndPreparedFrameForPacingThread())
+    {
+      VR::g_openxr->EndStopConfirmation();
+      return false;
+    }
+
+    // The sync flow pre-begins a frame at the end of Present(). Close it while holding the
+    // presenter lock, then temporarily transfer frame ownership to the pacing thread so the
+    // prompt stays live while Core is paused.
+    m_openxr_frame_prepared = false;
+    VR::g_openxr->StartFrameThread();
+    if (started_frame_thread)
+      *started_frame_thread = true;
+  }
+
+  return true;
+}
+
+void Presenter::EndOpenXRStopConfirmation(bool started_frame_thread)
+{
+  std::lock_guard present_lock(m_present_mutex);
+  if (!VR::g_openxr)
+    return;
+
+  VR::g_openxr->EndStopConfirmation();
+  if (started_frame_thread)
+  {
+    VR::g_openxr->StopFrameThread();
+    m_openxr_frame_prepared = false;
+  }
+}
+#endif
+
 bool Presenter::FetchXFB(u32 xfb_addr, u32 fb_width, u32 fb_stride, u32 fb_height, u64 ticks)
 {
   ReleaseXFBContentLock();
@@ -1207,6 +1260,7 @@ void Presenter::RenderXFBToScreen(const MathUtil::Rectangle<int>& target_rc,
 
 void Presenter::Present(PresentInfo* present_info)
 {
+  std::lock_guard present_lock(m_present_mutex);
   m_present_count++;
 
 #ifdef ENABLE_VR

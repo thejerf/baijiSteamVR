@@ -9,12 +9,14 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QDragEnterEvent>
+#include <QEventLoop>
 #include <QDropEvent>
 #include <QFileInfo>
 #include <QIcon>
 #include <QMimeData>
 #include <QStackedWidget>
 #include <QStyleHints>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWindow>
 
@@ -134,7 +136,11 @@
 #include "UICommon/UICommon.h"
 
 #include "VideoCommon/NetPlayChatUI.h"
+#include "VideoCommon/Present.h"
 #include "VideoCommon/VideoConfig.h"
+#ifdef ENABLE_VR
+#include "VideoCommon/VR/OpenXRManager.h"
+#endif
 
 #ifdef HAVE_XRANDR
 #include "UICommon/X11Utils.h"
@@ -624,7 +630,8 @@ void MainWindow::ConnectHotkeys()
           &MainWindow::OnRequestGolfControl);
   connect(m_hotkey_scheduler, &HotkeyScheduler::RefreshGameListHotkey, this,
           &MainWindow::RefreshGameList);
-  connect(m_hotkey_scheduler, &HotkeyScheduler::StopHotkey, this, &MainWindow::RequestStop);
+  connect(m_hotkey_scheduler, &HotkeyScheduler::StopHotkey, this,
+          &MainWindow::RequestStopFromEmulation);
   connect(m_hotkey_scheduler, &HotkeyScheduler::ResetHotkey, this, &MainWindow::Reset);
   connect(m_hotkey_scheduler, &HotkeyScheduler::ScreenShotHotkey, this, &MainWindow::ScreenShot);
   connect(m_hotkey_scheduler, &HotkeyScheduler::FullScreenHotkey, this, &MainWindow::FullScreen);
@@ -736,7 +743,7 @@ void MainWindow::ConnectRenderWidget()
 
 void MainWindow::ConnectHost()
 {
-  connect(Host::GetInstance(), &Host::RequestStop, this, &MainWindow::RequestStop);
+  connect(Host::GetInstance(), &Host::RequestStop, this, &MainWindow::RequestStopFromEmulation);
 }
 
 void MainWindow::ConnectStack()
@@ -938,6 +945,16 @@ void MainWindow::OnStopComplete()
 
 bool MainWindow::RequestStop()
 {
+  return RequestStopInternal(false);
+}
+
+bool MainWindow::RequestStopFromEmulation()
+{
+  return RequestStopInternal(true);
+}
+
+bool MainWindow::RequestStopInternal(bool from_emulation)
+{
   if (Core::IsUninitialized(m_system))
   {
     Core::QueueHostJob([this](Core::System&) { OnStopComplete(); }, true);
@@ -1004,9 +1021,49 @@ bool MainWindow::RequestStop()
     {
       message = tr("Do you want to stop the current emulation?");
     }
-    auto confirm = ModalMessageBox::question(confirm_parent, tr("Confirm"), message,
-                                             QMessageBox::Yes | QMessageBox::No,
-                                             QMessageBox::NoButton, Qt::ApplicationModal);
+    int confirm = QMessageBox::NoButton;
+#ifdef ENABLE_VR
+    const bool immersive_or_stereo_screen =
+        VR::g_openxr && (g_ActiveConfig.stereo_mode == StereoMode::OpenXR ||
+                         g_ActiveConfig.vr_stereo_screen);
+    bool temporary_frame_thread = false;
+    if (from_emulation && immersive_or_stereo_screen && g_presenter)
+    {
+      const QString prompt =
+          message + tr("\n\nRight A: Stop emulation\nRight B: Continue playing");
+      if (g_presenter->BeginOpenXRStopConfirmation(prompt.toStdString(), &temporary_frame_thread))
+      {
+        QEventLoop confirmation_loop;
+        QTimer confirmation_timer;
+        confirmation_timer.setInterval(10);
+        connect(&confirmation_timer, &QTimer::timeout, &confirmation_loop,
+                [&confirmation_loop] {
+                  if (!VR::g_openxr || !VR::g_openxr->IsSessionRunning() ||
+                      VR::g_openxr->GetStopConfirmationResult() !=
+                          VR::OpenXRStopConfirmationResult::Pending)
+                  {
+                    confirmation_loop.quit();
+                  }
+                });
+        confirmation_timer.start();
+        confirmation_loop.exec();
+        confirmation_timer.stop();
+
+        const VR::OpenXRStopConfirmationResult result =
+            VR::g_openxr ? VR::g_openxr->GetStopConfirmationResult() :
+                           VR::OpenXRStopConfirmationResult::Idle;
+        g_presenter->EndOpenXRStopConfirmation(temporary_frame_thread);
+        confirm = result == VR::OpenXRStopConfirmationResult::Stop ? QMessageBox::Yes :
+                                                                     QMessageBox::No;
+      }
+    }
+#endif
+    if (confirm == QMessageBox::NoButton)
+    {
+      confirm = ModalMessageBox::question(confirm_parent, tr("Confirm"), message,
+                                          QMessageBox::Yes | QMessageBox::No,
+                                          QMessageBox::NoButton, Qt::ApplicationModal);
+    }
 
     // If a user confirmed stopping the emulation, we do not capture the cursor again,
     // even if the render widget will stay alive for a while.

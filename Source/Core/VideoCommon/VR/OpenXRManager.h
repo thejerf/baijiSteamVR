@@ -7,6 +7,7 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <memory>
@@ -103,6 +104,11 @@ public:
   // external queue synchronization return a held lock here; other backends return an empty lock.
   virtual std::unique_lock<std::mutex> AcquireGraphicsQueueLock() { return {}; }
 
+  // Vulkan backends may provide a stable, depth-independent quad used to confirm stopping
+  // emulation. The image is prepared by the presenter and remains valid until hidden.
+  virtual bool PrepareStopConfirmationLayer(std::string_view text) { return false; }
+  virtual XrCompositionLayerQuad* GetStopConfirmationLayer() { return nullptr; }
+
   // Backends that finish xrEndFrame asynchronously must complete the previous frame before the
   // next xrBeginFrame call. Synchronous backends have no pending work.
   virtual bool WaitForPendingFrameFinalization(std::string_view reason = {}) { return true; }
@@ -114,6 +120,14 @@ public:
   // Pixel dimensions of the eye render targets (typically HMD recommended resolution).
   virtual uint32_t GetEyeWidth() const = 0;
   virtual uint32_t GetEyeHeight() const = 0;
+};
+
+enum class OpenXRStopConfirmationResult : uint8_t
+{
+  Idle,
+  Pending,
+  Stop,
+  Continue,
 };
 
 class OpenXRManager
@@ -207,6 +221,17 @@ public:
                         bool should_render,
                         const std::vector<XrCompositionLayerBaseHeader*>& layers,
                         bool lock_graphics_queue = true);
+
+  bool BeginStopConfirmation(std::string_view text);
+  void EndStopConfirmation();
+  OpenXRStopConfirmationResult GetStopConfirmationResult() const
+  {
+    return m_stop_confirmation_result.load(std::memory_order_acquire);
+  }
+
+  // Ends the inline frame Presenter pre-began before temporarily transferring frame ownership
+  // to the pacing thread for the stop-confirmation prompt.
+  bool EndPreparedFrameForPacingThread();
 
   // ---- XR pacing thread ----
   // Owns the xrWaitFrame → xrBeginFrame → xrEndFrame loop (and the session event pump),
@@ -468,6 +493,8 @@ public:
   XrCompositionLayerFlags GetProjectionLayerExtraFlags() const;
 
 private:
+  struct PublishedXRFrame;
+
   void GetEyeProjectionRowsImpl(
       float units_per_meter, bool apply_game_camera,
       std::array<std::array<float, 4>, 4>& out_proj_rows,
@@ -483,6 +510,9 @@ private:
   bool InitializeInputActions();
   void DestroyInputActions();
   void UpdateInputActions();
+  void UpdateStopConfirmationInput(
+      const std::array<Common::VR::OpenXRControllerState, 2>& controllers);
+  void CacheSubmittedFrame(const std::vector<XrCompositionLayerBaseHeader*>& layers);
   void UpdateHaptics();
   // Core of GetControllerAnchorViewPose without the per-frame cache: maps an aim pose
   // (reference space) into game view space. Frame/video-thread only.
@@ -520,6 +550,7 @@ private:
   XrSession m_session = XR_NULL_HANDLE;
   XrSpace m_reference_space = XR_NULL_HANDLE;
   XrReferenceSpaceType m_reference_space_type = XR_REFERENCE_SPACE_TYPE_LOCAL;
+  uint32_t m_max_layer_count = 0;
 
   // Non-owning pointer; lifetime managed by the backend (D3DOpenXR).
   IOpenXRSwapchain* m_swapchain = nullptr;
@@ -643,6 +674,7 @@ private:
 
   struct PublishedXRFrame
   {
+    bool valid = false;
     bool is_quad = false;
     bool is_stereo_quad = false;
     std::array<XrCompositionLayerProjectionView, 2> views{};
@@ -666,6 +698,16 @@ private:
   // image to be selected together. Lock order: handoff -> publish or graphics queue;
   // neither publish nor graphics queue may be held while taking this lock.
   std::mutex m_video_handoff_mutex;
+
+  std::atomic<bool> m_frame_begun{false};
+  std::atomic<bool> m_stop_confirmation_active{false};
+  std::atomic<OpenXRStopConfirmationResult> m_stop_confirmation_result{
+      OpenXRStopConfirmationResult::Idle};
+  std::mutex m_stop_confirmation_input_mutex;
+  std::optional<std::chrono::steady_clock::time_point> m_stop_confirmation_neutral_since;
+  bool m_stop_confirmation_armed = false;
+  bool m_stop_confirmation_previous_primary = false;
+  bool m_stop_confirmation_previous_secondary = false;
 
   // OpenXR input action set used to expose VR controller input to Dolphin's
   // regular controller mapping UI.

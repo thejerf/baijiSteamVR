@@ -30,6 +30,7 @@ namespace Vulkan
 {
 class VKTexture;
 class VKFramebuffer;
+class VulkanOpenXRConfirmationOverlay;
 
 // Holds the swapchain images for one eye.
 // The VkImage objects are owned by the OpenXR runtime; VKTexture wraps them
@@ -152,6 +153,8 @@ public:
   }
   bool SubmitFlatFrame() override;
   bool SubmitStereoFlatFrame() override;
+  bool PrepareStopConfirmationLayer(std::string_view text) override;
+  XrCompositionLayerQuad* GetStopConfirmationLayer() override;
 
 private:
   struct PendingXRFrame
@@ -195,6 +198,7 @@ private:
 
   std::array<XRVkEyeSwapchain, 2> m_eye_swapchains{};
   XRVkLayeredSwapchain m_layered_swapchain{};
+  std::unique_ptr<VulkanOpenXRConfirmationOverlay> m_stop_confirmation_overlay;
 
   // Image index selected by xrAcquireSwapchainImage for the current frame.
   std::array<uint32_t, 2> m_acquired_image_index{0, 0};

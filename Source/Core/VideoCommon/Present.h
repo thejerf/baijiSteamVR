@@ -14,6 +14,7 @@
 #include <array>
 #include <memory>
 #include <mutex>
+#include <string_view>
 #include <tuple>
 
 class AbstractTexture;
@@ -45,6 +46,11 @@ public:
   void ClearLastXfbId() { m_last_xfb_id = std::numeric_limits<u64>::max(); }
 
   bool Initialize();
+
+#ifdef ENABLE_VR
+  bool BeginOpenXRStopConfirmation(std::string_view text, bool* started_frame_thread);
+  void EndOpenXRStopConfirmation(bool started_frame_thread);
+#endif
 
   void ConfigChanged(u32 changed_bits);
 
@@ -148,6 +154,9 @@ private:
 #endif
 
   std::mutex m_swap_mutex;
+  // Serializes Present() with a stop-confirmation transition from the inline OpenXR
+  // frame flow to a temporary XR pacing loop.
+  std::mutex m_present_mutex;
 
   // Backbuffer (window) size and render area
   int m_backbuffer_width = 0;
