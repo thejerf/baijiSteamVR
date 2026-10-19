@@ -80,6 +80,10 @@
   `state/stage-frame/`. Its persistent build/cache are
   `state/build-baiji/` and `state/ccache-cross-sdk/`. It configures
   `ENABLE_TESTS=OFF`; this is not a test build.
+- Snapshot release tarballs should use a fresh `STAGE_DIR` with the same Frame cross-SDK
+  build, then archive its `home/steamos/baiji` tree so the tarball root is `baiji/`. The
+  recipe and upgrade verification are in `docs/build-runbook.md`; do not upload or publish
+  without an explicit request.
 - `scripts/compile.sh [native|aarch64] [target...]` is the general container build
   helper; it defaults to `native` and `dolphin-emu`. It uses cached local Podman
   images `baijisteamvr-build:amd64` and `baijisteamvr-build:arm64` and does not rebuild

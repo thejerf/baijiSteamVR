@@ -27,7 +27,7 @@ case "$DEBUG_SYMBOLS" in
 esac
 INSTALL_PREFIX="${INSTALL_PREFIX:-/home/steamos/baiji}"
 BUILD_DIR="$PWD/state/build-baiji"
-STAGE_DIR="$PWD/state/stage-frame"
+STAGE_DIR="${STAGE_DIR:-$PWD/state/stage-frame}"
 SDK="$PWD/state/flatpak-home/.local/share/flatpak/runtime/org.kde.Sdk/aarch64/6.10/active/files"
 FLATPAK_USER_DIR="$PWD/state/flatpak-home/.local/share/flatpak"
 SDK_OVERLAY="$PWD/state/sdk-overlay"

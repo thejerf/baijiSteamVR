@@ -60,24 +60,31 @@ in the executable. If you have changed it, you may need to do some
 symlinking or hardlinking to have this end up unpacked into
 `/home/steamos/baiji`.)
 
+0. If you have installed a previous version of Baiji, make sure it's
+   not running.
 1. Start the Desktop environment in your Steam Frame.
 2. Navigate to this URL in a browser.
 3. Start `Konsole`, or the terminal of your choice.
 4. Copy this by clicking on the little double-square next to these
    commands:
 
-   ```bash
-   cd
-   wget https://github.com/thejerf/baijiSteamVR/releases/download/baiji-v0.1-alpha/baiji-v0.1-alpha.tar.bz2
-   tar xjf baiji-v0.1-alpha.tar.bz2
-   ssh frame "steamos-add-to-steam ./baiji/bin/baiji-vr"
-   ```
+    ```bash
+    cd
+    wget https://github.com/thejerf/baijiSteamVR/releases/download/baiji-v0.2-alpha/baiji-v0.2-alpha.tar.bz2
+    tar xjf baiji-v0.2-alpha.tar.bz2
+    ```
 5. Paste that into your Konsole session and hit "enter" on the
    keyboard.
+6. On first install only, add the launcher to Steam:
+
+   ```bash
+   ssh frame "steamos-add-to-steam ./baiji/bin/baiji-vr"
+   ```
    
 `baiji-vr` will appear as an option in your Non-Steam Games library.
 
-From there you'll need to load it up with your legally-acquired ROMs.
+Once installed, use the configuration menu to set your path to your
+ROM directory, or use File -> Open to play a ROM.
 
 ## Build and Install From an x86_64 Linux Machine
 

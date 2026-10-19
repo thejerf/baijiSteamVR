@@ -44,6 +44,42 @@ The Frame's glibc is 2.39, so the dependency collector leaves glibc, `libmvec`, 
 `libgpg-error` to the Frame's compatible system copies instead of bundling newer SDK
 builds.
 
+## Build a snapshot release tarball
+
+Build the normal Frame targets into a fresh staging directory, then archive the installed
+`baiji/` directory. A separate stage prevents files left by an older staged install from
+leaking into the release, while the normal CMake build and ccache remain incremental:
+
+```bash
+VERSION=v0.2-alpha
+STAGE_DIR="$(mktemp -d "$PWD/state/stage-release-$VERSION.XXXXXX")"
+INSTALL_PREFIX=/home/steamos/baiji STAGE_DIR="$STAGE_DIR" \
+  ./scripts/compile-cross-sdk.sh
+ARCHIVE="dist/baiji-$VERSION.tar.bz2"
+tar --sort=name -cjf "$ARCHIVE" -C "$STAGE_DIR/home/steamos" baiji
+```
+
+The archive's root entry is `baiji/`, matching the snapshot installation and upgrade
+commands in `Readme.md`. Check the archive contents and checksum before attaching it to a
+GitHub release; release upload/publication is a separate explicit step.
+
+To test an upgrade without touching a Frame install, extract the prior release and then the new
+archive into the same temporary home. Confirm the resulting install matches the new archive and
+that Baiji user data outside `baiji/` remains present:
+
+```bash
+UPGRADE_TEST="$(mktemp -d)"
+trap 'rm -rf "$UPGRADE_TEST"' EXIT
+mkdir -p "$UPGRADE_TEST/home/.config/baiji" "$UPGRADE_TEST/home/.local/share/baiji"
+touch "$UPGRADE_TEST/home/.config/baiji/upgrade-test" \
+  "$UPGRADE_TEST/home/.local/share/baiji/upgrade-test"
+tar -xjf baiji-v0.1-alpha.tar.bz2 -C "$UPGRADE_TEST/home"
+tar -xjf "$ARCHIVE" -C "$UPGRADE_TEST/home"
+tar -djf "$ARCHIVE" -C "$UPGRADE_TEST/home"
+test -f "$UPGRADE_TEST/home/.config/baiji/upgrade-test"
+test -f "$UPGRADE_TEST/home/.local/share/baiji/upgrade-test"
+```
+
 Smoke-test the CLI on the Frame:
 
 ```bash
