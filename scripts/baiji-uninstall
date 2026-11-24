@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+# Uninstall Baiji from a Steam Frame (or any Linux install made by deploy-frame.sh or the
+# release tarball), optionally copying the GameCube and Wii saves into a Dolphin install first.
+#
+#   baiji-uninstall                 remove the program (~/baiji); keep saves and settings
+#   baiji-uninstall --migrate [DIR] copy saves into Dolphin's user folder first (never overwrites)
+#   baiji-uninstall --purge         also delete Baiji's saves, settings and cache
+#   --dry-run                       show what would happen, change nothing
+#   --yes                           do not ask for confirmation
+set -euo pipefail
+
+main() {
+  local baiji_root="${BAIJI_ROOT:-$HOME/baiji}"
+  local data_dir="${XDG_DATA_HOME:-$HOME/.local/share}/baiji"
+  local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/baiji"
+  local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/baiji"
+  local migrate=0 migrate_dir="" purge=0 dry_run=0 assume_yes=0
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --migrate)
+        migrate=1
+        if [[ $# -gt 1 && "$2" != -* ]]; then
+          migrate_dir="$2"
+          shift
+        fi
+        ;;
+      --purge) purge=1 ;;
+      --dry-run) dry_run=1 ;;
+      --yes | -y) assume_yes=1 ;;
+      --help | -h)
+        sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'
+        return 0
+        ;;
+      *)
+        echo "Unknown option: $1 (see --help)" >&2
+        return 2
+        ;;
+    esac
+    shift
+  done
+
+  if [[ -z "$baiji_root" || "$baiji_root" == "/" || "$baiji_root" == "$HOME" ]]; then
+    echo "Refusing to remove unsafe BAIJI_ROOT: '$baiji_root'" >&2
+    return 1
+  fi
+
+  if pgrep -x baiji >/dev/null 2>&1 || pgrep -x baiji-nogui >/dev/null 2>&1; then
+    echo "Baiji is running. Close it first." >&2
+    return 1
+  fi
+
+  if [[ $migrate -eq 1 && -z "$migrate_dir" ]]; then
+    # Flatpak Dolphin if it has been run once, otherwise a native Dolphin's folder.
+    local flatpak_dir="$HOME/.var/app/org.DolphinEmu.dolphin-emu/data/dolphin-emu"
+    if [[ -d "$flatpak_dir" ]]; then
+      migrate_dir="$flatpak_dir"
+    else
+      migrate_dir="${XDG_DATA_HOME:-$HOME/.local/share}/dolphin-emu"
+    fi
+  fi
+
+  echo "Program:  $baiji_root"
+  echo "Saves:    $data_dir"
+  echo "Settings: $config_dir"
+  echo "Cache:    $cache_dir"
+  echo
+  [[ $migrate -eq 1 ]] && echo "- Copy GameCube and Wii saves to $migrate_dir (existing files are kept)"
+  echo "- Remove the program folder"
+  if [[ $purge -eq 1 ]]; then
+    echo "- Delete saves, settings and cache"
+  else
+    echo "- Keep saves, settings and cache"
+  fi
+  echo
+
+  if [[ $dry_run -eq 0 && $assume_yes -eq 0 ]]; then
+    local answer
+    read -r -p "Continue? [y/N] " answer
+    [[ "$answer" == [yY]* ]] || { echo "Nothing changed."; return 1; }
+  fi
+
+  run() {
+    if [[ $dry_run -eq 1 ]]; then
+      echo "would run: $*"
+    else
+      "$@"
+    fi
+  }
+
+  if [[ $migrate -eq 1 ]]; then
+    # Memory cards and GCI folders (GC) and the Wii NAND with its saves (Wii). Save states are
+    # left out: they rarely load in another Dolphin build.
+    local sub copied=0
+    for sub in GC Wii; do
+      if [[ -d "$data_dir/$sub" ]]; then
+        run mkdir -p "$migrate_dir/$sub"
+        run cp -r --update=none "$data_dir/$sub/." "$migrate_dir/$sub/"
+        copied=1
+      fi
+    done
+    [[ $copied -eq 1 ]] || echo "No GameCube or Wii saves found in $data_dir."
+  fi
+
+  if [[ -d "$baiji_root" ]]; then
+    run rm -rf -- "$baiji_root"
+  else
+    echo "No program folder at $baiji_root."
+  fi
+
+  if [[ $purge -eq 1 ]]; then
+    local dir
+    for dir in "$data_dir" "$config_dir" "$cache_dir"; do
+      [[ -d "$dir" ]] && run rm -rf -- "$dir"
+    done
+  fi
+
+  echo
+  echo "Done. If you added Baiji to Steam, remove the \"baiji-vr\" shortcut from your library"
+  echo "(right-click it, Manage, Remove non-Steam game from your library)."
+}
+
+# Everything runs from main, so removing this script's own folder mid-run is safe.
+main "$@"
