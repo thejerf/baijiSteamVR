@@ -54,6 +54,33 @@ void UpdateActiveConfig()
   g_ActiveConfig.bVSyncActive = IsVSyncActive(g_ActiveConfig.bVSync);
 }
 
+namespace
+{
+bool IsSetInAnyLayer(const Config::Location& location)
+{
+  return Config::GetActiveLayerForConfig(location) != Config::LayerType::Base ||
+         Config::GetLayer(Config::LayerType::Base)->Exists(location);
+}
+
+bool GetWithImmersiveDefault(const Config::Info<bool>& info, bool immersive_vr,
+                             bool immersive_default)
+{
+  if (immersive_vr && !IsSetInAnyLayer(info.GetLocation()))
+    return immersive_default;
+  return Config::Get(info);
+}
+}  // namespace
+
+bool GetVRExactScreenDepth(bool immersive_vr)
+{
+  return GetWithImmersiveDefault(Config::GFX_VR_EXACT_SCREEN_DEPTH, immersive_vr, false);
+}
+
+bool GetVRAutoNativeEfbEffects(bool immersive_vr)
+{
+  return GetWithImmersiveDefault(Config::GFX_VR_AUTO_NATIVE_EFB_EFFECTS, immersive_vr, true);
+}
+
 void VideoConfig::Refresh()
 {
   if (!s_config_changed_callback_id.has_value())
@@ -271,10 +298,8 @@ void VideoConfig::Refresh()
     vr_reference_space_mode = OpenXRReferenceSpaceMode::Stage;
   }
   const bool immersive_vr = vr_presentation_mode == OpenXRPresentationMode::Immersive;
-  vr_exact_screen_depth =
-      immersive_vr ? false : Config::Get(Config::GFX_VR_EXACT_SCREEN_DEPTH);
-  vr_auto_native_efb_effects =
-      immersive_vr ? true : Config::Get(Config::GFX_VR_AUTO_NATIVE_EFB_EFFECTS);
+  vr_exact_screen_depth = GetVRExactScreenDepth(immersive_vr);
+  vr_auto_native_efb_effects = GetVRAutoNativeEfbEffects(immersive_vr);
   vr_remove_bars = Config::Get(Config::GFX_VR_REMOVE_BARS);
   vr_frame_size_from_xfb = Config::Get(Config::GFX_VR_FRAME_SIZE_FROM_XFB);
   vr_panes_on_screen = Config::Get(Config::GFX_VR_PANES_ON_SCREEN);

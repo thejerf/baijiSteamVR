@@ -437,24 +437,36 @@ void VRConfigWidget::CreateWidgets()
       make_bool(tr("Virtual Screen for 2D Content"), Config::GFX_VR_VIRTUAL_SCREEN), 0, 0, 1, 3);
   auto* exact_screen_depth = make_bool(tr("Exact Screen Depth"), Config::GFX_VR_EXACT_SCREEN_DEPTH);
   exact_screen_depth->setToolTip(
-      tr("When Immersive VR is selected, this option is locked off."));
+      tr("Immersive VR turns this off unless it is set here or in the VR settings. Turn it on "
+         "for a game that needs it."));
   virtual_screen_layout->addWidget(exact_screen_depth, 1, 0, 1, 3);
   auto* auto_native_efb_effects =
       make_bool(tr("Auto-Exclude EFB Effects"), Config::GFX_VR_AUTO_NATIVE_EFB_EFFECTS);
   auto_native_efb_effects->setToolTip(
-      tr("When Immersive VR is selected, this option is locked on."));
+      tr("Immersive VR turns this on unless it is set here or in the VR settings."));
   virtual_screen_layout->addWidget(auto_native_efb_effects, 2, 0, 1, 3);
-  const auto update_immersive_screen_options = [get_game_or_base, exact_screen_depth,
-                                                auto_native_efb_effects] {
+  // Immersive VR only changes these two options' defaults (see GetVRExactScreenDepth): when
+  // neither this game, its VR profile nor GFX.ini sets one, show the Immersive default. The
+  // options stay editable, and a change here is saved for this game.
+  const auto update_immersive_screen_options = [this, layer, get_game_or_base,
+                                                exact_screen_depth, auto_native_efb_effects] {
     const bool immersive_vr =
         get_game_or_base(Config::GFX_VR_PRESENTATION_MODE) == OpenXRPresentationMode::Immersive;
-    exact_screen_depth->setEnabled(!immersive_vr);
-    auto_native_efb_effects->setEnabled(!immersive_vr);
-    if (immersive_vr)
+    if (!immersive_vr)
+      return;
+    const auto inherits_default = [this, layer](const Config::Info<bool>& setting) {
+      const auto& location = setting.GetLocation();
+      return !layer->Exists(location) && !m_global_layer->Exists(location) &&
+             !Config::GetLayer(Config::LayerType::Base)->Exists(location);
+    };
+    if (inherits_default(Config::GFX_VR_EXACT_SCREEN_DEPTH))
     {
-      const QSignalBlocker exact_screen_depth_blocker(exact_screen_depth);
-      const QSignalBlocker auto_native_efb_effects_blocker(auto_native_efb_effects);
+      const QSignalBlocker blocker(exact_screen_depth);
       exact_screen_depth->setChecked(false);
+    }
+    if (inherits_default(Config::GFX_VR_AUTO_NATIVE_EFB_EFFECTS))
+    {
+      const QSignalBlocker blocker(auto_native_efb_effects);
       auto_native_efb_effects->setChecked(true);
     }
   };
