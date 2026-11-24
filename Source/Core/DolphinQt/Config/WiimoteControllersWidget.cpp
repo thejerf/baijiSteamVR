@@ -317,8 +317,11 @@ void WiimoteControllersWidget::CreateLayout()
       // extension right under the Wii Remote, without going through the mapping window.
       m_extension_label = new QLabel(tr("Extension"));
       m_extension_combo = new QComboBox();
-      for (const auto& attachment : GetWiimoteAttachments()->GetAttachmentList())
-        m_extension_combo->addItem(tr(attachment->GetDisplayName().c_str()));
+      if (const auto* attachments = GetWiimoteAttachments())
+      {
+        for (const auto& attachment : attachments->GetAttachmentList())
+          m_extension_combo->addItem(tr(attachment->GetDisplayName().c_str()));
+      }
       m_extension_combo->setToolTip(
           tr("What is plugged into the Wii Remote. Choose None for games that ask you to "
              "remove the Nunchuk, such as Wii Sports."));
@@ -398,7 +401,10 @@ void WiimoteControllersWidget::ConnectWidgets()
   connect(m_extension_combo, &QComboBox::activated, this, [](int index) {
     {
       const auto lock = ControllerEmu::EmulatedController::GetStateLock();
-      GetWiimoteAttachments()->SetSelectedAttachment(index);
+      auto* attachments = GetWiimoteAttachments();
+      if (!attachments)
+        return;
+      attachments->SetSelectedAttachment(index);
     }
     Wiimote::GetConfig()->SaveConfig();
   });
@@ -502,6 +508,11 @@ void WiimoteControllersWidget::OnWiimoteConfigure(size_t index)
   MappingWindow* window = new MappingWindow(this, type, static_cast<int>(index));
   window->setAttribute(Qt::WA_DeleteOnClose, true);
   window->setWindowModality(Qt::WindowModality::WindowModal);
+#ifdef BAIJI_STEAMVR
+  // The mapping window can change the extension too; show its choice here once it closes.
+  connect(window, &QObject::destroyed, this,
+          [this] { LoadSettings(Core::GetState(Core::System::GetInstance())); });
+#endif
   window->show();
 }
 
@@ -579,10 +590,11 @@ void WiimoteControllersWidget::LoadSettings(Core::State state)
   }
 
 #ifdef BAIJI_STEAMVR
+  if (auto* attachments = GetWiimoteAttachments())
   {
     const auto lock = ControllerEmu::EmulatedController::GetStateLock();
     SignalBlocking(m_extension_combo)
-        ->setCurrentIndex(static_cast<int>(GetWiimoteAttachments()->GetSelectedAttachment()));
+        ->setCurrentIndex(static_cast<int>(attachments->GetSelectedAttachment()));
   }
   m_extension_label->setEnabled(m_wiimote_buttons[0]->isEnabled());
   m_extension_combo->setEnabled(m_wiimote_buttons[0]->isEnabled());
