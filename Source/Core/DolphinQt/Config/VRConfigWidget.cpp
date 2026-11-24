@@ -446,17 +446,19 @@ void VRConfigWidget::CreateWidgets()
       tr("Immersive VR turns this on unless it is set here or in the VR settings."));
   virtual_screen_layout->addWidget(auto_native_efb_effects, 2, 0, 1, 3);
   // Immersive VR only changes these two options' defaults (see GetVRExactScreenDepth): when
-  // neither this game, its VR profile nor GFX.ini sets one, show the Immersive default. The
-  // options stay editable, and a change here is saved for this game.
-  const auto update_immersive_screen_options = [this, layer, get_game_or_base,
+  // neither this game's own file nor GFX.ini sets one, show the Immersive default. The options
+  // stay editable, and a change here is saved for this game.
+  const auto update_immersive_screen_options = [layer, get_game_or_base,
                                                 exact_screen_depth, auto_native_efb_effects] {
     const bool immersive_vr =
         get_game_or_base(Config::GFX_VR_PRESENTATION_MODE) == OpenXRPresentationMode::Immersive;
     if (!immersive_vr)
       return;
-    const auto inherits_default = [this, layer](const Config::Info<bool>& setting) {
+    // A bundled profile's value does not count in Immersive VR (ApplyGameVRConfigOverrides
+    // skips it there); only this game's own file and GFX.ini do.
+    const auto inherits_default = [layer](const Config::Info<bool>& setting) {
       const auto& location = setting.GetLocation();
-      return !layer->Exists(location) && !m_global_layer->Exists(location) &&
+      return !layer->Exists(location) &&
              !Config::GetLayer(Config::LayerType::Base)->Exists(location);
     };
     if (inherits_default(Config::GFX_VR_EXACT_SCREEN_DEPTH))
