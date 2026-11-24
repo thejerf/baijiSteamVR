@@ -21,6 +21,8 @@ public:
 
   static Host* GetInstance();
   static bool IsRenderToMain();
+  // True under gamescope (Steam's Game Mode). BAIJI_RENDER_TO_MAIN=0 / 1 overrides it.
+  static bool IsGameMode();
 
   bool GetRenderFocus();
   bool GetRenderFullFocus();
