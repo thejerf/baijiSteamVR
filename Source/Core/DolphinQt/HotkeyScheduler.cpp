@@ -46,6 +46,7 @@
 #include "VideoCommon/TextureElementManager.h"
 #include "VideoCommon/VideoConfig.h"
 #ifdef ENABLE_VR
+#include "VideoCommon/FramebufferManager.h"
 #include "VideoCommon/VR/OpenXRManager.h"
 #endif
 
@@ -531,6 +532,38 @@ void HotkeyScheduler::Run()
         Config::SetCurrent(Config::GFX_VR_PRESENTATION_MODE, OpenXRPresentationMode::Legacy);
         ToggleVRSetting(Config::GFX_VR_ENABLE_OPENXR, "OpenXR");
       }
+
+#ifdef ENABLE_VR
+      if (IsHotkey(HK_VR_TOGGLE_IMMERSIVE_STEREO_SCREEN))
+      {
+        // Switch between Immersive VR and the stereo screen mid-game. This only writes the
+        // setting for this run; the video thread rebuilds the EFB and shaders through the usual
+        // config-change path (CheckForConfigChanges). Both modes use the same eye swapchains,
+        // except when foveation is on, which is decided at boot, so refuse then.
+        const OpenXRPresentationMode mode = Config::Get(Config::GFX_VR_PRESENTATION_MODE);
+        const bool switchable = mode == OpenXRPresentationMode::Immersive ||
+                                mode == OpenXRPresentationMode::StereoScreen;
+        if (!VR::g_openxr || !VR::g_openxr->GetSwapchain() || !switchable)
+        {
+          OSD::AddMessage("Immersive / Stereo Screen: only while a game runs in one of them");
+        }
+        else if (VR::g_openxr->GetSwapchain()->HasFoveatedFramebuffers() ||
+                 (g_framebuffer_manager && g_framebuffer_manager->IsEFBFoveated()))
+        {
+          OSD::AddMessage("Immersive / Stereo Screen: turn Foveated Rendering off to switch");
+        }
+        else
+        {
+          const bool to_stereo_screen = mode == OpenXRPresentationMode::Immersive;
+          if (to_stereo_screen)
+            VR::g_openxr->RequestFlatScreenReanchor();
+          Config::SetCurrent(Config::GFX_VR_PRESENTATION_MODE,
+                             to_stereo_screen ? OpenXRPresentationMode::StereoScreen :
+                                                OpenXRPresentationMode::Immersive);
+          OSD::AddMessage(to_stereo_screen ? "Stereo Screen" : "Immersive VR");
+        }
+      }
+#endif
 
       if (IsHotkey(HK_VR_RESET_POSITION))
       {
