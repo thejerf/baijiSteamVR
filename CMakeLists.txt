@@ -941,6 +941,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux|FreeBSD|OpenBSD")
   install(FILES Data/baiji-nogui.6
           DESTINATION ${CMAKE_INSTALL_MANDIR}/man6)
   install(PROGRAMS scripts/baiji-vr DESTINATION ${CMAKE_INSTALL_BINDIR})
+  install(PROGRAMS scripts/baiji-uninstall DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
 
 # packaging information

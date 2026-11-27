@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 FRAME="${1:-frame}"
 STAGE="state/stage-frame/home/steamos/baiji"
 
-for file in baiji baiji-nogui baiji-tool baiji-vr; do
+for file in baiji baiji-nogui baiji-tool baiji-vr baiji-uninstall; do
   if [[ ! -f "$STAGE/bin/$file" ]]; then
     echo "Missing staged file: $STAGE/bin/$file (run compile-cross-sdk.sh first)" >&2
     exit 1
@@ -15,7 +15,7 @@ done
 ssh "$FRAME" 'mkdir -p ~/baiji/bin ~/baiji/lib/baiji ~/baiji/share'
 ssh "$FRAME" 'rm -f ~/baiji/lib/baiji/libmvec.so.1 ~/baiji/lib/baiji/libgpg-error.so.0'
 scp "$STAGE/bin/baiji" "$STAGE/bin/baiji-nogui" "$STAGE/bin/baiji-tool" \
-  "$STAGE/bin/baiji-vr" "$FRAME:baiji/bin/"
+  "$STAGE/bin/baiji-vr" "$STAGE/bin/baiji-uninstall" "$FRAME:baiji/bin/"
 
 tar -C "$STAGE" -cf - \
   lib/baiji \

@@ -141,6 +141,20 @@ you an "emulation-based" toolchain, where it runs a native ARM
 toolchain on an x86 CPU, decline that. It was miserably slow. I don't
 know about ARM-based Mac OS machines.
 
+## Uninstall Or Move To Dolphin
+
+Close Baiji, then run `~/baiji/bin/baiji-uninstall` in a Desktop terminal. It removes the
+program folder and keeps your saves and settings. Options:
+
+* `--migrate` copies your GameCube memory cards and Wii saves into Dolphin's user folder
+  (the Flatpak Dolphin's if it has been run once, otherwise `~/.local/share/dolphin-emu`, or
+  a folder you name after it). Files already there are never overwritten. Save states are
+  not copied; they rarely load in another Dolphin build.
+* `--purge` also deletes Baiji's saves, settings and cache.
+* `--dry-run` shows what would happen without changing anything.
+
+Remove the `baiji-vr` shortcut from your Steam library by hand.
+
 # Performance Issues
 
 * Remarkably, there are still even some Gamecube games that the Steam
