@@ -304,6 +304,10 @@ public:
   // Applied on the OpenXR render thread during LocateViews.
   void RequestRecenter();
 
+  // Places the flat screen in front of the view again on the next LocateViews, without moving
+  // the VR home position (used when switching into the stereo screen mid-game).
+  void RequestFlatScreenReanchor() { m_flat_screen_reanchor_pending.store(true); }
+
   // ---- Flat mono panel (vr_flat_screen) ----
 
   // Aspect ratio (width / height) of the flat game panel. Set by the presenter each frame

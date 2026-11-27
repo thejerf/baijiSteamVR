@@ -52,7 +52,8 @@ void HotkeyVR::CreateMainLayout()
       create_vr_group_box(tr("VR"), {HK_VR_TOGGLE_OPENXR, HK_VR_DECREASE_UNITS_PER_METER,
                                      HK_VR_INCREASE_UNITS_PER_METER, HK_VR_TOGGLE_DONT_CLEAR_SCREEN,
                                      HK_VR_TOGGLE_FORCE_VBI, HK_VR_TOGGLE_REMOVE_CINEMATIC_BARS,
-                                     HK_VR_TOGGLE_CONTROLLER_ANCHOR}));
+                                     HK_VR_TOGGLE_CONTROLLER_ANCHOR,
+                                     HK_VR_TOGGLE_IMMERSIVE_STEREO_SCREEN}));
 
   auto* const camera_column = new QWidget;
   auto* const camera_layout = new QVBoxLayout(camera_column);

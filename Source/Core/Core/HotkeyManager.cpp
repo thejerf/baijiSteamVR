@@ -138,6 +138,7 @@ constexpr std::array<const char*, NUM_HOTKEYS> s_hotkey_labels{{
     _trans("Toggle Remove Cinematic Bars"),
     _trans("Toggle Camera Anchor"),
     _trans("Toggle Controller Anchor"),
+    _trans("Toggle Immersive VR and Stereo Screen"),
 
     _trans("Toggle Shader Hunting"),
     _trans("Cycle Hunting Option"),
@@ -356,7 +357,7 @@ constexpr std::array<HotkeyGroupInfo, NUM_HOTKEY_GROUPS> s_groups_info = {
      {_trans("Controller Profile 3"), HK_NEXT_WIIMOTE_PROFILE_3, HK_PREV_GAME_WIIMOTE_PROFILE_3},
      {_trans("Controller Profile 4"), HK_NEXT_WIIMOTE_PROFILE_4, HK_PREV_GAME_WIIMOTE_PROFILE_4},
      {_trans("Graphics Toggles"), HK_TOGGLE_CROP, HK_TOGGLE_TEXTURES},
-     {_trans("VR"), HK_VR_TOGGLE_OPENXR, HK_VR_TOGGLE_CONTROLLER_ANCHOR},
+     {_trans("VR"), HK_VR_TOGGLE_OPENXR, HK_VR_TOGGLE_IMMERSIVE_STEREO_SCREEN},
      {_trans("VR Shader"), HK_VR_SHADER_TOGGLE_HUNTING, HK_VR_SHADER_SAVE_OVERRIDE},
      {_trans("VR Texture"), HK_VR_TEXTURE_TOGGLE_HUNTING, HK_VR_TEXTURE_SAVE_OVERRIDE},
      {_trans("Internal Resolution"), HK_INCREASE_IR, HK_DECREASE_IR},
