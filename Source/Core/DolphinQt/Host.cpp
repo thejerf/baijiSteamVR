@@ -73,12 +73,32 @@ Host* Host::GetInstance()
   return s_instance;
 }
 
+bool Host::IsGameMode()
+{
+  // BAIJI_RENDER_TO_MAIN=1 / 0 forces either behaviour for testing.
+  const QString forced = qEnvironmentVariable("BAIJI_RENDER_TO_MAIN").trimmed();
+  if (forced == QStringLiteral("1"))
+    return true;
+  if (forced == QStringLiteral("0"))
+    return false;
+  // Steam's Game Mode runs Baiji under gamescope; the KDE desktop does not.
+  return qEnvironmentVariable("XDG_CURRENT_DESKTOP")
+      .split(QLatin1Char(':'), Qt::SkipEmptyParts)
+      .contains(QStringLiteral("gamescope"), Qt::CaseInsensitive);
+}
+
 bool Host::IsRenderToMain()
 {
 #ifdef BAIJI_STEAMVR
-  // Keep the main Qt interface available while emulating on Steam Frame. Batch mode
-  // intentionally uses a separate render window because its main window is hidden.
-  return !Settings::Instance().IsBatchModeEnabled();
+  // Batch mode intentionally uses a separate render window because its main window is hidden.
+  if (Settings::Instance().IsBatchModeEnabled())
+    return false;
+  // gamescope only shows one window of the app, so the game renders into the main window to
+  // keep the Qt interface reachable while emulating. On the desktop, follow "Render to Main
+  // Window" (off by default), so the game list and a game's Properties stay usable mid-game.
+  if (IsGameMode())
+    return true;
+  return Config::Get(Config::MAIN_RENDER_TO_MAIN);
 #else
   return Config::Get(Config::MAIN_RENDER_TO_MAIN);
 #endif
