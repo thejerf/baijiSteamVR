@@ -80,5 +80,9 @@ private:
   QCheckBox* m_wiimote_ciface;
   QToolButton* m_wiimote_refresh;
   QLabel* m_wiimote_refresh_indicator;
+#ifdef BAIJI_STEAMVR
+  QLabel* m_extension_label = nullptr;
+  QComboBox* m_extension_combo = nullptr;
+#endif
   QLabel* m_bluetooth_unavailable;
 };

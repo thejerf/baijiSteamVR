@@ -26,6 +26,7 @@
 #include "Core/ConfigManager.h"
 #include "Core/Core.h"
 #include "Core/HW/Wiimote.h"
+#include "Core/HW/WiimoteEmu/WiimoteEmu.h"
 #include "Core/HW/WiimoteReal/WiimoteReal.h"
 #include "Core/IOS/IOS.h"
 #include "Core/IOS/USB/Bluetooth/LibUSBBluetoothAdapter.h"
@@ -41,6 +42,10 @@
 #include "DolphinQt/QtUtils/SignalBlocking.h"
 #include "DolphinQt/Settings.h"
 #include "DolphinQt/Settings/USBDevicePicker.h"
+
+#include "InputCommon/ControllerEmu/ControlGroup/Attachments.h"
+#include "InputCommon/ControllerEmu/ControllerEmu.h"
+#include "InputCommon/InputConfig.h"
 
 #if defined(_WIN32)
 #include "Core/HW//WiimoteReal/IOWin.h"
@@ -61,6 +66,14 @@ bool IsConfigurableWiimoteSource(WiimoteSource source)
 {
   return source == WiimoteSource::Emulated || source == WiimoteSource::OpenXR;
 }
+
+#ifdef BAIJI_STEAMVR
+ControllerEmu::Attachments* GetWiimoteAttachments()
+{
+  return static_cast<ControllerEmu::Attachments*>(
+      Wiimote::GetWiimoteGroup(0, WiimoteEmu::WiimoteGroup::Attachments));
+}
+#endif
 }  // namespace
 
 WiimoteControllersWidget::WiimoteControllersWidget(QWidget* parent) : QWidget(parent)
@@ -296,6 +309,27 @@ void WiimoteControllersWidget::CreateLayout()
       wm_box->hide();
       wm_button->hide();
     }
+
+#ifdef BAIJI_STEAMVR
+    if (i == 0)
+    {
+      // Some games (Wii Sports, for one) refuse to start while a Nunchuk is attached. Offer the
+      // extension right under the Wii Remote, without going through the mapping window.
+      m_extension_label = new QLabel(tr("Extension"));
+      m_extension_combo = new QComboBox();
+      if (const auto* attachments = GetWiimoteAttachments())
+      {
+        for (const auto& attachment : attachments->GetAttachmentList())
+          m_extension_combo->addItem(tr(attachment->GetDisplayName().c_str()));
+      }
+      m_extension_combo->setToolTip(
+          tr("What is plugged into the Wii Remote. Choose None for games that ask you to "
+             "remove the Nunchuk, such as Wii Sports."));
+      const int extension_row = m_wiimote_layout->rowCount();
+      m_wiimote_layout->addWidget(m_extension_label, extension_row, 1);
+      m_wiimote_layout->addWidget(m_extension_combo, extension_row, 2);
+    }
+#endif
   }
 
   m_wiimote_layout->addWidget(m_wiimote_real_balance_board, m_wiimote_layout->rowCount(), 1, 1, -1);
@@ -362,6 +396,19 @@ void WiimoteControllersWidget::ConnectWidgets()
     connect(m_wiimote_buttons[i], &QPushButton::clicked, this,
             [this, i] { OnWiimoteConfigure(i); });
   }
+
+#ifdef BAIJI_STEAMVR
+  connect(m_extension_combo, &QComboBox::activated, this, [](int index) {
+    {
+      const auto lock = ControllerEmu::EmulatedController::GetStateLock();
+      auto* attachments = GetWiimoteAttachments();
+      if (!attachments)
+        return;
+      attachments->SetSelectedAttachment(index);
+    }
+    Wiimote::GetConfig()->SaveConfig();
+  });
+#endif
 }
 
 void WiimoteControllersWidget::OnBluetoothPassthroughDeviceChanged(int index)
@@ -461,6 +508,11 @@ void WiimoteControllersWidget::OnWiimoteConfigure(size_t index)
   MappingWindow* window = new MappingWindow(this, type, static_cast<int>(index));
   window->setAttribute(Qt::WA_DeleteOnClose, true);
   window->setWindowModality(Qt::WindowModality::WindowModal);
+#ifdef BAIJI_STEAMVR
+  // The mapping window can change the extension too; show its choice here once it closes.
+  connect(window, &QObject::destroyed, this,
+          [this] { LoadSettings(Core::GetState(Core::System::GetInstance())); });
+#endif
   window->show();
 }
 
@@ -536,6 +588,17 @@ void WiimoteControllersWidget::LoadSettings(Core::State state)
     m_wiimote_buttons[i]->setEnabled(enable_emu_bt && IsConfigurableWiimoteSource(source) &&
                                      static_cast<int>(i) < num_local_wiimotes);
   }
+
+#ifdef BAIJI_STEAMVR
+  if (auto* attachments = GetWiimoteAttachments())
+  {
+    const auto lock = ControllerEmu::EmulatedController::GetStateLock();
+    SignalBlocking(m_extension_combo)
+        ->setCurrentIndex(static_cast<int>(attachments->GetSelectedAttachment()));
+  }
+  m_extension_label->setEnabled(m_wiimote_buttons[0]->isEnabled());
+  m_extension_combo->setEnabled(m_wiimote_buttons[0]->isEnabled());
+#endif
 
   m_wiimote_real_balance_board->setEnabled(enable_emu_bt && !running_netplay);
   m_wiimote_speaker_data->setEnabled(enable_emu_bt && !running_netplay);
