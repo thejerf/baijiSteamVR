@@ -559,5 +559,11 @@ extern VideoConfig g_Config;
 extern VideoConfig g_ActiveConfig;
 
 // Called every frame.
+// Immersive VR needs Exact Screen Depth off and Auto-Exclude EFB Effects on, but only as its
+// default: a value set in any config layer (GFX.ini, a game's settings, a game's VR profile)
+// wins, so games that need the other value can still have it.
+bool GetVRExactScreenDepth(bool immersive_vr);
+bool GetVRAutoNativeEfbEffects(bool immersive_vr);
+
 void UpdateActiveConfig();
 void CheckForConfigChanges();

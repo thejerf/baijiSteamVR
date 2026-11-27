@@ -55,6 +55,7 @@
 #include "Core/WC24PatchEngine.h"
 
 #include "VideoCommon/HiresTextures.h"
+#include "VideoCommon/VideoConfig.h"
 
 #include "DiscIO/Enums.h"
 #include "DiscIO/Volume.h"
@@ -131,7 +132,9 @@ static void MergeVRSettingsFromINIFile(VRSettingMap* values, const std::string& 
   }
 }
 
-static VRSettingMap LoadVRSettingsFromINI(std::string_view game_id, std::optional<u16> revision)
+// bundled_only: the keys set by a bundled (Sys) profile and by none of the user's files.
+static VRSettingMap LoadVRSettingsFromINI(std::string_view game_id, std::optional<u16> revision,
+                                          VRSettingSet* bundled_only = nullptr)
 {
   VRSettingMap values;
 
@@ -141,8 +144,21 @@ static VRSettingMap LoadVRSettingsFromINI(std::string_view game_id, std::optiona
   for (const std::string& filename : ConfigLoaders::GetGameIniFilenames(game_id, revision))
     MergeVRSettingsFromINIFile(&values, GetSysVRGameINIPath(filename));
 
+  VRSettingMap user_values;
   for (const std::string& filename : ConfigLoaders::GetGameIniFilenames(game_id, revision))
-    MergeVRSettingsFromINIFile(&values, File::GetUserPath(D_GAMESETTINGSVR_IDX) + filename);
+    MergeVRSettingsFromINIFile(&user_values, File::GetUserPath(D_GAMESETTINGSVR_IDX) + filename);
+
+  if (bundled_only)
+  {
+    for (const auto& [key, value] : values)
+    {
+      if (!user_values.contains(key))
+        bundled_only->insert(key);
+    }
+  }
+
+  for (auto& [key, value] : user_values)
+    values.insert_or_assign(key, std::move(value));
 
   return values;
 }
@@ -236,7 +252,8 @@ static void ApplyGameVRConfigOverrides(std::string_view game_id, std::optional<u
 {
   const Config::ConfigChangeCallbackGuard guard;
   ClearAppliedVRSettings();
-  const VRSettingMap values = LoadVRSettingsFromINI(game_id, revision);
+  VRSettingSet bundled_only;
+  VRSettingMap values = LoadVRSettingsFromINI(game_id, revision, &bundled_only);
 
   ApplyVRSetting(values, "EnableOpenXR", Config::GFX_VR_ENABLE_OPENXR);
   ApplyVRSetting(values, "FlatScreen", Config::GFX_VR_FLAT_SCREEN);
@@ -269,6 +286,20 @@ static void ApplyGameVRConfigOverrides(std::string_view game_id, std::optional<u
   ApplyVRSetting(values, "ForcedVBIFrequency", Config::GFX_VR_FORCED_VBI_FREQUENCY);
   if (!has_forced_vbi_frequency)
     ApplyVRSetting(values, "AutoVBIFromHMD", Config::GFX_VR_AUTO_VBI_FROM_HMD);
+#ifdef BAIJI_STEAMVR
+  // Immersive VR on the Frame needs Exact Screen Depth off and Auto-Exclude EFB Effects on by
+  // default (GetVRExactScreenDepth). The bundled profiles' values for these two were not made on
+  // the Frame, so in Immersive VR only the player's own values (GFX.ini, the game's settings, a
+  // user GameSettingsVR file) replace that default.
+  if (Config::Get(Config::GFX_VR_PRESENTATION_MODE) == OpenXRPresentationMode::Immersive)
+  {
+    for (const char* key : {"ExactScreenDepth", "AutoNativeEfbEffects"})
+    {
+      if (bundled_only.contains(key))
+        values.erase(key);
+    }
+  }
+#endif
   ApplyVRSetting(values, "ExactScreenDepth", Config::GFX_VR_EXACT_SCREEN_DEPTH);
   ApplyVRSetting(values, "AutoNativeEfbEffects", Config::GFX_VR_AUTO_NATIVE_EFB_EFFECTS);
   ApplyVRSetting(values, "HudThickness", Config::GFX_VR_HUD_THICKNESS);

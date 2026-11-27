@@ -496,7 +496,8 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
          "enabled, Auto Layer Spread / Layer Offset / Element Depth are no longer needed for "
          "correctness.<br><br>"
          "Disable only to fall back to the legacy layer system for troubleshooting.<br><br>"
-         "When Immersive VR is selected, this option is locked off."));
+         "Immersive VR turns this off unless you set it here or in a game's VR settings. "
+         "Some games need it on in places, for example a pause-screen map."));
   virtual_screen_layout->addWidget(m_exact_screen_depth, 1, 0, 1, 3);
 
   // Auto-Exclude EFB Effects
@@ -512,20 +513,17 @@ VRPane::VRPane(QWidget* parent) : QWidget(parent)
          "Genuine 2D content that samples a frame copy opaquely (e.g. a frozen pause-menu "
          "background) stays on the virtual screen. Disable this if a game's 2D element is "
          "misdetected and leaves the screen.<br><br>"
-         "When Immersive VR is selected, this option is locked on."));
+         "Immersive VR turns this on unless you set it here or in a game's VR settings."));
   virtual_screen_layout->addWidget(m_auto_native_efb_effects, 2, 0, 1, 3);
+  // Immersive VR only changes these two options' defaults (see GetVRExactScreenDepth). Show the
+  // value in effect; the options stay editable, and a change here is saved.
   const auto update_immersive_screen_options = [this] {
     const bool immersive_vr =
         Config::Get(Config::GFX_VR_PRESENTATION_MODE) == OpenXRPresentationMode::Immersive;
-    m_exact_screen_depth->setEnabled(!immersive_vr);
-    m_auto_native_efb_effects->setEnabled(!immersive_vr);
-    if (immersive_vr)
-    {
-      const QSignalBlocker exact_screen_depth_blocker(m_exact_screen_depth);
-      const QSignalBlocker auto_native_efb_effects_blocker(m_auto_native_efb_effects);
-      m_exact_screen_depth->setChecked(false);
-      m_auto_native_efb_effects->setChecked(true);
-    }
+    const QSignalBlocker exact_screen_depth_blocker(m_exact_screen_depth);
+    const QSignalBlocker auto_native_efb_effects_blocker(m_auto_native_efb_effects);
+    m_exact_screen_depth->setChecked(GetVRExactScreenDepth(immersive_vr));
+    m_auto_native_efb_effects->setChecked(GetVRAutoNativeEfbEffects(immersive_vr));
   };
   connect(m_presentation_mode, &QComboBox::currentIndexChanged, this,
           [update_immersive_screen_options](int) { update_immersive_screen_options(); });
@@ -1077,10 +1075,10 @@ void VRPane::ResetGeneralSettings()
   Config::SetBaseOrCurrent(Config::GFX_VR_CLEAR_EFB_COPIES,
                            Config::GFX_VR_CLEAR_EFB_COPIES.GetDefaultValue());
   Config::SetBaseOrCurrent(Config::GFX_VR_GAMMA, Config::GFX_VR_GAMMA.GetDefaultValue());
-  Config::SetBaseOrCurrent(Config::GFX_VR_EXACT_SCREEN_DEPTH,
-                           Config::GFX_VR_EXACT_SCREEN_DEPTH.GetDefaultValue());
-  Config::SetBaseOrCurrent(Config::GFX_VR_AUTO_NATIVE_EFB_EFFECTS,
-                           Config::GFX_VR_AUTO_NATIVE_EFB_EFFECTS.GetDefaultValue());
+  // Unset rather than written, so Immersive VR's own defaults apply again
+  // (GetVRExactScreenDepth / GetVRAutoNativeEfbEffects).
+  Config::DeleteKey(Config::LayerType::Base, Config::GFX_VR_EXACT_SCREEN_DEPTH);
+  Config::DeleteKey(Config::LayerType::Base, Config::GFX_VR_AUTO_NATIVE_EFB_EFFECTS);
   Config::SetBaseOrCurrent(Config::GFX_VR_HUD_THICKNESS,
                            Config::GFX_VR_HUD_THICKNESS.GetDefaultValue());
   Config::SetBaseOrCurrent(Config::GFX_VR_METROID_THERMAL_VISOR_FIX,
