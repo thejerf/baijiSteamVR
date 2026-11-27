@@ -58,8 +58,10 @@ namespace
 {
 bool IsSetInAnyLayer(const Config::Location& location)
 {
-  return Config::GetActiveLayerForConfig(location) != Config::LayerType::Base ||
-         Config::GetLayer(Config::LayerType::Base)->Exists(location);
+  if (Config::GetActiveLayerForConfig(location) != Config::LayerType::Base)
+    return true;
+  const auto base = Config::GetLayer(Config::LayerType::Base);
+  return base && base->Exists(location);
 }
 
 bool GetWithImmersiveDefault(const Config::Info<bool>& info, bool immersive_vr,

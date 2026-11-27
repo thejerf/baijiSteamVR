@@ -446,30 +446,36 @@ void VRConfigWidget::CreateWidgets()
       tr("Immersive VR turns this on unless it is set here or in the VR settings."));
   virtual_screen_layout->addWidget(auto_native_efb_effects, 2, 0, 1, 3);
   // Immersive VR only changes these two options' defaults (see GetVRExactScreenDepth): when
-  // neither this game's own file nor GFX.ini sets one, show the Immersive default. The options
-  // stay editable, and a change here is saved for this game.
-  const auto update_immersive_screen_options = [layer, get_game_or_base,
-                                                exact_screen_depth, auto_native_efb_effects] {
+  // neither this game's own file nor GFX.ini sets one, show the Immersive default. When switching
+  // back out of Immersive VR, restore the effective Stereo Screen value so checkboxes stay accurate.
+  // The options stay editable, and a change here is saved for this game.
+  const auto update_immersive_screen_options = [layer, get_game_or_base, exact_screen_depth,
+                                                auto_native_efb_effects] {
     const bool immersive_vr =
         get_game_or_base(Config::GFX_VR_PRESENTATION_MODE) == OpenXRPresentationMode::Immersive;
-    if (!immersive_vr)
-      return;
-    // A bundled profile's value does not count in Immersive VR (ApplyGameVRConfigOverrides
-    // skips it there); only this game's own file and GFX.ini do.
-    const auto inherits_default = [layer](const Config::Info<bool>& setting) {
+    const auto effective_value = [get_game_or_base, immersive_vr](
+                                     const Config::Info<bool>& setting, bool immersive_default) {
       const auto& location = setting.GetLocation();
-      return !layer->Exists(location) &&
-             !Config::GetLayer(Config::LayerType::Base)->Exists(location);
+      if (immersive_vr)
+      {
+        // A bundled profile's value does not count in Immersive VR (ApplyGameVRConfigOverrides
+        // skips it there); only this game's own file and GFX.ini do.
+        if (Config::GetLayer(Config::LayerType::Base)->Exists(location))
+          return Config::GetBase(setting);
+        return immersive_default;
+      }
+      return get_game_or_base(setting);
     };
-    if (inherits_default(Config::GFX_VR_EXACT_SCREEN_DEPTH))
+    if (!layer->Exists(Config::GFX_VR_EXACT_SCREEN_DEPTH.GetLocation()))
     {
       const QSignalBlocker blocker(exact_screen_depth);
-      exact_screen_depth->setChecked(false);
+      exact_screen_depth->setChecked(effective_value(Config::GFX_VR_EXACT_SCREEN_DEPTH, false));
     }
-    if (inherits_default(Config::GFX_VR_AUTO_NATIVE_EFB_EFFECTS))
+    if (!layer->Exists(Config::GFX_VR_AUTO_NATIVE_EFB_EFFECTS.GetLocation()))
     {
       const QSignalBlocker blocker(auto_native_efb_effects);
-      auto_native_efb_effects->setChecked(true);
+      auto_native_efb_effects->setChecked(
+          effective_value(Config::GFX_VR_AUTO_NATIVE_EFB_EFFECTS, true));
     }
   };
   connect(presentation_mode, &QComboBox::currentIndexChanged, this,
