@@ -5,6 +5,7 @@
 
 #include <string>
 
+#include "Common/CommonPaths.h"
 #include "Common/Config/Config.h"
 #include "Common/FileUtil.h"
 #include "Common/IOFile.h"
@@ -97,6 +98,14 @@ TEST(VRImmersiveDefaults, BundledProfileSkippedInImmersiveButUserProfileWins)
   ConfigTestScope scope;
   ASSERT_FALSE(scope.UserDir().empty());
 
+  // Linux builds read Sys from the install path unless built with LINUX_LOCAL_DEV, so without it the
+  // bundled profile is never loaded and this test would pass whatever ApplyGameVRConfigOverrides does.
+  if (!File::Exists(File::GetSysDirectory() + GAMESETTINGSVR_DIR DIR_SEP "GMBE8P.ini"))
+  {
+    GTEST_SKIP() << "Bundled Sys/GameSettingsVR not found at " << File::GetSysDirectory()
+                 << " (on Linux, build with -DLINUX_LOCAL_DEV=ON or install first).";
+  }
+
   // GMBE8P has a bundled Sys/GameSettingsVR/GMBE8P.ini with ExactScreenDepth = True.
   // In Immersive VR, the bundled value must NOT override Immersive's default (false).
   Config::SetBase(Config::GFX_VR_PRESENTATION_MODE, OpenXRPresentationMode::Immersive);
@@ -104,7 +113,7 @@ TEST(VRImmersiveDefaults, BundledProfileSkippedInImmersiveButUserProfileWins)
   g_Config.Refresh();
   EXPECT_FALSE(g_Config.vr_exact_screen_depth);
 
-  // In Stereo Screen, the bundled profile applies normally (true).
+  // In Stereo Screen, the bundled profile applies normally (true, which is also the global default).
   Config::SetBase(Config::GFX_VR_PRESENTATION_MODE, OpenXRPresentationMode::StereoScreen);
   SConfig::GetInstance().ReloadGameVRConfigOverrides();
   g_Config.Refresh();
